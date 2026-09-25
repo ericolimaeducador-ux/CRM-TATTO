@@ -12,7 +12,6 @@ Formato do card:
 
 ### Fase 0 — Fundação
 
-- `[F0-02]` Schemas Mongoose `Contato` e `ContatoAuditoria` + índices — **@ARQ-02** — aceite: os 5 critérios do card F0-02 abaixo — dep: [F0-01]
 - `[F0-03]` Revisão LGPD do schema (bloco `lgpd`, campos criptografados em repouso, política de retenção) — **@SEC-07** — aceite: ADR de criptografia de CPF/CNPJ publicado e aplicado — dep: [F0-02]
 - `[F0-04]` Serviço de completude e normalização (E.164, CPF/CNPJ, e-mail lowercase, nome título) — **@DQ-08** — aceite: score determinístico com teste de tabela cobrindo 12 combinações — dep: [F0-02]
 - `[F0-05]` Plano de testes da Fase 0 — **@QA-09** — aceite: suíte roda em CI e cobre os 5 critérios de F0-02 — dep: [F0-02, F0-04]
@@ -55,6 +54,7 @@ _(vazio)_
 ## EM REVISÃO
 
 - `[F0-01]` Bootstrap do repositório (monorepo pnpm, apps/api + apps/web, Docker Compose, lint, husky) — **@OPS-10** — aceite: `docker compose up` sobe api+web+mongo e `pnpm build` passa nos dois apps — dep: [] — observação: `pnpm lint`, `pnpm build` e `pnpm test` verdes; Compose subiu os três serviços neste host só depois de regra ACCEPT no bridge (iptables-legacy do host, fora do repositório)
+- `[F0-02]` Schemas Mongoose `Contato` e `ContatoAuditoria` + índices — **@ARQ-02** — aceite: os 5 critérios do card F0-02 abaixo — dep: [F0-01] — observação: 8 testes verdes contra MongoDB 7 em memória; suíte ainda será commitada no F0-05 (glob do QA-09). Índice parcial usa `$in` (ADR-007)
 
 ## FEITO
 

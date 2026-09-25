@@ -107,6 +107,23 @@ reprocessamento da coleção — documentar o procedimento antes de produção.
 
 ---
 
+## ADR-007 — Índice parcial de CPF/CNPJ usa `$in` no status
+
+**Contexto.** A seção 4.4 pede `partialFilterExpression` com `status: { $nin: ["rascunho", "descartado"] }`. No MongoDB 7.0.24 essa expressão é reescrita para `$not`/`$in` e o servidor recusa criar o índice: "Expression not supported in partial index". Sem o índice, o critério 3 do F0-02 não existe.
+
+**Decisão.** Gravar o filtro como `status: { $in: ["capturado", "qualificado", "cliente"] }` junto com a existência do hash. O enum de status é fechado; o conjunto é o complemento de rascunho e descartado. Rascunho e descartado continuam fora da unicidade. O índice permanece parcial e único só no hash, nunca no valor puro.
+
+**Alternativas consideradas.**
+- *Manter `$nin` literal:* rejeitada — o `createIndex` falha e a suíte não sobe.
+- *Índice único total:* rejeitada — quebra L1 e a ADR-001.
+- *Dois índices parciais, um por status:* rejeitada — unicidade não atravessa os índices.
+
+**Consequências.** Se um status novo entrar no enum e precisar da mesma unicidade, o `$in` tem que ser atualizado no mesmo card. A expressão literal da seção 4.4 não é executável neste servidor.
+
+**Status.** aceito · 2026-09-25
+
+---
+
 ## ADR-006 — Esqueleto da Fase 0 e composição por descoberta
 
 **Contexto.** O card F0-01 (seção 12) entrega o monorepo `apps/api` + `apps/web` com `pnpm build` nos dois apps. O glob permanente do OPS-10 não lista `package.json` nem entrypoints. `apps/api/src/**` (exceto schemas) é do API-03 e `apps/web/src/**` é do UI-04; nenhum dos dois é despachado na Fase 0. Sem entrypoint não existe build. A regra do ORQ-01 exige reverter entrega fora do glob.
