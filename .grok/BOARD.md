@@ -14,7 +14,6 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 
 ### Fase 1 — Captura
 
-- `[F1-01]` API de contatos: POST/PATCH idempotente por `idLocal`, PATCH parcial campo-a-campo — **@API-03** — aceite: reenvio do mesmo `idLocal` não duplica; score ≥ 25 persiste `capturado`; autoria só do servidor — dep: [F0-06]
 - `[F1-02]` Fila offline: IndexedDB + worker de sync com backoff e resolução de conflito — **@SCAN-05** — aceite: grava local antes da rede e a profundidade alimenta `filaSincronizacao` — dep: [F1-01]
 - `[F1-03]` Leitura de QR: BarcodeDetector API com fallback ZXing; parsers vCard 2.1/3.0, MeCard, URL, texto livre — **@SCAN-05** — aceite: payload irreconhecível abre o formulário e guarda `payloadBruto` — dep: [F1-02]
 - `[F1-04]` Tela de captura: cartões colapsáveis, autosave, zero campo obrigatório, alvo de toque ≥ 48px — **@UI-04** — aceite: caminho mínimo em até dois toques, sem campo obrigatório — dep: [F1-01, F1-03]
@@ -43,7 +42,7 @@ _(vazio)_
 
 ## EM REVISÃO
 
-_(vazio)_
+- `[F1-01]` API de contatos: POST/PATCH idempotente por `idLocal`, PATCH parcial campo-a-campo — **@API-03** — aceite: reenvio do mesmo `idLocal` não duplica; score ≥ 25 persiste `capturado`; autoria só do servidor — dep: [F0-06] — observação: 10 testes HTTP verdes; conflito de versão não grava o campo `conflito` porque ele não está no schema (escalonado)
 
 ## FEITO
 
