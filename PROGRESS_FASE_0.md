@@ -19,7 +19,7 @@ de pé. Nada de tela, nada de câmera.
 |---|---|---|---|
 | F0-01 Bootstrap | OPS-10 | em revisão | build e lint verdes; Compose não fechou em máquina limpa neste host |
 | F0-02 Schemas + índices | ARQ-02 | em revisão | 5 critérios verdes em MongoDB 7; índice parcial em ADR-007 |
-| F0-03 Revisão LGPD | SEC-07 | ⬜ não iniciado | depende de ADR-004 |
+| F0-03 Revisão LGPD | SEC-07 | em revisão | ADR-004 aceito; guard e cifra verdes |
 | F0-04 Completude e normalização | DQ-08 | ⬜ não iniciado | |
 | F0-05 Plano de testes | QA-09 | ⬜ não iniciado | |
 | F0-06 Portão | REV-11 | ⬜ não iniciado | |
@@ -44,6 +44,18 @@ Risco de perda de histórico identificado: nenhum. Alteração de não-rascunho 
 Compatibilidade com ADR-001 (índice parcial) verificada: sim
 Migração reversível: sim — arquivo: `apps/api/migrations/20260925-indices-contatos.ts` (up duas vezes e down executados)
 Ação necessária antes de seguir: a expressão literal `$nin` da seção 4.4 não cria índice no MongoDB 7.0.24. ADR-007 troca por `$in` dos status que restam no enum. A suíte que provou os 5 critérios fica no glob do QA-09 e entra no commit do F0-05.
+
+## Parecer SEC-07 — F0-03
+
+Dado/ação envolvida: CPF/CNPJ em repouso, matriz de papéis, base legal automática, predicados de revogação e retenção
+Sensibilidade: alta
+Papéis com acesso e justificativa (menor privilégio): `vendedor` só na própria carteira; `gestor` na base e na promoção; `admin` na configuração; `auditor` somente leitura, inclusive trilha. Fonte única: `PERFIL_PERMISSOES`
+Criptografia em repouso aplicada: sim — algoritmo: AES-256-GCM no valor e HMAC-SHA256 no hash indexado. Chave e pepper só por ambiente
+Base legal registrada e não vazia: sim
+Log de acesso gerado: não se aplica — não há listagem nem exportação nesta fase. O predicado `exportacaoBloqueada` já impede a saída quando `revogadoEm` existe
+Step-up exigido: sim — em promoção a cliente, fusão, exportação e alteração de papel. A captura não pede. O TOTP em si chega na Fase 3; o guard já recusa sem a confirmação do servidor
+Nova superfície de ataque introduzida: nenhuma. O teste injeta papel por middleware local; a API não lê papel de header
+Veto exercido: não
 
 ## Veredito do Portão
 

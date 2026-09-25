@@ -87,7 +87,7 @@ dedup operam sobre o hash. Mesma estratégia para `pj.cnpj`.
 **Consequências.** Busca por CPF é exata, nunca parcial. Rotação de pepper exige
 reprocessamento da coleção — documentar o procedimento antes de produção.
 
-**Status.** proposto · confirmar com SEC-07 no card F0-03
+**Status.** aceito · 2026-09-25 · confirmado e aplicado no F0-03
 
 ---
 
