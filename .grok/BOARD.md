@@ -12,10 +12,6 @@ Formato do card:
 
 Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 1."
 
-### Fase 1 — Captura
-
-- `[F1-07]` Portão de revisão da Fase 1 — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_1.md — dep: [F1-06]
-
 ### Fase 2 — Enriquecimento e ingestão
 
 - `[F2-01]` Enriquecimento CNPJ (BrasilAPI, fallback ReceitaWS) e CEP (ViaCEP) com cache e circuit breaker — **@INT-06**
@@ -37,12 +33,7 @@ _(vazio)_
 
 ## EM REVISÃO
 
-- `[F1-01]` API de contatos: POST/PATCH idempotente por `idLocal`, PATCH parcial campo-a-campo — **@API-03** — aceite: reenvio do mesmo `idLocal` não duplica; score ≥ 25 persiste `capturado`; autoria só do servidor — dep: [F0-06] — observação: 10 testes HTTP verdes; conflito de versão não grava o campo `conflito` porque ele não está no schema (escalonado)
-- `[F1-02]` Fila offline: IndexedDB + worker de sync com backoff e resolução de conflito — **@SCAN-05** — aceite: grava local antes da rede e a profundidade alimenta `filaSincronizacao` — dep: [F1-01] — observação: IndexedDB antes do fetch; backoff até 5 min sem desistir; alerta a partir da 10ª falha; profundidade vai no lote
-- `[F1-03]` Leitura de QR: BarcodeDetector API com fallback ZXing; parsers vCard 2.1/3.0, MeCard, URL, texto livre — **@SCAN-05** — aceite: payload irreconhecível abre o formulário e guarda `payloadBruto` — dep: [F1-02] — observação: BarcodeDetector, senão ZXing, e o botão de digitar permanece na mesma tela
-- `[F1-04]` Tela de captura: cartões colapsáveis, autosave, zero campo obrigatório, alvo de toque ≥ 48px — **@UI-04** — aceite: caminho mínimo em até dois toques, sem campo obrigatório — dep: [F1-01, F1-03] — observação: um toque em Digitar e o nome com foco; cartões fechados; sem botão de salvar desabilitado
-- `[F1-05]` Indicador de sincronização sempre visível (nunca "parece salvo") — **@UI-04** + **@SCAN-05** — aceite: só `Salvo neste aparelho`, `Enviando…` ou `Sincronizado` — dep: [F1-02, F1-04] — observação: barra, formulário, lista e fila; preso oferece exportar JSON; conflito pede escolha humana
-- `[F1-06]` Testes das categorias 1 a 6, com Playwright e rede simulada — **@QA-09** — aceite: lead capturado em avião chega sem duplicata depois de reabrir e reconectar — dep: [F1-05] — observação: Playwright verde neste host (avião, aba morta, fila presa, 360px). Categoria 7 fica no F2-03. GitHub Actions não rodou daqui
+_(vazio)_
 
 ## FEITO
 
@@ -52,6 +43,13 @@ _(vazio)_
 - `[F0-04]` Serviço de completude e normalização (E.164, CPF/CNPJ, e-mail lowercase, nome título) — **@DQ-08** — aceite: score determinístico com teste de tabela cobrindo 12 combinações — dep: [F0-02] — observação: tabela de 12 linhas verde; valor que não normaliza é gravado como veio
 - `[F0-05]` Plano de testes da Fase 0 — **@QA-09** — aceite: suíte roda em CI e cobre os 5 critérios de F0-02 — dep: [F0-02, F0-04] — observação: suíte verde neste host; workflow do GitHub Actions existe e não foi executado daqui
 - `[F0-06]` Portão de revisão da Fase 0 — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_0.md — dep: [F0-05] — observação: APROVADO COM RESSALVAS. O portão prepara revisão e não substitui revisão humana
+- `[F1-01]` API de contatos: POST/PATCH idempotente por `idLocal`, PATCH parcial campo-a-campo — **@API-03** — aceite: reenvio do mesmo `idLocal` não duplica; score ≥ 25 persiste `capturado`; autoria só do servidor — dep: [F0-06] — observação: 10 testes HTTP verdes; conflito de versão não grava o campo `conflito` porque ele não está no schema (escalonado)
+- `[F1-02]` Fila offline: IndexedDB + worker de sync com backoff e resolução de conflito — **@SCAN-05** — aceite: grava local antes da rede e a profundidade alimenta `filaSincronizacao` — dep: [F1-01] — observação: IndexedDB antes do fetch; backoff até 5 min sem desistir; alerta a partir da 10ª falha; profundidade vai no lote
+- `[F1-03]` Leitura de QR: BarcodeDetector API com fallback ZXing; parsers vCard 2.1/3.0, MeCard, URL, texto livre — **@SCAN-05** — aceite: payload irreconhecível abre o formulário e guarda `payloadBruto` — dep: [F1-02] — observação: BarcodeDetector, senão ZXing, e o botão de digitar permanece na mesma tela. Câmera física não exercitada
+- `[F1-04]` Tela de captura: cartões colapsáveis, autosave, zero campo obrigatório, alvo de toque ≥ 48px — **@UI-04** — aceite: caminho mínimo em até dois toques, sem campo obrigatório — dep: [F1-01, F1-03] — observação: um toque em Digitar e o nome com foco; cartões fechados; sem botão de salvar desabilitado
+- `[F1-05]` Indicador de sincronização sempre visível (nunca "parece salvo") — **@UI-04** + **@SCAN-05** — aceite: só `Salvo neste aparelho`, `Enviando…` ou `Sincronizado` — dep: [F1-02, F1-04] — observação: barra, formulário, lista e fila; preso oferece exportar JSON; conflito pede escolha humana
+- `[F1-06]` Testes das categorias 1 a 6, com Playwright e rede simulada — **@QA-09** — aceite: lead capturado em avião chega sem duplicata depois de reabrir e reconectar — dep: [F1-05] — observação: Playwright verde neste host. Categoria 7 fica no F2-03. GitHub Actions não rodou daqui
+- `[F1-07]` Portão de revisão da Fase 1 — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_1.md — dep: [F1-06] — observação: APROVADO COM RESSALVAS. O portão prepara revisão e não substitui revisão humana
 
 **Critérios de aceite de `F0-02`:**
 1. Salvar `{ nome: "Ana" }` persiste sem erro de validação

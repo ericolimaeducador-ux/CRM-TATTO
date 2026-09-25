@@ -10,13 +10,13 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 
 | Card | Agente | Status | Observação |
 |---|---|---|---|
-| F1-01 API de contatos | API-03 | em revisão | idempotência, score e auditoria HTTP verdes |
-| F1-02 Fila offline | SCAN-05 | em revisão | grava local antes da rede; profundidade sobe no lote |
-| F1-03 Leitura de QR | SCAN-05 | em revisão | parser não descarta leitura; câmera tem saída manual |
-| F1-04 Tela de captura | UI-04 | em revisão | um toque até o nome; autosave de 800 ms |
-| F1-05 Indicador de sincronização | UI-04 + SCAN-05 | em revisão | três textos distintos; preso exporta JSON |
-| F1-06 Testes 1–6 | QA-09 | em revisão | Jest 64, Vitest 12 e Playwright 4 verdes neste host |
-| F1-07 Portão | REV-11 | ⬜ não iniciado | |
+| F1-01 API de contatos | API-03 | feito | idempotência, score e auditoria HTTP verdes |
+| F1-02 Fila offline | SCAN-05 | feito | grava local antes da rede; profundidade sobe no lote |
+| F1-03 Leitura de QR | SCAN-05 | feito | parser não descarta leitura; câmera física não exercitada |
+| F1-04 Tela de captura | UI-04 | feito | um toque até o nome; autosave de 800 ms |
+| F1-05 Indicador de sincronização | UI-04 + SCAN-05 | feito | três textos distintos; preso exporta JSON |
+| F1-06 Testes 1–6 | QA-09 | feito | Jest 64, Vitest 12 e Playwright 4 verdes neste host |
+| F1-07 Portão | REV-11 | feito | APROVADO COM RESSALVAS |
 
 ## Parecer API-03 — F1-01
 
@@ -94,8 +94,120 @@ Pronto para o portão REV-11: sim
 
 ## Veredito do Portão
 
+### Parecer Dev 1 — Correção funcional
+- Aprovado com ressalvas
+- Achados: o caminho Digitar grava o nome, o parser cobre vCard, MeCard, URL, mailto, tel e texto livre, e o Playwright deste host fechou o ciclo avião → fechar a aba → reabrir offline → reconectar com um único lead no servidor. A aba morta no meio do autosave devolve o nome. O item preso mostra a frase e o botão de JSON. O POST de transição responde 201.
+- Ação necessária antes de produção: abrir a câmera num aparelho de verdade. Este ambiente não exercitou BarcodeDetector nem ZXing contra um QR físico.
+
+### Parecer Dev 2 — Integridade de dado e auditoria
+- Aprovado com ressalvas
+- Achados: `idLocal` repetido três vezes e em paralelo fica um contato. Duas edições da mesma versão deixam uma escrita e um `CONFLITO_VERSAO`. A promoção a qualificado disparada duas vezes audita uma linha de status. Dois vendedores com o mesmo CPF não são fundidos: um fica `capturado` e o outro `rascunho` com `CPF_DUPLICADO`. DELETE HTTP e PATCH na trilha respondem 404. Os índices parciais da fase 0 não foram alterados. O campo `conflito` continua fora do schema; as duas versões ficam no aparelho.
+- Ação necessária antes de produção: decidir o escalonamento do campo `conflito` (ARQ-02). Sem isso o servidor não guarda a segunda versão.
+
+### Parecer Dev 3 — Segurança e escala
+- Aprovado com ressalvas
+- Achados: autoria do cliente é descartada e o autor da trilha é o da sessão. Fora de produção a sessão de teste vem de headers; em `NODE_ENV=production` esses headers são ignorados e a escrita sem sessão é recusada. CPF malformado não volta em claro. Cliente sem step-up recebe `STEP_UP_NECESSARIO` e permanece qualificado. Não há rota de exportação de base. O lote acima de 100 é recusado. A varredura de segredos saiu limpa depois de o padrão deixar de tratar o host local como senha. Não houve teste de volume.
+- Ação necessária antes de produção: login real no lugar dos headers de teste, e TOTP de verdade no step-up. O header `x-step-up-teste` não é um segundo fator.
+
+### Conselho de Design (auditoria de premissa)
+1. Trilha imutável? sim — alteração fora de rascunho grava autor, instante e valor anterior/novo; a trilha não tem rota de alteração
+2. Captura sem campo obrigatório? sim — o formulário salva com um campo e não desabilita gravação
+3. Responsável identificado em toda ação? sim — sem sessão a escrita é recusada; o autor gravado é o da sessão, e o corpo do cliente é descartado
+4. Estado de sincronização honesto? sim — os textos são `Salvo neste aparelho`, `Enviando…`, `Sincronizado`, `Preso na fila` e `Conflito: escolha o valor`. O teste de avião viu o primeiro enquanto a rede estava cortada e só o terceiro depois da resposta do servidor
+5. Carga cognitiva reduzida? sim — três caminhos na entrada, cartões fechados, e o conflito pede uma escolha com os dois valores escritos
+6. Quebra fluxo existente? não — a fase 0 permanece e a captura acrescenta rotas; dedup e merge não foram abertos
+
 ```
-VEREDITO DO PORTÃO: <pendente>
-Pareceres: Dev1 [ ] Dev2 [ ] Dev3 [ ] Conselho de Design [ ]
+VEREDITO DO PORTÃO: APROVADO COM RESSALVAS
+Pareceres: Dev1 [Aprovado com ressalvas] Dev2 [Aprovado com ressalvas] Dev3 [Aprovado com ressalvas] Conselho de Design [aprovado]
 Pendências antes de produção:
+- Login real. Os headers de teste não valem com NODE_ENV=production.
+- TOTP real no step-up de cliente. O header de teste não substitui o código.
+- Decisão do Erico sobre o campo conflito no schema.
+- Câmera física.
+- GitHub Actions desta fase ainda não executado.
+- docker compose em máquina limpa continua como na fase 0.
+Observação: este portão prepara o material de revisão e não substitui revisão humana
+quando exigida pelo processo da empresa.
 ```
+
+## RELATÓRIO — FASE 1 — 2026-09-25
+
+Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 1."
+
+### Executado
+
+| Card | Agente | Status | Arquivos |
+|---|---|---|---|
+| F1-01 | API-03 | feito | `apps/api/src/contatos/**` (rotas, interceptor, idempotência, score, lote) |
+| F1-02 | SCAN-05 | feito | `apps/web/src/lib/offline/**`, `apps/web/public/sw.js` |
+| F1-03 | SCAN-05 | feito | `apps/web/src/lib/qr/**`, `apps/web/src/features/captura/LeitorQr.tsx` |
+| F1-04 | UI-04 | feito | `apps/web/src/features/captura/TelaCaptura.tsx`, `FormularioCaptura.tsx`, `PaginaQr.tsx`, `MeuQr.tsx` |
+| F1-05 | UI-04 + SCAN-05 | feito | `BarraSincronizacao.tsx`, `ListaContatos.tsx`, `PaginaFila.tsx` |
+| F1-06 | QA-09 | feito | `apps/api/test/f1-captura.spec.ts`, testes Vitest, `e2e/**` |
+| F1-07 | REV-11 | feito | este arquivo |
+
+### Pareceres dos agentes
+
+Os pareceres de API-03, SCAN-05 e UI-04 estão nas seções acima, no formato de cada persona. O que a execução do F1-06 fechou depois deles: reenvio triplo de `idLocal`, avião com reabertura, aba morta e alerta de item preso. O parecer do QA-09 — F1-06, também acima, é o parecer de prontidão.
+
+### Parecer QA-09
+
+Categorias aplicadas: 1, 2, 3, 4, 5 e 6, como no parecer F1-06. Categoria 7 excluída porque dedup e merge são o F2-03.
+Testes escritos: 5 Jest novos, 4 de parser, 2 de atraso, 5 estados do indicador, 4 Playwright.
+Falhas encontradas: perda do nome antes do debounce; service worker sem assumir a página; auditoria duplicada no `CONFLITO_VERSAO`; corrida de índice no harness. Corrigidas com o teste já escrito.
+Falha silenciosa identificada (a mais perigosa): sim — a aba morta no meio do autosave.
+Cenários críticos cobertos nominalmente: avião sem duplicata; triplo `idLocal`; aba morta; item preso; duas edições; dois vendedores no mesmo CPF; promoção duplicada com uma auditoria; cliente sem TOTP; alvo de 48px em 360px.
+Pronto para o portão REV-11: sim
+
+### Portão REV-11
+
+Dev 1 Aprovado com ressalvas. Dev 2 Aprovado com ressalvas. Dev 3 Aprovado com ressalvas. Conselho: 1 sim, 2 sim, 3 sim, 4 sim, 5 sim, 6 não.
+
+```
+VEREDITO DO PORTÃO: APROVADO COM RESSALVAS
+Pareceres: Dev1 [Aprovado com ressalvas] Dev2 [Aprovado com ressalvas] Dev3 [Aprovado com ressalvas] Conselho de Design [aprovado]
+Pendências antes de produção:
+- Login real. Os headers de teste não valem com NODE_ENV=production.
+- TOTP real no step-up de cliente.
+- Decisão sobre o campo conflito no schema.
+- Câmera física.
+- GitHub Actions desta fase ainda não executado.
+- docker compose em máquina limpa continua como na fase 0.
+Observação: este portão prepara o material de revisão e não substitui revisão humana
+quando exigida pelo processo da empresa.
+```
+
+### Estado
+
+BOARD: BACKLOG 7 · EM CURSO 0 · EM REVISÃO 0 · FEITO 13
+ADRs abertos neste ciclo: nenhum. Seguem os da fase 0 (ADR-004, ADR-005, ADR-006, ADR-007).
+Escalonamentos abertos: termo de consentimento (SEC-07; bloqueia F2-04 e F3-02, não esta fase); campo `conflito` ausente no schema (API-03).
+Dívida técnica assumida conscientemente: sessão de teste por header só quando `NODE_ENV` não é production; escolha de conflito fica no aparelho até o schema ganhar o campo; a câmera tem saída manual e não foi provada num dispositivo; o Compose de máquina limpa não ficou verde na fase 0 e não foi reaberto aqui.
+
+### Como verificar você mesmo
+
+```
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm build
+pnpm test
+pnpm exec playwright install --with-deps chromium
+pnpm test:e2e
+bash infra/ci/varrer-segredos.sh
+```
+
+O que esta sessão viu em 2026-09-25: `pnpm lint` verde; `pnpm test` com 64 Jest e 12 Vitest verdes; `pnpm test:e2e` com 4 Playwright verdes (o de avião inclusive); a varredura de segredos limpa. O build dos dois apps rodou dentro de `pnpm test:e2e`.
+
+### O que ficou sem verificação
+
+- O GitHub Actions não foi disparado daqui. O workflow passou a instalar o Chromium e a rodar `pnpm test:e2e`, e essa corrida não existe ainda.
+- Proteção de branch não foi conferida.
+- `docker compose up` em máquina limpa continua não verde, pelo mesmo motivo da fase 0: o host precisou de ACCEPT no bridge (iptables-legacy), fora do repositório.
+- Backup, RTO, RPO e volume de índice não são desta fase e não foram medidos.
+- TOTP real e login real não existem. O step-up provado é o header de teste fora de production.
+- A câmera física não foi aberta. O parser foi testado com texto; o fallback ZXing não leu uma imagem de câmera.
+
+### Autorização solicitada
+
+Abrir FASE 2? [aguardando]
