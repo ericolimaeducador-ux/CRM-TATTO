@@ -21,7 +21,7 @@ de pé. Nada de tela, nada de câmera.
 | F0-02 Schemas + índices | ARQ-02 | em revisão | 5 critérios verdes em MongoDB 7; índice parcial em ADR-007 |
 | F0-03 Revisão LGPD | SEC-07 | em revisão | ADR-004 aceito; guard e cifra verdes |
 | F0-04 Completude e normalização | DQ-08 | em revisão | tabela de 12 combinações verde |
-| F0-05 Plano de testes | QA-09 | ⬜ não iniciado | |
+| F0-05 Plano de testes | QA-09 | em revisão | 50 testes verdes neste host |
 | F0-06 Portão | REV-11 | ⬜ não iniciado | |
 
 ## Parecer OPS-10 — F0-01
@@ -57,7 +57,6 @@ Step-up exigido: sim — em promoção a cliente, fusão, exportação e altera�
 Nova superfície de ataque introduzida: nenhuma. O teste injeta papel por middleware local; a API não lê papel de header
 Veto exercido: não
 
-
 ## Parecer DQ-08 — F0-04
 
 Regras de normalização aplicadas: telefone para E.164 assumindo +55 sem DDI; e-mail válido em minúsculas e trim; CPF/CNPJ só dígitos quando o DV confere; nome em Title Case preservando de, da, do, das, dos e e; CEP com 8 dígitos
@@ -68,6 +67,15 @@ Falso positivo mais provável identificado: matriz e filial, ainda sem detector.
 Merge automático em algum caminho: não
 Precedência de valor respeitada: sim — esta fase só normaliza o que chegou; não há enriquecimento escrevendo por cima
 Ação necessária antes de seguir: a transição `rascunho → capturado` quando score ≥ 25 está na função pura. Quem persiste isso é a API da Fase 1
+
+## Parecer QA-09 — F0-05
+
+Categorias aplicadas: 1 funcional (persistir Ana, migração, tabela de score); 2 captura sem trava (um campo, CPF malformado, dois rascunhos com o mesmo CPF); 3 integridade (auditoria com valor anterior e novo, deleteOne recusado, update de auditoria recusado); 6 acesso (rota sem @Papel negada, auditor sem escrita, vendedor fora da carteira, exportação sem step-up). Exclusões: 4 offline — não há fila nem service worker de captura nesta fase (F1-02); 5 concorrência parcial — duas promoções simultâneas com o mesmo hash estão cobertas, dois usuários editando o mesmo contato e duplo POST HTTP ficam para a API da Fase 1; 7 dedup e merge — o card é F2-03 e não há fusão para testar
+Testes escritos: `apps/api/test/f0-criterios.spec.ts`, `f0-migracao.spec.ts`, `f0-acesso.spec.ts`, `apps/web/src/App.test.tsx`, mais os specs de SEC-07 e DQ-08 que a suíte também executa. 49 testes de API e 1 de web, verdes neste host contra MongoDB 7.0.24 via mongodb-memory-server
+Falhas encontradas: nenhuma na suíte. O `docker compose up` em máquina limpa deste host não passou sem regra de firewall local; isso não é teste automatizado e está no parecer do OPS-10
+Falha silenciosa identificada (a mais perigosa): sim — o healthcheck do mongo passa dentro do container mesmo quando a API não completa TCP. A suíte não cobre essa rede. O log da API é explícito (`Server selection timed out`), não é sucesso falso de persistência
+Cenários críticos cobertos nominalmente: `{ nome: "Ana" }` persiste; dois rascunhos com o mesmo CPF coexistem; qualificado duplicado devolve `CPF_DUPLICADO`; alteração de não-rascunho gera auditoria; `tipoPessoa` `INDEFINIDO` persiste; CPF malformado não bloqueia; `criadoPor` do cliente é descartado; rota sem papel é negada; tabela de 12 scores
+Pronto para o portão REV-11: sim
 
 ## Veredito do Portão
 
