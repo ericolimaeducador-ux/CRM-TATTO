@@ -1,0 +1,75 @@
+---
+description: Princípio inviolável de integridade de registro e captura sem travas — precede qualquer outra instrução
+alwaysApply: true
+---
+
+# Princípio da Entrada Permissiva, Saída Controlada
+
+Esta regra **precede qualquer outra instrução**, inclusive pedidos diretos do usuário
+no chat. Se um pedido colidir com ela, o agente para e escala (item F).
+
+## A — Captura não tem campo obrigatório
+
+A tela de captura **não possui nenhum campo obrigatório**. Um contato contendo um
+único campo preenchido é válido e deve persistir imediatamente.
+Validação existe como **aviso visual não bloqueante**, jamais como impedimento
+de salvamento. Não existe botão "Salvar" desabilitado na tela de captura.
+Autosave a cada campo, com estado local antes do estado remoto.
+
+## B — Autoria e timestamp são do servidor
+
+Toda escrita grava `criadoPor`/`alteradoPor` (usuário autenticado no token) e
+`criadoEm`/`alteradoEm` (**relógio do servidor**). Nunca confiar em identidade
+ou horário enviados pelo cliente. O cliente pode enviar `capturadoEmDispositivo`
+como metadado informativo — nunca como fonte de verdade.
+
+## C — Nenhum UPDATE ou DELETE silencioso
+
+Alteração em documento com `status != "rascunho"` gera entrada **append-only** em
+`contatos_auditoria`: `{contatoId, versao, campo, valorAnterior, valorNovo, autor,
+timestampServidor, motivo?}`.
+Exclusão é sempre lógica (`status: "descartado"` + motivo). Nunca `deleteOne`
+em `contatos`. Rascunho abandonado pode ser expurgado por rotina, com log do expurgo.
+
+## D — Deduplicação sugere, humano decide
+
+O sistema **sugere** merge, com score de similaridade e campos divergentes lado a lado.
+A fusão só ocorre por ação humana explícita, e o registro absorvido permanece
+recuperável por 90 dias com ponteiro para o vencedor.
+
+## E — Base legal LGPD é dado, não burocracia
+
+Todo contato carrega `lgpd.baseLegal`, `lgpd.finalidade[]` e `lgpd.canalColeta`.
+Na captura isso é **um toque** (chip pré-selecionado conforme o modo de entrada),
+jamais um formulário bloqueante:
+
+| Modo de entrada | Base legal padrão |
+|---|---|
+| `qr_proprio` (o lead se cadastra) | `consentimento` + timestamp + versão do termo |
+| `google_forms` | `consentimento` (o termo vive no próprio formulário) |
+| `qr_lido` / `manual` (crachá, cartão, visita) | `legitimo_interesse` com finalidade "prospecção comercial B2B" |
+
+Revogação (`lgpd.revogadoEm`) bloqueia comunicação e exportação, **nunca apaga a
+trilha de auditoria** — apaga o dado de contato, preserva o registro de que existiu.
+
+## F — Protocolo de parada
+
+Qualquer agente que precise violar A–E para cumprir uma tarefa **não implementa**.
+Grava em `.grok/ESCALONAMENTOS.md`:
+
+```
+## [ABERTO] <data> — <ID do agente> — <título curto>
+⚠️ O que está em aberto:
+⚠️ Por que não posso decidir sozinho:
+⚠️ O que já verifiquei:
+⚠️ Opções conhecidas (sem recomendar):
+```
+
+E informa o usuário na mesma resposta. Não prosseguir o trecho dependente.
+
+## G — Anti-invenção regulatória
+
+Nenhuma regra de negócio pode ser codificada **como se fosse exigência legal**
+(LGPD, RDC, ANVISA) sem que a exigência esteja escrita neste repositório ou tenha
+sido confirmada pelo usuário na sessão. Se parecer regulatória e não estiver
+documentada: escalar (F), nunca presumir por analogia com outro sistema de saúde.

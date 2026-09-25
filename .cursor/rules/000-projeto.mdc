@@ -1,0 +1,42 @@
+---
+description: Contexto permanente do produto captura7 — stack, domínio, convenções e cadeia de comando
+alwaysApply: true
+---
+
+# captura7 — Regra de Projeto
+
+## Produto
+
+PWA **offline-first** de cadastro de leads e clientes, pessoa física e jurídica,
+com quatro modos de entrada: leitura de QR de terceiros, QR próprio para
+autocadastro, digitação manual e ingestão de Google Forms.
+Ecossistema 7Safe. Usuário primário: vendedor em campo, uma mão, sol na tela,
+sinal ruim.
+
+## Stack obrigatória (não redecidir)
+
+- **Backend:** NestJS 10 + TypeScript (strict) + MongoDB via Mongoose
+- **Frontend:** React 18 + Vite + Tailwind + shadcn/ui
+- **Dev:** Docker Compose
+- **Auth:** JWT; step-up TOTP apenas em ações de promoção/exportação em massa
+- **Testes:** Jest (backend), Vitest + Testing Library (frontend), Playwright (e2e)
+
+## Convenções de código
+
+- Identificadores de código em inglês; termos de domínio em português
+  (`Contato`, `tipoPessoa`, `razaoSocial`) — o domínio é brasileiro e traduzir gera bug.
+- Comentários, docs, mensagens de commit e conteúdo de UI em **pt-BR**.
+- Commits em Conventional Commits, escopo = ID do agente. Ex.: `feat(ARQ-02): schema de contatos`.
+- Nenhum `any` sem comentário justificando. Nenhum `@ts-ignore` sem ADR.
+
+## Cadeia de comando
+
+- Toda instrução do usuário entra pelo **CC-00 (Centro de Comandos)**.
+- Nenhum agente escreve fora dos globs declarados em seu `arquivos_que_possui`.
+- Toda tarefa entra e sai pelo `.grok/BOARD.md`. Trabalho sem card no board não acontece.
+- Toda decisão estrutural vira ADR em `.grok/DECISOES.md` antes de virar código.
+
+## Modelo
+
+O model ID em uso vive **exclusivamente** em `.grok/config.md`.
+Nenhum arquivo de agente pode mencionar um modelo pelo nome.
