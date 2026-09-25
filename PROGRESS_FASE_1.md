@@ -12,7 +12,7 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 |---|---|---|---|
 | F1-01 API de contatos | API-03 | em revisão | idempotência, score e auditoria HTTP verdes |
 | F1-02 Fila offline | SCAN-05 | em revisão | grava local antes da rede; profundidade sobe no lote |
-| F1-03 Leitura de QR | SCAN-05 | ⬜ não iniciado | |
+| F1-03 Leitura de QR | SCAN-05 | em revisão | parser não descarta leitura; câmera tem saída manual |
 | F1-04 Tela de captura | UI-04 | ⬜ não iniciado | |
 | F1-05 Indicador de sincronização | UI-04 + SCAN-05 | ⬜ não iniciado | |
 | F1-06 Testes 1–6 | QA-09 | ⬜ não iniciado | |
@@ -38,6 +38,17 @@ Idempotência da fila: `idLocal` — o POST repete o mesmo identificador; o test
 Estratégia de conflito: o servidor responde `CONFLITO_VERSAO` e não grava por cima; o aparelho guarda valor local e documento do servidor e espera escolha humana (`resolverConflito`)
 Alerta de item preso na fila: sim — após 10 tentativas o estado vira `preso`. A frase e o botão de exportar JSON aparecem na tela do F1-05. O worker continua tentando, sem limite
 Ação necessária antes de seguir: o service worker `captura7-sw-1` não cacheia `/v1/` nem método diferente de GET. A câmera ainda não lê
+
+## Parecer SCAN-05 — F1-03
+
+Mecanismo de leitura: nativo + fallback + manual — verificado: o código escolhe `BarcodeDetector` quando existe e, sem ele, carrega `@zxing/browser`. O botão "Digitar em vez disso" fica na mesma tela. Host sem TLS mostra o motivo, não um erro genérico de permissão. A câmera física não foi exercitada neste ambiente
+Formatos de QR parseados: vCard 2.1/3.0, MeCard, URL, mailto, tel e texto livre
+Comportamento com payload irreconhecível: string vazia devolve `reconhecido: false` e `payloadBruto` intacto, sem nome. Texto que não casa com os formatos vira texto livre em observações, também com `payloadBruto`
+Persistência local antes da rede: sim — quem grava é a fila do F1-02; este card só entrega a leitura
+Idempotência da fila: `idLocal` — testada com reenvio triplo: não neste card
+Estratégia de conflito: a do F1-02, sem mudança
+Alerta de item preso na fila: sim — após 10 tentativas, estado `preso`, tela no F1-05
+Ação necessária antes de seguir: a tela que abre o formulário a partir da leitura entra no F1-04
 
 ## Veredito do Portão
 
