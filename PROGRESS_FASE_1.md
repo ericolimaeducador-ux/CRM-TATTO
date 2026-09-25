@@ -14,7 +14,7 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 | F1-02 Fila offline | SCAN-05 | em revisão | grava local antes da rede; profundidade sobe no lote |
 | F1-03 Leitura de QR | SCAN-05 | em revisão | parser não descarta leitura; câmera tem saída manual |
 | F1-04 Tela de captura | UI-04 | em revisão | um toque até o nome; autosave de 800 ms |
-| F1-05 Indicador de sincronização | UI-04 + SCAN-05 | ⬜ não iniciado | |
+| F1-05 Indicador de sincronização | UI-04 + SCAN-05 | em revisão | três textos distintos; preso exporta JSON |
 | F1-06 Testes 1–6 | QA-09 | ⬜ não iniciado | |
 | F1-07 Portão | REV-11 | ⬜ não iniciado | |
 
@@ -60,6 +60,28 @@ Acessibilidade: contraste ok — texto stone-900 sobre fundo claro e botão bran
 Ação crítica com confirmação e resumo: nenhuma nesta tela. Descarte, fusão, promoção e exportação de base não estão no caminho de captura
 Testado em 360px: não nesta execução — a coluna usa largura total e o Playwright do F1-06 abre em 360px
 Ação necessária antes de seguir: o indicador na lista e o alerta de item preso ficam no F1-05
+
+## Parecer UI-04 — F1-05
+
+Telas/componentes criados: barra no topo, badge em cada item de `/contatos`, página `/fila` com exportação e escolha de conflito
+Toques até o caso mínimo de captura: 1, igual ao F1-04
+Campo obrigatório introduzido: não
+Estado de sincronização visível e honesto: sim — os textos são `Salvo neste aparelho`, `Enviando…`, `Sincronizado`, e ainda `Preso na fila` e `Conflito: escolha o valor`. Nenhum deles é um "Salvo" genérico
+Acessibilidade: contraste ok · alvo ≥48px ok · cor+texto ok — cada estado tem rótulo e palavra, não só cor
+Ação crítica com confirmação e resumo: a escolha de conflito descreve o campo, o valor do aparelho e o do servidor antes dos dois botões. A exportação JSON não apaga o registro
+Testado em 360px: não nesta execução — o Playwright do F1-06 abre em 360px
+Ação necessária antes de seguir: provar no Playwright o ciclo avião → reabrir → sincronizar sem duplicata
+
+## Parecer SCAN-05 — F1-05
+
+Mecanismo de leitura: o do F1-03 — verificado: sem mudança
+Formatos de QR parseados: os do F1-03
+Comportamento com payload irreconhecível: o do F1-03
+Persistência local antes da rede: sim
+Idempotência da fila: `idLocal` — testada com reenvio triplo: não, fica no F1-06
+Estratégia de conflito: a fila marca `conflito` e a tela pede escolha; nenhum dos botões funde dois contatos
+Alerta de item preso na fila: sim — após 10 tentativas, texto "Este registro está preso na fila" e botão "Exportar este registro como JSON"
+Ação necessária antes de seguir: o reenvio triplo e o avião ainda precisam da suíte do QA-09
 
 ## Veredito do Portão
 
