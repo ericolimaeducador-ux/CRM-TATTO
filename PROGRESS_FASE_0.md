@@ -1,5 +1,13 @@
 # PROGRESS — Fase 0 · Fundação
 
+## Confirmação de absorção — 2026-09-25
+
+(a) Entrada permissiva, saída controlada: a captura não tem campo obrigatório; o controle mora na promoção, nunca na coleta.
+(b) Quatro modos: `qr_lido`, `qr_proprio`, `manual`, `google_forms`.
+(c) Quatro papéis: `vendedor` (só a própria carteira), `gestor` (base inteira e promoção), `admin` (configuração), `auditor` (somente leitura, inclusive a trilha).
+(d) Bloqueio só na transição de status e nas ações de saída (merge, exportação, step-up). Gravar rascunho nunca é impedido. O texto do termo trava F2-04 e F3-02, não a Fase 0.
+(e) Dilema com a regra 010: não implemento, registro em `.grok/ESCALONAMENTOS.md` no formato da seção 13.2 e sigo no que não depende disso.
+
 **Objetivo.** Modelo de dados definitivo, trilha de auditoria funcionando e repositório
 de pé. Nada de tela, nada de câmera.
 

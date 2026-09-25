@@ -3,8 +3,8 @@
 | Campo | Valor |
 |---|---|
 | Provedor | xAI (Grok) via Cursor |
-| Model ID em uso | `<preencher com o que aparece no seletor do Cursor>` |
-| Data de configuração | <preencher> |
+| Model ID em uso | grok-4.7 |
+| Data de configuração | 2026-09-25 |
 | Última troca | — |
 
 ## Regra
