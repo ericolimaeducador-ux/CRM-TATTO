@@ -19,7 +19,7 @@ varrer() {
 
 varrer 'AKIA[0-9A-Z]{16}' 'chave AWS'
 varrer '-----BEGIN [A-Z ]*PRIVATE KEY-----' 'chave privada'
-varrer 'mongodb(\+srv)?:\/\/[^:]+:[^@]+@' 'URI Mongo com senha'
+varrer 'mongodb(\+srv)?:\/\/[A-Za-z0-9._-]+:[^@/[:space:]]+@' 'URI Mongo com senha'
 varrer 'ghp_[A-Za-z0-9]{20,}' 'token GitHub'
 varrer 'xox[baprs]-[A-Za-z0-9-]{10,}' 'token Slack'
 varrer 'AIza[0-9A-Za-z_-]{35}' 'chave Google'

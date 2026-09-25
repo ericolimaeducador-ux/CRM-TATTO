@@ -1,11 +1,12 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { getConnectionToken, MongooseModule } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { Types } from 'mongoose';
+import { Types, type Connection } from 'mongoose';
 import request from 'supertest';
 import { AuthModule } from '../auth/auth.module';
+import { garantirIndices } from './schemas/registrar-modelos';
 import { profundidadeFila } from '../observabilidade/fila-sincronizacao';
 import { ContatosModule } from './contatos.module';
 
@@ -27,6 +28,7 @@ describe('API de contatos', () => {
     }).compile();
     app = modulo.createNestApplication();
     await app.init();
+    await garantirIndices(app.get<Connection>(getConnectionToken()));
   });
 
   afterAll(async () => {

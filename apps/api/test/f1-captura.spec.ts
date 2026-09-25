@@ -1,12 +1,13 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { getConnectionToken, MongooseModule } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { Types } from 'mongoose';
+import { Types, type Connection } from 'mongoose';
 import request from 'supertest';
 import { AuthModule } from '../src/auth/auth.module';
 import { ContatosModule } from '../src/contatos/contatos.module';
+import { garantirIndices } from '../src/contatos/schemas/registrar-modelos';
 
 const GESTOR = new Types.ObjectId().toHexString();
 const UM = new Types.ObjectId().toHexString();
@@ -27,6 +28,7 @@ describe('captura da fase 1', () => {
     }).compile();
     app = modulo.createNestApplication();
     await app.init();
+    await garantirIndices(app.get<Connection>(getConnectionToken()));
   });
 
   afterAll(async () => {
@@ -93,7 +95,7 @@ describe('captura da fase 1', () => {
         .set(cabecalho('gestor'))
         .send({ para: 'qualificado' }),
     ]);
-    expect([um.status, dois.status].sort()).toEqual([200, 422]);
+    expect([um.status, dois.status].sort()).toEqual([201, 422]);
     expect(JSON.stringify([um.body, dois.body])).toContain('CONFLITO_VERSAO');
     const lido = await request(app.getHttpServer())
       .get(`/v1/contatos/${id}`)
@@ -128,7 +130,7 @@ describe('captura da fase 1', () => {
       .post(`/v1/contatos/${id}/transicao`)
       .set(cabecalho('gestor'))
       .send({ para: 'qualificado' });
-    expect(qualificado.status).toBe(200);
+    expect(qualificado.status).toBe(201);
     const semCodigo = await request(app.getHttpServer())
       .post(`/v1/contatos/${id}/transicao`)
       .set(cabecalho('gestor'))
