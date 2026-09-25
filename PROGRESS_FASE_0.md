@@ -20,7 +20,7 @@ de pé. Nada de tela, nada de câmera.
 | F0-01 Bootstrap | OPS-10 | em revisão | build e lint verdes; Compose não fechou em máquina limpa neste host |
 | F0-02 Schemas + índices | ARQ-02 | em revisão | 5 critérios verdes em MongoDB 7; índice parcial em ADR-007 |
 | F0-03 Revisão LGPD | SEC-07 | em revisão | ADR-004 aceito; guard e cifra verdes |
-| F0-04 Completude e normalização | DQ-08 | ⬜ não iniciado | |
+| F0-04 Completude e normalização | DQ-08 | em revisão | tabela de 12 combinações verde |
 | F0-05 Plano de testes | QA-09 | ⬜ não iniciado | |
 | F0-06 Portão | REV-11 | ⬜ não iniciado | |
 
@@ -56,6 +56,18 @@ Log de acesso gerado: não se aplica — não há listagem nem exportação nest
 Step-up exigido: sim — em promoção a cliente, fusão, exportação e alteração de papel. A captura não pede. O TOTP em si chega na Fase 3; o guard já recusa sem a confirmação do servidor
 Nova superfície de ataque introduzida: nenhuma. O teste injeta papel por middleware local; a API não lê papel de header
 Veto exercido: não
+
+
+## Parecer DQ-08 — F0-04
+
+Regras de normalização aplicadas: telefone para E.164 assumindo +55 sem DDI; e-mail válido em minúsculas e trim; CPF/CNPJ só dígitos quando o DV confere; nome em Title Case preservando de, da, do, das, dos e e; CEP com 8 dígitos
+Valores não normalizáveis: grava como veio + aviso (`TELEFONE_INVALIDO`, `EMAIL_INVALIDO`, `CPF_INVALIDO`, `CNPJ_INVALIDO`, `CEP_INVALIDO`). Nenhum caminho lança para rejeitar a captura
+Pesos do score de completude: `PESOS_COMPLETUDE` em `apps/api/src/qualidade/completude.ts` — nome 20, documento válido 20, telefone 15, e-mail 10, endereço completo 15, tipo de pessoa definido 10, campos específicos 10. Endereço completo = logradouro + número + cidade + UF
+Camadas de dedup ativas e seus limiares: nenhuma nesta fase. Dedup e merge são o F2-03
+Falso positivo mais provável identificado: matriz e filial, ainda sem detector. Mitigação: não há fusão nem marca de duplicata neste card
+Merge automático em algum caminho: não
+Precedência de valor respeitada: sim — esta fase só normaliza o que chegou; não há enriquecimento escrevendo por cima
+Ação necessária antes de seguir: a transição `rascunho → capturado` quando score ≥ 25 está na função pura. Quem persiste isso é a API da Fase 1
 
 ## Veredito do Portão
 
