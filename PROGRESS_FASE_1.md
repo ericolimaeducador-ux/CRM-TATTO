@@ -13,7 +13,7 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 | F1-01 API de contatos | API-03 | em revisão | idempotência, score e auditoria HTTP verdes |
 | F1-02 Fila offline | SCAN-05 | em revisão | grava local antes da rede; profundidade sobe no lote |
 | F1-03 Leitura de QR | SCAN-05 | em revisão | parser não descarta leitura; câmera tem saída manual |
-| F1-04 Tela de captura | UI-04 | ⬜ não iniciado | |
+| F1-04 Tela de captura | UI-04 | em revisão | um toque até o nome; autosave de 800 ms |
 | F1-05 Indicador de sincronização | UI-04 + SCAN-05 | ⬜ não iniciado | |
 | F1-06 Testes 1–6 | QA-09 | ⬜ não iniciado | |
 | F1-07 Portão | REV-11 | ⬜ não iniciado | |
@@ -49,6 +49,17 @@ Idempotência da fila: `idLocal` — testada com reenvio triplo: não neste card
 Estratégia de conflito: a do F1-02, sem mudança
 Alerta de item preso na fila: sim — após 10 tentativas, estado `preso`, tela no F1-05
 Ação necessária antes de seguir: a tela que abre o formulário a partir da leitura entra no F1-04
+
+## Parecer UI-04 — F1-04
+
+Telas/componentes criados: `/capturar` com Ler QR, Digitar e Meu QR; `/capturar/qr`; `/contatos/:idLocal` com cartões Contato, Documento, Endereço e Observações; `/meu-qr` só avisa que o termo jurídico não foi redigido
+Toques até o caso mínimo de captura: 1 — o botão Digitar abre o formulário com o nome em foco; digitar não é toque. O segundo toque do orçamento não é necessário
+Campo obrigatório introduzido: não
+Estado de sincronização visível e honesto: sim — no formulário, com os textos `Salvo neste aparelho`, `Enviando…` e `Sincronizado`. A lista e a fila entram no F1-05
+Acessibilidade: contraste ok — texto stone-900 sobre fundo claro e botão branco sobre stone-900 · alvo ≥48px ok — `min-h-12` · cor+texto ok — o estado leva ícone textual e frase
+Ação crítica com confirmação e resumo: nenhuma nesta tela. Descarte, fusão, promoção e exportação de base não estão no caminho de captura
+Testado em 360px: não nesta execução — a coluna usa largura total e o Playwright do F1-06 abre em 360px
+Ação necessária antes de seguir: o indicador na lista e o alerta de item preso ficam no F1-05
 
 ## Veredito do Portão
 

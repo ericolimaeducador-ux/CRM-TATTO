@@ -117,7 +117,11 @@ export async function profundidadeDaFila(): Promise<number> {
   return (await listarOperacoes()).length;
 }
 
+let filaIniciada = false;
+
 export function iniciarFila(): void {
+  if (filaIniciada) return;
+  filaIniciada = true;
   window.addEventListener('online', () => agendar(0));
   agendar(0);
 }
@@ -147,6 +151,8 @@ export async function drenar(): Promise<void> {
       if (espera !== null) proxima = Math.min(proxima, espera);
     }
     if (porContato.size > 0) agendar(Math.max(proxima, 0));
+  } catch {
+    // Sem IndexedDB neste ambiente a fila não drena. A tela continua.
   } finally {
     drenando = false;
     avisar();
