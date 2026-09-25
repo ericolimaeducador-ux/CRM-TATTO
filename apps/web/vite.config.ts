@@ -7,6 +7,12 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      strategies: 'injectManifest',
+      srcDir: 'public',
+      filename: 'sw.js',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,svg,ico,webmanifest}'],
+      },
       manifest: {
         name: 'captura7',
         short_name: 'captura7',
@@ -14,15 +20,17 @@ export default defineConfig({
         display: 'standalone',
         start_url: '/',
       },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,ico}'],
-        // Escritas de API não entram em cache. A fila offline é da Fase 1.
-        runtimeCaching: [],
-      },
+      devOptions: { enabled: true, type: 'module' },
     }),
   ],
   resolve: {
     alias: { '@': '/src' },
+  },
+  server: {
+    proxy: { '/v1': 'http://127.0.0.1:3000' },
+  },
+  preview: {
+    proxy: { '/v1': 'http://127.0.0.1:3000' },
   },
   test: {
     environment: 'jsdom',
