@@ -254,7 +254,9 @@ docker compose down
 Neste host o `docker compose up` só ficou saudável depois de uma regra ACCEPT no iptables-legacy para o bridge do Compose. Essa regra não está no repositório. Sem ela, o mongo passa no healthcheck e a API estoura timeout de seleção de servidor.
 
 ### Autorização solicitada
-Abrir FASE 1? [aguardando]
+Abrir FASE 1? Autorizado.
+
+Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 1."
 
 ### O que ficou sem verificação
 
