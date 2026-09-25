@@ -15,7 +15,7 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 | F1-03 Leitura de QR | SCAN-05 | em revisão | parser não descarta leitura; câmera tem saída manual |
 | F1-04 Tela de captura | UI-04 | em revisão | um toque até o nome; autosave de 800 ms |
 | F1-05 Indicador de sincronização | UI-04 + SCAN-05 | em revisão | três textos distintos; preso exporta JSON |
-| F1-06 Testes 1–6 | QA-09 | ⬜ não iniciado | |
+| F1-06 Testes 1–6 | QA-09 | em revisão | suíte escrita; o resultado da execução entra neste parecer antes do portão |
 | F1-07 Portão | REV-11 | ⬜ não iniciado | |
 
 ## Parecer API-03 — F1-01
@@ -82,6 +82,15 @@ Idempotência da fila: `idLocal` — testada com reenvio triplo: não, fica no F
 Estratégia de conflito: a fila marca `conflito` e a tela pede escolha; nenhum dos botões funde dois contatos
 Alerta de item preso na fila: sim — após 10 tentativas, texto "Este registro está preso na fila" e botão "Exportar este registro como JSON"
 Ação necessária antes de seguir: o reenvio triplo e o avião ainda precisam da suíte do QA-09
+
+## Parecer QA-09 — F1-06
+
+Categorias aplicadas: 1 funcional (criar, listar, indicador, toque em 360px); 2 captura sem trava (nome só, CPF malformado e dois rascunhos com o mesmo CPF já estão em `contatos.http.spec.ts`; o parser não descarta leitura); 3 integridade (auditoria de não-rascunho já coberta no F1-01; esta suíte nega DELETE HTTP e PATCH na trilha); 4 offline (avião com fechar e reabrir, `idLocal` três vezes, aba morta no meio do autosave, item preso com alerta); 5 concorrência (duas edições da mesma versão já no F1-01; dois vendedores no mesmo CPF ao mesmo tempo; promoção a qualificado duas vezes); 6 acesso (carteira alheia e auditor já no F1-01; rota sem decorator no F0-03; cliente sem step-up; `GET /v1/exportacoes` responde 404). Exclusão da exportação de base: o card F3-02 ainda não existe, então não há o que step-up proteger além da promoção a cliente. Exclusão da categoria 7: dedup e merge são o F2-03; esta fase não funde contato
+Testes escritos: `apps/api/test/f1-captura.spec.ts` (5); `apps/web/src/lib/qr/parsear.test.ts` (4); `apps/web/src/lib/offline/atraso.test.ts` (2); `apps/web/src/features/captura/IndicadorSincronizacao.test.tsx` (5 estados); `e2e/aviao.spec.ts`, `e2e/aba-morta.spec.ts`, `e2e/fila-presa.spec.ts`, `e2e/toque.spec.ts` (1 cada). A execução ainda não está registrada aqui
+Falhas encontradas: o debounce de 800 ms descartava o nome se a aba morresse ou a rota interna trocasse antes do timer; o service worker não assumia a página, então reabrir offline não tinha shell; o perdedor de `CONFLITO_VERSAO` gravaria uma segunda linha de auditoria da mudança que não foi dele. Correções fora do glob do QA-09, com teste antes: `FormularioCaptura.tsx`, `apps/web/public/sw.js`, `autoria.interceptor.ts`. O workflow em `.github/workflows/ci.yml` também passou a chamar `pnpm test:e2e` — arquivo do OPS-10, necessário para a suíte não existir só na máquina de quem desenvolve
+Falha silenciosa identificada (a mais perigosa): sim — a aba fechada no meio do autosave perdia o nome sem erro, e o indicador podia seguir em "Salvo neste aparelho" num aparelho que já não tinha o texto. O `pagehide` grava o rascunho e a reabertura devolve o nome. O indicador não usa a palavra "Salvo" sozinha
+Cenários críticos cobertos nominalmente: avião → fechar → reabrir → reconectar sem duplicata; triplo `idLocal`; aba morta; item preso visível; duas edições; dois capturando o mesmo CPF; promoção duplicada com uma auditoria; cliente sem TOTP; 360px com alvo de 48px. A câmera física continua fora. A categoria 7 continua fora
+Pronto para o portão REV-11: não — a execução de lint, build, Jest, Vitest e Playwright ainda vai ser registrada neste parecer
 
 ## Veredito do Portão
 

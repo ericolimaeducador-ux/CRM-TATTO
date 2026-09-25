@@ -14,7 +14,6 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 
 ### Fase 1 — Captura
 
-- `[F1-06]` Testes das categorias 1 a 6, com Playwright e rede simulada — **@QA-09** — aceite: lead capturado em avião chega sem duplicata depois de reabrir e reconectar — dep: [F1-05]
 - `[F1-07]` Portão de revisão da Fase 1 — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_1.md — dep: [F1-06]
 
 ### Fase 2 — Enriquecimento e ingestão
@@ -43,6 +42,7 @@ _(vazio)_
 - `[F1-03]` Leitura de QR: BarcodeDetector API com fallback ZXing; parsers vCard 2.1/3.0, MeCard, URL, texto livre — **@SCAN-05** — aceite: payload irreconhecível abre o formulário e guarda `payloadBruto` — dep: [F1-02] — observação: BarcodeDetector, senão ZXing, e o botão de digitar permanece na mesma tela
 - `[F1-04]` Tela de captura: cartões colapsáveis, autosave, zero campo obrigatório, alvo de toque ≥ 48px — **@UI-04** — aceite: caminho mínimo em até dois toques, sem campo obrigatório — dep: [F1-01, F1-03] — observação: um toque em Digitar e o nome com foco; cartões fechados; sem botão de salvar desabilitado
 - `[F1-05]` Indicador de sincronização sempre visível (nunca "parece salvo") — **@UI-04** + **@SCAN-05** — aceite: só `Salvo neste aparelho`, `Enviando…` ou `Sincronizado` — dep: [F1-02, F1-04] — observação: barra, formulário, lista e fila; preso oferece exportar JSON; conflito pede escolha humana
+- `[F1-06]` Testes das categorias 1 a 6, com Playwright e rede simulada — **@QA-09** — aceite: lead capturado em avião chega sem duplicata depois de reabrir e reconectar — dep: [F1-05] — observação: suíte escrita; a execução real entra no parecer antes do portão. Categoria 7 fica fora, no F2-03
 
 ## FEITO
 

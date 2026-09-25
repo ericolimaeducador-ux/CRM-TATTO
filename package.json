@@ -9,10 +9,12 @@
     "build": "pnpm -r --if-present build",
     "lint": "pnpm -r --if-present lint",
     "test": "pnpm -r --if-present test",
+    "test:e2e": "pnpm --filter @captura7/api build && pnpm --filter @captura7/web build && playwright test -c e2e/playwright.config.ts",
     "prepare": "husky"
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",
+    "@playwright/test": "^1.63.0",
     "eslint": "^9.16.0",
     "eslint-config-prettier": "^9.1.0",
     "globals": "^15.14.0",

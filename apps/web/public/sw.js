@@ -5,6 +5,14 @@ import { NetworkOnly } from 'workbox-strategies';
 
 const VERSAO = 'captura7-sw-1';
 
+self.addEventListener('install', () => {
+  void self.skipWaiting();
+});
+
+self.addEventListener('activate', (evento) => {
+  evento.waitUntil(self.clients.claim());
+});
+
 precacheAndRoute(self.__WB_MANIFEST);
 
 registerRoute(

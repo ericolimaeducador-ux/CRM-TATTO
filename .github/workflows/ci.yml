@@ -8,7 +8,7 @@ on:
 jobs:
   verificar:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     services:
       mongo:
         image: mongo:7
@@ -36,4 +36,6 @@ jobs:
         env:
           MONGO_URI: mongodb://127.0.0.1:27017/captura7
       - run: pnpm test
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
       - run: bash infra/ci/varrer-segredos.sh

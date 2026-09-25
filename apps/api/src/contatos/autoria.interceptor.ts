@@ -74,6 +74,7 @@ export class AuditoriaInterceptor implements NestInterceptor {
     req: RequisicaoComUsuario,
   ) {
     if (!(erro instanceof RespostaComErro)) return;
+    if (erro.codigo === 'CONFLITO_VERSAO') return;
     await this.auditar(antes, { dados: erro.dados }, req);
   }
 }
