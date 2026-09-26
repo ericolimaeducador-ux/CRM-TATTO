@@ -25,6 +25,7 @@ aplicarSegurancaNoSchema(contatoSchema);
     ]),
   ],
   controllers: [ContatosController],
+  exports: [ContatosService],
   providers: [
     ContatosService,
     TransicaoService,

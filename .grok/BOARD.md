@@ -16,7 +16,6 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 
 ### Fase 2 — Enriquecimento e ingestão
 
-- `[F2-02]` Ingestão Google Sheets por polling (ver ADR-003) — **@INT-06**
 - `[F2-03]` Deduplicação fuzzy + tela de sugestão de merge — **@DQ-08** + **@UI-04**
 - `[F2-04]` QR próprio + formulário público de autocadastro com termo de consentimento versionado — **@UI-04** + **@SEC-07** — **BLOQUEADO** pelo termo jurídico aberto em `.grok/ESCALONAMENTOS.md`
 
@@ -52,6 +51,7 @@ _(vazio)_
 - `[F1-06]` Testes das categorias 1 a 6, com Playwright e rede simulada — **@QA-09** — aceite: lead capturado em avião chega sem duplicata depois de reabrir e reconectar — dep: [F1-05] — observação: Playwright verde neste host. Categoria 7 fica no F2-03. GitHub Actions não rodou daqui
 - `[F1-07]` Portão de revisão da Fase 1 — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_1.md — dep: [F1-06] — observação: APROVADO COM RESSALVAS. O portão prepara revisão e não substitui revisão humana
 - `[F2-01]` Enriquecimento CNPJ (BrasilAPI, fallback ReceitaWS) e CEP (ViaCEP) com cache e circuit breaker — **@INT-06** — aceite: fonte oficial sugere e não sobrescreve; falha não trava a captura — dep: [F1-07] — observação: contratos BrasilAPI, ReceitaWS e ViaCEP cobertos com mock; a rede externa não é chamada no teste
+- `[F2-02]` Ingestão Google Sheets por polling (ver ADR-003) — **@INT-06** — aceite: reprocessar a planilha inteira não duplica — dep: [F2-01] — observação: contrato ValueRange com mock; ponta a ponta no Google espera credencial do dono
 
 **Critérios de aceite de `F0-02`:**
 1. Salvar `{ nome: "Ana" }` persiste sem erro de validação
