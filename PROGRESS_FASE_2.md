@@ -13,7 +13,7 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 | F2-01 CNPJ + CEP | INT-06 | feito | parecer abaixo |
 | F2-02 Google Sheets | INT-06 | feito | parecer abaixo |
 | F2-03 Dedup + merge | DQ-08 + UI-04 | feito | pareceres abaixo |
-| F2-04 QR próprio + autocadastro | UI-04 + SEC-07 | bloqueado | termo jurídico aberto; sem implementação |
+| F2-04 QR próprio + autocadastro | UI-04 + SEC-07 | bloqueado | sem implementação; parecer abaixo |
 | F2-05 Testes 1–7 | QA-09 | ⬜ não iniciado | |
 | F2-06 Portão | REV-11 | ⬜ não iniciado | |
 
@@ -62,6 +62,21 @@ Acessibilidade: contraste [ok] · alvo ≥48px [ok] · cor+texto [ok]
 Ação crítica com confirmação e resumo: fundir mostra "B será descartado e recuperável por 90 dias" antes do botão, que permanece habilitado
 Testado em 360px: sim na suíte Playwright da fase, viewport 360×800; a tela empilha os dois registros abaixo de 640px
 Ação necessária antes de seguir: shadcn/ui não foi introduzido. A fase 1 fechou com Tailwind e os mesmos alvos de toque; trazer a biblioteca agora reestilizaria a captura sem mudar a regra. O campo de TOTP avisa que, em produção, o servidor ainda não valida o código de verdade.
+
+## Parecer SEC-07 — F2-04
+
+O card permanece bloqueado. O termo de consentimento segue aberto em `.grok/ESCALONAMENTOS.md` desde 2026-09-25. Não há texto jurídico novo, não há rota pública de autocadastro e não há aceite versionado. A tela Meu QR continua apenas avisando que o termo não foi redigido. O bloqueio também segura o F3-02.
+
+## Parecer UI-04 — F2-04
+
+Telas/componentes criados: nenhum
+Toques até o caso mínimo de captura: 2, inalterados
+Campo obrigatório introduzido: não
+Estado de sincronização visível e honesto: sim
+Acessibilidade: contraste [ok] · alvo ≥48px [ok] · cor+texto [ok] — nada novo nesta tela
+Ação crítica com confirmação e resumo: não se aplica; a ação não foi construída
+Testado em 360px: não se aplica a tela nova
+Ação necessária antes de seguir: resposta do dono no escalonamento do termo. Sem isso o card não fecha.
 
 ## Veredito do Portão
 

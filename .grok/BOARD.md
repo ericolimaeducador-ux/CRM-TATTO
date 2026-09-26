@@ -16,7 +16,7 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 
 ### Fase 2 — Enriquecimento e ingestão
 
-- `[F2-04]` QR próprio + formulário público de autocadastro com termo de consentimento versionado — **@UI-04** + **@SEC-07** — **BLOQUEADO** pelo termo jurídico aberto em `.grok/ESCALONAMENTOS.md`
+- `[F2-04]` QR próprio + formulário público de autocadastro com termo de consentimento versionado — **@UI-04** + **@SEC-07** — **BLOQUEADO** — sem código neste ciclo; termo jurídico aberto em `.grok/ESCALONAMENTOS.md`
 
 ### Fase 3 — Saída controlada
 
