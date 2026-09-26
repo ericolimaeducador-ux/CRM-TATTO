@@ -2,7 +2,17 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 import { VitePWA } from 'vite-plugin-pwa';
 
+function basePublica(): string {
+  const bruto = process.env.PAGES_BASE ?? '/';
+  if (bruto === '/' || bruto === '') return '/';
+  const comBarra = bruto.endsWith('/') ? bruto : `${bruto}/`;
+  return comBarra.startsWith('/') ? comBarra : `/${comBarra}`;
+}
+
+const base = basePublica();
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -17,17 +27,17 @@ export default defineConfig({
         name: 'captura7',
         short_name: 'captura7',
         lang: 'pt-BR',
-        id: '/',
+        id: base,
         display: 'standalone',
-        start_url: '/',
-        scope: '/',
+        start_url: base,
+        scope: base,
         background_color: '#1c1917',
         theme_color: '#1c1917',
         icons: [
-          { src: '/icone-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: '/icone-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          { src: '/icone-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-          { src: '/icone-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'icone-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'icone-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'icone-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+          { src: 'icone-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       devOptions: { enabled: true, type: 'module' },

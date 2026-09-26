@@ -20,7 +20,9 @@ registerRoute(
   new NetworkOnly(),
 );
 
-registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html')));
+registerRoute(
+  new NavigationRoute(createHandlerBoundToURL(`${import.meta.env.BASE_URL}index.html`)),
+);
 
 self.addEventListener('message', (evento) => {
   if (evento.data === 'VERSAO') evento.ports[0]?.postMessage(VERSAO);

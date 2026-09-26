@@ -19,12 +19,14 @@ import { PaginaQr } from './features/captura/PaginaQr';
 import { TelaCaptura } from './features/captura/TelaCaptura';
 import { iniciarFila } from './lib/offline/fila';
 
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '');
+
 export function App() {
   useEffect(() => {
     iniciarFila();
   }, []);
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <main className="mx-auto min-h-screen w-full max-w-xl p-4">
         <BarraSincronizacao />
         <Menu />

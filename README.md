@@ -27,14 +27,10 @@ Para abrir a cópia numa base vazia:
 mongorestore --uri="mongodb://127.0.0.1:27017" --archive=captura7.archive.gz --gzip --nsInclude="captura7.*"
 ```
 
-## Publicar depois, sem decidir agora
+## Site no GitHub Pages
 
-Hoje o site e a API sobem juntos neste computador. O repositório não publica em lugar nenhum e não tem workflow de deploy.
+O workflow `.github/workflows/pages.yml` publica só o site estático em `https://ericolimaeducador-ux.github.io/CRM-TATTO/`. A API e o MongoDB não rodam no Pages: continuam no computador do controlador.
 
-Se um dia o site for para o GitHub Pages e a API para um serviço com MongoDB Atlas:
+O build usa `PAGES_BASE=/CRM-TATTO/`. A variável de repositório `VITE_API_URL`, se existir, entra no JavaScript. Vazia, o site chama `/v1` no próprio Pages e a API não responde. Quando a API tiver endereço público, grave `VITE_API_URL` sem barra no fim e `CORS_ORIGENS` na API com a origem exata `https://ericolimaeducador-ux.github.io`.
 
-1. Na API, defina `MONGO_URI` com a string do Atlas (usuário e senha fora do Git) e `CORS_ORIGENS` com a origem exata do Pages, por exemplo `https://usuario.github.io`.
-2. No build do site, defina `VITE_API_URL` com a URL pública da API, sem barra no fim, por exemplo `https://api.exemplo.com`. O Vite grava esse valor no JavaScript. Vazio significa chamar `/v1` no mesmo endereço, que é o caso do Docker local.
-3. O Compose já repassa `VITE_API_URL` vazio para a imagem do site e `CORS_ORIGENS` para a API. Não há passo de publicação automático.
-
-O termo continua descrevendo o computador local. Mudar de hospedagem é outra decisão e pede revisão do texto legal.
+O Compose local continua com `VITE_API_URL` vazio, então neste computador o site chama `/v1` no mesmo endereço. O termo continua descrevendo o computador local. O Pages entrega o aplicativo; não guarda a base de contatos.
