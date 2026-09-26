@@ -14,6 +14,8 @@ import { FontesOficiais } from './fontes-oficiais';
 import { planilhaLinhaSchema, planilhaMarcaSchema } from './planilha.schema';
 import { SheetsController } from './sheets.controller';
 import { SheetsService } from './sheets.service';
+import { webhookSaidaSchema } from './webhook-saida.schema';
+import { WebhookSaidaService } from './webhook-saida.service';
 
 aplicarSegurancaNoSchema(contatoSchema);
 
@@ -27,11 +29,18 @@ aplicarSegurancaNoSchema(contatoSchema);
       { name: 'CacheEnriquecimento', schema: cacheEnriquecimentoSchema },
       { name: 'PlanilhaLinha', schema: planilhaLinhaSchema },
       { name: 'PlanilhaMarca', schema: planilhaMarcaSchema },
+      { name: 'WebhookSaida', schema: webhookSaidaSchema },
     ]),
   ],
   controllers: [EnriquecimentoController, SheetsController],
-  providers: [EnriquecimentoService, ClienteHttp, FontesOficiais, SheetsService],
-  exports: [EnriquecimentoService, ClienteHttp, FontesOficiais, SheetsService],
+  providers: [
+    EnriquecimentoService,
+    ClienteHttp,
+    FontesOficiais,
+    SheetsService,
+    WebhookSaidaService,
+  ],
+  exports: [EnriquecimentoService, ClienteHttp, FontesOficiais, SheetsService, WebhookSaidaService],
 })
 export class IntegracoesModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

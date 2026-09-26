@@ -178,6 +178,6 @@ Neste host, em 2026-09-26: `pnpm lint` passou; `pnpm build` passou dentro de `pn
 - Chamada real à BrasilAPI, à ReceitaWS, ao ViaCEP e à Google Sheets API. Os testes usam fixture do contrato e não saem da rede.
 - `NODE_ENV=production` recusando o cabeçalho `x-step-up-teste`. O middleware faz isso; este host não subiu a API em produção.
 
-### Autorização solicitada
+### Autorização recebida
 
-Abrir FASE 3? [aguardando]
+Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 3."

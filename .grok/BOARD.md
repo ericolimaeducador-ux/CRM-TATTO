@@ -14,15 +14,15 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 
 Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 2."
 
+Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 3."
+
 ### Fase 2 — Enriquecimento e ingestão
 
 - `[F2-04]` QR próprio + formulário público de autocadastro com termo de consentimento versionado — **@UI-04** + **@SEC-07** — **BLOQUEADO** — sem código neste ciclo; termo jurídico aberto em `.grok/ESCALONAMENTOS.md`
 
 ### Fase 3 — Saída controlada
 
-- `[F3-01]` Fluxo de promoção lead → cliente com validação estrita e step-up TOTP — **@API-03** + **@SEC-07**
-- `[F3-02]` Exportação CSV/XLSX/JSON com log de exportação (quem levou qual base, quando) — **@INT-06** + **@SEC-07**
-- `[F3-03]` Webhook de saída para o ERP (ver ADR-002) — **@INT-06**
+- `[F3-02]` Exportação CSV/XLSX/JSON com log de exportação (quem levou qual base, quando) — **@INT-06** + **@SEC-07** — **BLOQUEADO** — sem código neste ciclo; termo jurídico aberto em `.grok/ESCALONAMENTOS.md`
 
 ---
 
@@ -54,6 +54,11 @@ _(vazio)_
 - `[F2-03]` Deduplicação fuzzy + tela de sugestão de merge — **@DQ-08** + **@UI-04** — aceite: matriz/filial não é duplicata; merge sem confirmação é impossível; absorvido recuperável por 90 dias — dep: [F2-01] — observação: sem fusão automática; o campo `conflito` continua escalonado e não foi necessário
 - `[F2-05]` Testes das categorias 1 a 7, com Playwright — **@QA-09** — aceite: suítes das fases anteriores seguem verdes e a categoria 7 cobre matriz/filial, merge sem confirmação e recuperação em 90 dias — dep: [F2-03] — observação: Playwright 5 testes verdes neste host, incluindo avião e a tela de fusão. GitHub Actions não rodou daqui
 - `[F2-06]` Portão de revisão da Fase 2 — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_2.md — dep: [F2-05] — observação: APROVADO COM RESSALVAS. O portão prepara revisão e não substitui revisão humana
+- `[F3-01]` Fluxo de promoção lead → cliente com validação estrita e step-up TOTP — **@API-03** + **@SEC-07** — aceite: código RFC 6238 promove; o mesmo passo não repete; com `NODE_ENV=production` o cabeçalho de teste não autentica — dep: [F2-06] — observação: segredo cifrado por usuário; janela ±1 passo de 30s; login de produção escalonado porque nenhum card pede emissão de sessão
+- `[F3-03]` Webhook de saída genérico (ADR-002) — **@INT-06** — aceite: HMAC, idempotência por contato e versão, retentativa com backoff, fila de falhas e log; URL e segredo só por ambiente — dep: [F3-01] — observação: nenhum fornecedor foi nomeado; sem destino a promoção segue e a entrega fica `nao_configurado`
+- `[F3-04]` Backup 3-2-1 testado e cronometrado — **@OPS-10** — aceite: dump cifrado, restauração em base limpa, contagem e amostra da auditoria, RTO/RPO medidos — dep: [F3-03] — observação: ensaio neste host RPO 29 ms e RTO 19 ms em 1 contato e 1 linha de auditoria (anterior: 26 ms e 15 ms). 3-2-1 não atendida: falta o bucket do dono. `docker compose up` não rodou; o socket negou permissão
+- `[F3-05]` Testes completos — **@QA-09** — aceite: suítes das fases anteriores seguem verdes, com TOTP, webhook e a tela de promoção — dep: [F3-04] — observação: Jest 17/88, Vitest 6/14, Playwright 6. GitHub Actions não rodou daqui
+- `[F3-06]` Portão final — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_3.md — dep: [F3-05] — observação: APROVADO COM RESSALVAS. O portão prepara revisão e não substitui revisão humana. Parada 4.
 
 **Critérios de aceite de `F0-02`:**
 1. Salvar `{ nome: "Ana" }` persiste sem erro de validação

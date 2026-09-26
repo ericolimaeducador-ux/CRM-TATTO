@@ -59,7 +59,8 @@ export function PaginaMerge() {
       ))}
       <label className="flex flex-col gap-1 text-base">
         Código TOTP. Com a API em modo de teste, um código não vazio pede o passo extra. Sem a flag
-        de teste, e em produção, o servidor ignora esse atalho.
+        de teste, e em produção, o servidor ignora esse atalho. A promoção a cliente confere o
+        código.
         <input
           className="min-h-12 rounded border border-stone-300 px-3"
           value={codigo}

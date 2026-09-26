@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Types, type Model } from 'mongoose';
+import { TotpService } from '../auth/totp.service';
 import { enderecoCompleto, type EnderecoMinimo } from '../qualidade/completude';
 import type { Contato } from './schemas/contato.schema';
 import { ContatosService } from './contatos.service';
 import { RespostaComErro } from './erros-http';
+import { publicarPromocaoCliente } from './promocao-publicada';
 import type { UsuarioSessao } from './sessao.middleware';
 
 const SEQUENCIA = ['rascunho', 'capturado', 'qualificado', 'cliente'] as const;
@@ -14,6 +16,7 @@ export class TransicaoService {
   constructor(
     @InjectModel('Contato') private readonly contatos: Model<Contato>,
     private readonly contatosService: ContatosService,
+    private readonly totp: TotpService,
   ) {}
 
   async executar(
@@ -21,6 +24,7 @@ export class TransicaoService {
     para: string | undefined,
     motivo: string | undefined,
     usuario: UsuarioSessao,
+    codigoTotp?: string,
   ) {
     const antes = await this.contatosService.exigir(id, usuario, 'editar_contato');
     if (!para || !transicaoPermitida(String(antes.status), para)) {
@@ -32,6 +36,7 @@ export class TransicaoService {
       );
     }
     this.checarPapel(String(antes.status), para, usuario);
+    await this.exigirTotpDeCliente(para, usuario, codigoTotp);
     const falha = this.checarRegras(antes, para, motivo, usuario);
     if (falha) throw new RespostaComErro(422, falha.codigo, falha.mensagem, antes);
     const set: Record<string, unknown> = {
@@ -58,6 +63,14 @@ export class TransicaoService {
       string,
       unknown
     >;
+    if (para === 'cliente') {
+      publicarPromocaoCliente({
+        contatoId: id,
+        versao: Number(dados.versao ?? 0),
+        autorId: usuario.id,
+        em: new Date().toISOString(),
+      });
+    }
     return { http: 200, dados, avisos: [], antes };
   }
 
@@ -71,13 +84,17 @@ export class TransicaoService {
         null,
       );
     }
-    if (para === 'cliente' && usuario.stepUp !== true) {
-      throw new RespostaComErro(
-        403,
-        'STEP_UP_NECESSARIO',
-        'Promover a cliente pede o código TOTP. A captura em si não pede isso.',
-        null,
-      );
+  }
+
+  private async exigirTotpDeCliente(
+    para: string,
+    usuario: UsuarioSessao,
+    codigoTotp: string | undefined,
+  ): Promise<void> {
+    if (para !== 'cliente' || usuario.stepUp === true) return;
+    const veredito = await this.totp.confirmar(usuario.id, codigoTotp ?? '');
+    if (!veredito.aceito) {
+      throw new RespostaComErro(403, veredito.codigo, veredito.mensagem, null);
     }
   }
 

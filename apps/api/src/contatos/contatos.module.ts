@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
+import { TotpModule } from '../auth/totp.module';
 import { aplicarSegurancaNoSchema } from '../seguranca/aplicar-no-schema';
 import { AuditoriaInterceptor } from './autoria.interceptor';
 import { AvisosPipe } from './avisos.pipe';
@@ -18,6 +19,7 @@ aplicarSegurancaNoSchema(contatoSchema);
 
 @Module({
   imports: [
+    TotpModule,
     MongooseModule.forFeature([
       { name: 'Contato', schema: contatoSchema },
       { name: 'ContatoAuditoria', schema: contatoAuditoriaSchema },
