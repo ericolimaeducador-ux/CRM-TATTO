@@ -64,6 +64,16 @@ describe('headers de teste fechados em development', () => {
       .send({ nome: 'Ainda fechado' });
     expect(deNovo.status).toBe(403);
     expect(JSON.stringify(deNovo.body)).toContain('PAPEL_INSUFICIENTE');
+
+    process.env.NODE_ENV = 'production';
+    process.env.CAPTURA7_HEADERS_TESTE = '1';
+    const producao = await request(app.getHttpServer())
+      .post('/v1/contatos')
+      .set({ ...cabecalho(), 'x-step-up-teste': '1' })
+      .send({ nome: 'Produção com flag' });
+    expect(producao.status).toBe(403);
+    expect(JSON.stringify(producao.body)).toContain('PAPEL_INSUFICIENTE');
+    expect(JSON.stringify(producao.body)).not.toContain('Produção com flag');
   });
 });
 

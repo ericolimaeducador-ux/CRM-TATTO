@@ -35,5 +35,6 @@ export class SessaoMiddleware implements NestMiddleware {
 }
 
 function headersDeTesteAtivos(): boolean {
+  if (process.env.NODE_ENV === 'production') return false;
   return process.env.NODE_ENV === 'test' || process.env.CAPTURA7_HEADERS_TESTE === '1';
 }
