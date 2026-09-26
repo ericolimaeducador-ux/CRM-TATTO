@@ -15,7 +15,7 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 | F2-03 Dedup + merge | DQ-08 + UI-04 | feito | pareceres abaixo |
 | F2-04 QR próprio + autocadastro | UI-04 + SEC-07 | bloqueado | sem implementação; parecer abaixo |
 | F2-05 Testes 1–7 | QA-09 | feito | parecer abaixo |
-| F2-06 Portão | REV-11 | ⬜ não iniciado | |
+| F2-06 Portão | REV-11 | feito | APROVADO COM RESSALVAS |
 
 ## Parecer INT-06 — F2-01
 
@@ -87,10 +87,97 @@ Falha silenciosa identificada (a mais perigosa): [sim — a frase do painel pare
 Cenários críticos cobertos nominalmente: razão digitada não é sobrescrita; BrasilAPI cai e a ReceitaWS preenche; as duas fontes caem e o nome fica; CNPJ inválido não chama a rede; CEP não cobre logradouro digitado; planilha reprocessada não duplica e uma linha inserida no meio entra; sem credencial a planilha não chama a rede; matriz e filial com o mesmo e-mail não são duplicata; merge sem confirmação e sem step-up não descarta; recuperação dentro de 90 dias e recusa um milissegundo depois; avião, aba morta, fila presa e 360px seguem verdes; a tela de fusão mostra o efeito e só descarta depois do clique.
 Pronto para o portão REV-11: sim
 
-## Veredito do Portão
+## RELATÓRIO — FASE 2 — 2026-09-26
+
+Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 2."
+
+### Executado
+
+| Card | Agente | Status | Arquivos |
+|---|---|---|---|
+| F2-01 CNPJ + CEP | INT-06 | feito | `apps/api/src/integracoes/**` (enriquecimento, cache, circuito) |
+| F2-02 Google Sheets | INT-06 | feito | `apps/api/src/integracoes/sheets.*`, `planilha-*`, `.env.example` |
+| F2-03 Dedup + merge | DQ-08 + UI-04 | feito | `apps/api/src/qualidade/**`, `apps/web/src/features/captura/PaginaDuplicatas.tsx`, `PaginaMerge.tsx`, `PainelEnriquecimento.tsx` |
+| F2-04 QR próprio + autocadastro | UI-04 + SEC-07 | bloqueado | nenhum arquivo de produto; Meu QR segue só com o aviso |
+| F2-05 Testes 1–7 | QA-09 | feito | `e2e/merge.spec.ts` e as specs dos cards acima |
+| F2-06 Portão | REV-11 | feito | este arquivo |
+
+### Pareceres dos agentes
+
+Os pareceres no formato de cada agente estão nas seções acima: INT-06 (F2-01 e F2-02), DQ-08 e UI-04 (F2-03), SEC-07 e UI-04 (F2-04), QA-09 (F2-05).
+
+### Portão REV-11
+
+### Parecer Dev 1 — Correção funcional
+- Aprovado com ressalvas
+- Achados: CNPJ vazio é preenchido pela BrasilAPI e, se ela cai, pela ReceitaWS; as duas caindo deixam o contato salvo. CEP não cobre logradouro digitado. A planilha reprocessada não duplica e uma linha no meio entra. Matriz e filial com o mesmo e-mail não viram duplicata. A fusão sem confirmação não escreve, e a tela só descarta depois do clique com o resumo visível. A recuperação dentro de 90 dias devolve o status anterior; um milissegundo depois disso a API recusa e o contato continua descartado.
+- Ação necessária antes de produção: provar a planilha contra a conta do dono. O circuito está no código e a falha de timeout está testada; a abertura após a quinta falha não tem um teste contando as cinco chamadas.
+
+### Parecer Dev 2 — Integridade de dado e auditoria
+- Aprovado com ressalvas
+- Achados: a fusão de um contato já capturado grava valor anterior e valor novo. O plugin continua com `origem: api`. Rascunho fundido não ganha linha de auditoria, porque o plugin ignora rascunho; a recuperação usa o texto de `motivoDescarte`. O campo `conflito` não foi criado. O enriquecimento não sobrescreve valor digitado. Um save de enriquecimento ainda emite `WARN tentativa_autoria_cliente` em `alteradoEm`; o plugin em seguida grava o autor da sessão.
+- Ação necessária antes de produção: decidir o escalonamento do campo `conflito`. Se a trilha precisar da origem `merge` ou `enriquecimento`, isso é mudança do plugin e pertence ao ARQ-02.
+
+### Parecer Dev 3 — Segurança e escala
+- Aprovado com ressalvas
+- Achados: vendedor não enriquece carteira alheia, não dispara a planilha e não vê a fila de duplicatas. Merge e recuperação pedem step-up. O cabeçalho `x-step-up-teste` só vale fora de produção. Não há token nem id de planilha no repositório. A varredura de segredos deste host saiu limpa. A deduplicação carrega os contatos não descartados na memória a cada leitura da fila.
+- Ação necessária antes de produção: login e TOTP reais. A fila de duplicatas precisa de paginação antes de a base crescer. Confirmar que `NODE_ENV=production` ignora o cabeçalho de teste num deploy, não só na leitura do middleware.
+
+### Conselho de Design (auditoria de premissa)
+1. Trilha imutável? [sim] — fusão de não-rascunho grava autor, instante, valor anterior e valor novo; a coleção de auditoria segue sem update.
+2. Captura sem campo obrigatório? [sim] — o painel de consulta e a fila de duplicatas não travam o nome.
+3. Responsável identificado em toda ação? [sim] — a ingestão automática só arma com `SHEETS_RESPONSAVEL_ID`; o disparo manual usa a sessão; sem credencial não há escrita.
+4. Estado de sincronização honesto? [sim] — os textos da fase 1 permanecem. O painel deixou de usar a palavra do estado.
+5. Carga cognitiva reduzida? [sim] — a fusão mostra o efeito antes do botão e a matriz não aparece como duplicata.
+6. Quebra fluxo existente? [não] — avião, aba morta, fila presa e o toque em 360px passaram de novo.
 
 ```
-VEREDITO DO PORTÃO: <pendente>
-Pareceres: Dev1 [ ] Dev2 [ ] Dev3 [ ] Conselho de Design [ ]
+VEREDITO DO PORTÃO: APROVADO COM RESSALVAS
+Pareceres: Dev1 [Aprovado com ressalvas] Dev2 [Aprovado com ressalvas] Dev3 [Aprovado com ressalvas] Conselho de Design [aprovado]
 Pendências antes de produção:
+- Credencial do dono para a planilha: SHEETS_PLANILHA_ID, SHEETS_TOKEN (OAuth spreadsheets.readonly; chave de API não lê planilha privada), SHEETS_RESPONSAVEL_ID e, se a aba não for Respostas, SHEETS_ABA.
+- TOTP e login reais. O atalho de teste não é produção.
+- Decisão do dono sobre o campo conflito e sobre o texto do termo (F2-04 e F3-02 seguem bloqueados).
+- Prova ao vivo de BrasilAPI, ReceitaWS e ViaCEP. Aqui só houve o contrato com mock.
+Observação: este portão prepara o material de revisão e não substitui revisão humana
+quando exigida pelo processo da empresa.
 ```
+
+### Estado
+
+BOARD: BACKLOG 4 · EM CURSO 0 · EM REVISÃO 0 · FEITO 18
+ADRs abertos neste ciclo: nenhum. ADR-003 segue a regra da planilha. ADR-004, ADR-005, ADR-006 e ADR-007 permanecem como estavam.
+Escalonamentos abertos: termo de consentimento (SEC-07, bloqueia F2-04 e F3-02); campo `conflito` ausente no schema (API-03). Nenhum dos dois foi decidido nem fechado.
+Dívida técnica assumida conscientemente:
+- Cache de enriquecimento é coleção nova em `integracoes`, sem revisão de schema do ARQ-02.
+- `ContatosModule` exporta `ContatosService` para a planilha reutilizar `criar`.
+- A marca d'água da planilha é gravada e a leitura continua percorrendo a grade inteira, para uma inserção no meio não sumir.
+- shadcn/ui não entrou. A tela segue Tailwind, como a fase 1.
+- A origem da auditoria continua `api`.
+- Docker Compose em máquina limpa segue não verde, pelo mesmo motivo da fase 0.
+
+### Como verificar você mesmo
+
+```bash
+pnpm lint
+pnpm build
+pnpm test
+pnpm test:e2e
+bash infra/ci/varrer-segredos.sh
+```
+
+Neste host, em 2026-09-26: `pnpm lint` passou; `pnpm build` passou dentro de `pnpm test:e2e`; `pnpm test` ficou em 13 suítes Jest / 79 testes e 5 arquivos Vitest / 13 testes; `pnpm test:e2e` ficou em 5 testes Playwright, entre eles avião, aba morta, fila presa, 360px e a fusão; a varredura de segredos saiu limpa.
+
+### O que ficou sem verificação
+
+- GitHub Actions e proteção de branch. O workflow existe e não foi disparado daqui.
+- `docker compose up` em máquina limpa. Na fase 0 o Compose só subiu depois de uma regra ACCEPT no bridge, fora do repositório.
+- Backup, RTO e RPO.
+- TOTP real, login de produção e câmera física.
+- Volume do índice único e paginação da fila de duplicatas.
+- Chamada real à BrasilAPI, à ReceitaWS, ao ViaCEP e à Google Sheets API. Os testes usam fixture do contrato e não saem da rede.
+- `NODE_ENV=production` recusando o cabeçalho `x-step-up-teste`. O middleware faz isso; este host não subiu a API em produção.
+
+### Autorização solicitada
+
+Abrir FASE 3? [aguardando]

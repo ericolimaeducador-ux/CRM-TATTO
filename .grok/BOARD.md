@@ -53,6 +53,7 @@ _(vazio)_
 - `[F2-02]` Ingestão Google Sheets por polling (ver ADR-003) — **@INT-06** — aceite: reprocessar a planilha inteira não duplica — dep: [F2-01] — observação: contrato ValueRange com mock; ponta a ponta no Google espera credencial do dono
 - `[F2-03]` Deduplicação fuzzy + tela de sugestão de merge — **@DQ-08** + **@UI-04** — aceite: matriz/filial não é duplicata; merge sem confirmação é impossível; absorvido recuperável por 90 dias — dep: [F2-01] — observação: sem fusão automática; o campo `conflito` continua escalonado e não foi necessário
 - `[F2-05]` Testes das categorias 1 a 7, com Playwright — **@QA-09** — aceite: suítes das fases anteriores seguem verdes e a categoria 7 cobre matriz/filial, merge sem confirmação e recuperação em 90 dias — dep: [F2-03] — observação: Playwright 5 testes verdes neste host, incluindo avião e a tela de fusão. GitHub Actions não rodou daqui
+- `[F2-06]` Portão de revisão da Fase 2 — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_2.md — dep: [F2-05] — observação: APROVADO COM RESSALVAS. O portão prepara revisão e não substitui revisão humana
 
 **Critérios de aceite de `F0-02`:**
 1. Salvar `{ nome: "Ana" }` persiste sem erro de validação
