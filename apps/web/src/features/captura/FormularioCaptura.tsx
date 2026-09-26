@@ -45,7 +45,17 @@ export function FormularioCaptura() {
   const { register, watch, reset } = useForm<Campos>({ defaultValues: VAZIO });
   const valores = watch();
   const valoresRef = useRef(valores);
-  valoresRef.current = valores;
+  valoresRef.current = camposNoDom(valores);
+
+  useEffect(() => {
+    const aoDigitar = (evento: Event) => {
+      const el = evento.target;
+      if (!(el instanceof HTMLInputElement) || !(el.name in VAZIO)) return;
+      valoresRef.current = { ...valoresRef.current, [el.name]: el.value };
+    };
+    window.addEventListener('input', aoDigitar, true);
+    return () => window.removeEventListener('input', aoDigitar, true);
+  }, []);
 
   useEffect(() => {
     pronto.current = false;
@@ -83,7 +93,7 @@ export function FormularioCaptura() {
     return () => {
       window.clearTimeout(timer);
       window.removeEventListener('pagehide', aoSair);
-      void gravarCampos(idLocal, atuais, ultimo, valoresRef, setContato);
+      void gravarCampos(idLocal, camposNoDom(valoresRef.current), ultimo, valoresRef, setContato);
     };
   }, [valores, idLocal]);
 
