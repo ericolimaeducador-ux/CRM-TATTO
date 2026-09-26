@@ -12,12 +12,14 @@ Formato do card:
 
 Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 1."
 
+Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 2."
+
 ### Fase 2 — Enriquecimento e ingestão
 
 - `[F2-01]` Enriquecimento CNPJ (BrasilAPI, fallback ReceitaWS) e CEP (ViaCEP) com cache e circuit breaker — **@INT-06**
 - `[F2-02]` Ingestão Google Sheets por polling (ver ADR-003) — **@INT-06**
 - `[F2-03]` Deduplicação fuzzy + tela de sugestão de merge — **@DQ-08** + **@UI-04**
-- `[F2-04]` QR próprio + formulário público de autocadastro com termo de consentimento versionado — **@UI-04** + **@SEC-07**
+- `[F2-04]` QR próprio + formulário público de autocadastro com termo de consentimento versionado — **@UI-04** + **@SEC-07** — **BLOQUEADO** pelo termo jurídico aberto em `.grok/ESCALONAMENTOS.md`
 
 ### Fase 3 — Saída controlada
 
