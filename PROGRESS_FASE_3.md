@@ -71,6 +71,8 @@ Ação necessária antes de seguir: texto do termo aprovado pelo dono
 
 ## F3-03 — Webhook de saída
 
+O código entrou no commit `feat(INT-06)` depois do texto do portão: os arquivos tinham ficado fora do stage. A suíte de 88 testes Jest já incluía `webhook-saida.spec.ts`, porque o Jest lê a árvore de trabalho.
+
 Nenhum ERP foi nomeado. O contrato é genérico: `POST` no `ERP_WEBHOOK_URL` com corpo `versaoContrato: v1` e caminho `/v1/integracao/contatos-promovidos`. Assinatura `X-Captura7-Assinatura` = HMAC-SHA256 hex do corpo cru. `X-Captura7-Idempotencia` = `contatoId:versao`. Falha não desfaz a promoção. Retentativa 1s, 2s, 4s… teto 5 min. Fila em `webhooks_saida`. Log com hash do corpo, sem segredo e sem URL.
 
 O dono precisa fornecer, para ligar um destino real: a URL que aceita esse POST JSON, o segredo HMAC compartilhado, e a confirmação de que o receptor valida `X-Captura7-Assinatura` sobre o corpo cru e trata `X-Captura7-Idempotencia` como chave de não duplicar.
