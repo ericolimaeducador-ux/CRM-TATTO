@@ -70,7 +70,7 @@ export function FormularioCaptura() {
     if (!pronto.current) return;
     const atuais = valores;
     const aoSair = () => {
-      const agora = valoresRef.current;
+      const agora = camposNoDom(valoresRef.current);
       const sujo = (Object.keys(VAZIO) as (keyof Campos)[]).some(
         (campo) => agora[campo] !== (ultimo.current[campo] ?? ''),
       );
@@ -160,6 +160,15 @@ async function gravarCampos(
   const foto = JSON.stringify(atuais);
   for (const campo of alterados) definir(await salvarCampo(idLocal, campo, atuais[campo]));
   if (JSON.stringify(valoresRef.current) === foto) limparPendente(idLocal);
+}
+
+function camposNoDom(base: Campos): Campos {
+  const saida = { ...base };
+  for (const campo of Object.keys(VAZIO) as (keyof Campos)[]) {
+    const el = document.querySelector(`input[name="${campo}"]`);
+    if (el instanceof HTMLInputElement) saida[campo] = el.value;
+  }
+  return saida;
 }
 
 function chavePendente(idLocal: string): string {

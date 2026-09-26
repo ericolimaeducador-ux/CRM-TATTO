@@ -6,6 +6,7 @@ test('fechar a aba no meio do autosave guarda o nome', async ({ page, context })
   const nome = page.getByLabel('Nome');
   await nome.focus();
   await page.keyboard.type('Aba Morta');
+  await expect(nome).toHaveValue('Aba Morta');
   const url = page.url();
   await page.close({ runBeforeUnload: true });
 
