@@ -8,6 +8,7 @@ import request from 'supertest';
 import { AuthModule } from '../src/auth/auth.module';
 import { codigoNoPasso, passoAtual } from '../src/auth/totp-rfc6238';
 import { ContatosModule } from '../src/contatos/contatos.module';
+import { decifrar } from '../src/seguranca/cifra';
 import { garantirIndices } from '../src/contatos/schemas/registrar-modelos';
 
 const GESTOR = new Types.ObjectId().toHexString();
@@ -91,7 +92,48 @@ describe('promoção com TOTP', () => {
     expect(lido.body.dados.status).toBe('qualificado');
   });
 
-  it('ainda aceita o atalho de cabeçalho fora de produção', async () => {
+  it('não troca o segredo inscrito sem o código atual e recusa passo já usado', async () => {
+    const segredo = await inscrever();
+    const sem = await request(app.getHttpServer())
+      .post('/v1/auth/totp/inscrever')
+      .set(cabecalho())
+      .send({});
+    expect(sem.status).toBe(403);
+    expect(JSON.stringify(sem.body)).toContain('STEP_UP_NECESSARIO');
+    expect(await segredoGuardado()).toBe(segredo);
+
+    const errado = await request(app.getHttpServer())
+      .post('/v1/auth/totp/inscrever')
+      .set(cabecalho())
+      .send({ codigoTotp: '000000' });
+    expect(errado.status).toBe(403);
+    expect(await segredoGuardado()).toBe(segredo);
+
+    const passo = passoAtual() + 1;
+    await app
+      .get<Model<{ ultimoPassoAceito: number | null }>>(getModelToken('UsuarioTotp'))
+      .updateOne({ usuarioId: GESTOR }, { $set: { ultimoPassoAceito: passo } });
+    const reuso = await request(app.getHttpServer())
+      .post('/v1/auth/totp/inscrever')
+      .set(cabecalho())
+      .send({ codigoTotp: codigoNoPasso(segredo, passo) });
+    expect(reuso.status).toBe(403);
+    expect(JSON.stringify(reuso.body)).toContain('CODIGO_TOTP_REUSADO');
+    expect(await segredoGuardado()).toBe(segredo);
+
+    await app
+      .get<Model<{ ultimoPassoAceito: number | null }>>(getModelToken('UsuarioTotp'))
+      .updateOne({ usuarioId: GESTOR }, { $set: { ultimoPassoAceito: null } });
+    const trocado = await request(app.getHttpServer())
+      .post('/v1/auth/totp/inscrever')
+      .set(cabecalho())
+      .send({ codigoTotp: codigoNoPasso(segredo, passoAtual()) });
+    expect(trocado.status).toBe(201);
+    expect(trocado.body.dados.segredoBase32).not.toBe(segredo);
+    expect(await segredoGuardado()).toBe(trocado.body.dados.segredoBase32);
+  });
+
+  it('aceita o atalho de cabeçalho com NODE_ENV=test', async () => {
     const id = await qualificar('Cliente Atalho');
     const promovido = await request(app.getHttpServer())
       .post(`/v1/contatos/${id}/transicao`)
@@ -104,9 +146,17 @@ describe('promoção com TOTP', () => {
   async function inscrever(): Promise<string> {
     const resposta = await request(app.getHttpServer())
       .post('/v1/auth/totp/inscrever')
-      .set(cabecalho());
+      .set({ ...cabecalho(), 'x-step-up-teste': '1' });
     expect(resposta.status).toBe(201);
     return resposta.body.dados.segredoBase32 as string;
+  }
+
+  async function segredoGuardado(): Promise<string> {
+    const doc = await app
+      .get<Model<{ segredoCifrado: string }>>(getModelToken('UsuarioTotp'))
+      .findOne({ usuarioId: GESTOR })
+      .lean();
+    return decifrar(String(doc?.segredoCifrado));
   }
 
   async function qualificar(nome: string): Promise<string> {

@@ -14,9 +14,11 @@ describe('atalho de step-up em produção', () => {
   let app: INestApplication;
   let memoria: MongoMemoryServer;
   const ambienteAnterior = process.env.NODE_ENV;
+  const flagAnterior = process.env.CAPTURA7_HEADERS_TESTE;
 
   beforeAll(async () => {
     process.env.NODE_ENV = 'production';
+    process.env.CAPTURA7_HEADERS_TESTE = '1';
     process.env.CIFRA_CHAVE_BASE64 = randomBytes(32).toString('base64');
     process.env.CIFRA_PEPPER = randomBytes(32).toString('hex');
     memoria = await MongoMemoryServer.create();
@@ -29,12 +31,15 @@ describe('atalho de step-up em produção', () => {
 
   afterAll(async () => {
     process.env.NODE_ENV = ambienteAnterior;
+    if (flagAnterior === undefined) delete process.env.CAPTURA7_HEADERS_TESTE;
+    else process.env.CAPTURA7_HEADERS_TESTE = flagAnterior;
     await app.close();
     await memoria.stop();
   });
 
-  it('ignora o cabeçalho de teste com NODE_ENV=production', async () => {
+  it('ignora o cabeçalho de teste em production mesmo com a flag', async () => {
     expect(process.env.NODE_ENV).toBe('production');
+    expect(process.env.CAPTURA7_HEADERS_TESTE).toBe('1');
     const transicao = await request(app.getHttpServer())
       .post(`/v1/contatos/${new Types.ObjectId().toHexString()}/transicao`)
       .set({
