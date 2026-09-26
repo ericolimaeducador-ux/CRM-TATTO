@@ -14,7 +14,7 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 | F2-02 Google Sheets | INT-06 | feito | parecer abaixo |
 | F2-03 Dedup + merge | DQ-08 + UI-04 | feito | pareceres abaixo |
 | F2-04 QR próprio + autocadastro | UI-04 + SEC-07 | bloqueado | sem implementação; parecer abaixo |
-| F2-05 Testes 1–7 | QA-09 | ⬜ não iniciado | |
+| F2-05 Testes 1–7 | QA-09 | feito | parecer abaixo |
 | F2-06 Portão | REV-11 | ⬜ não iniciado | |
 
 ## Parecer INT-06 — F2-01
@@ -77,6 +77,15 @@ Acessibilidade: contraste [ok] · alvo ≥48px [ok] · cor+texto [ok] — nada n
 Ação crítica com confirmação e resumo: não se aplica; a ação não foi construída
 Testado em 360px: não se aplica a tela nova
 Ação necessária antes de seguir: resposta do dono no escalonamento do termo. Sem isso o card não fecha.
+
+## Parecer QA-09 — F2-05
+
+Categorias aplicadas: 1 funcional, 2 captura sem trava, 3 integridade, 4 offline, 5 concorrência, 6 acesso, 7 dedup e merge. Nenhuma exclusão. O F2-04 não entra na suíte porque não houve implementação.
+Testes escritos: `apps/api/src/integracoes/enriquecimento.spec.ts` (7), `apps/api/src/integracoes/sheets.spec.ts` (3), `apps/api/src/qualidade/dedup.spec.ts` (5), `apps/web/src/features/captura/PaginaMerge.test.tsx` (1), `e2e/merge.spec.ts` (1). A suíte anterior continua: Jest 13 arquivos e 79 testes, Vitest 5 arquivos e 13 testes, Playwright 5 testes.
+Falhas encontradas: o painel dizia "contato sincronizado" e o Playwright lia isso como o estado `Sincronizado` com o lead ainda só no aparelho; o build de preview não pedia o passo extra e a tela escondia o 403. Os dois foram corrigidos e os testes passaram de novo.
+Falha silenciosa identificada (a mais perigosa): [sim — a frase do painel parecia estado de sincronização sem confirmação do servidor. O indicador em si seguia honesto. O texto agora diz que a consulta espera o contato chegar ao servidor.]
+Cenários críticos cobertos nominalmente: razão digitada não é sobrescrita; BrasilAPI cai e a ReceitaWS preenche; as duas fontes caem e o nome fica; CNPJ inválido não chama a rede; CEP não cobre logradouro digitado; planilha reprocessada não duplica e uma linha inserida no meio entra; sem credencial a planilha não chama a rede; matriz e filial com o mesmo e-mail não são duplicata; merge sem confirmação e sem step-up não descarta; recuperação dentro de 90 dias e recusa um milissegundo depois; avião, aba morta, fila presa e 360px seguem verdes; a tela de fusão mostra o efeito e só descarta depois do clique.
+Pronto para o portão REV-11: sim
 
 ## Veredito do Portão
 

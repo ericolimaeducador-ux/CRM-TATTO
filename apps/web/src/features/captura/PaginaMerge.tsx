@@ -58,8 +58,8 @@ export function PaginaMerge() {
         </fieldset>
       ))}
       <label className="flex flex-col gap-1 text-base">
-        Código TOTP. Fora de produção, qualquer código não vazio confirma o passo extra. Em produção
-        o servidor ainda não valida TOTP de verdade e a fusão responde que o passo é necessário.
+        Código TOTP. Um código não vazio pede o passo extra. Em produção o servidor ignora esse
+        atalho e responde que o passo é necessário, porque o TOTP real ainda não está ligado.
         <input
           className="min-h-12 rounded border border-stone-300 px-3"
           value={codigo}
@@ -133,8 +133,7 @@ async function fundir(
   if (!resposta.ok) {
     definirFeito(false);
     definirMensagem(
-      json.erros?.[0]?.mensagem ??
-        'A fusão não aconteceu. Os dois contatos continuam como estavam.',
+      mensagemDe(json, 'A fusão não aconteceu. Os dois contatos continuam como estavam.'),
     );
     return;
   }
@@ -155,14 +154,21 @@ async function recuperar(
   definirMensagem(
     resposta.ok
       ? 'O contato descartado voltou ao status anterior.'
-      : (json.erros?.[0]?.mensagem ?? 'A recuperação não aconteceu.'),
+      : mensagemDe(json, 'A recuperação não aconteceu.'),
   );
 }
 
 function cabecalhos(codigo: string): Record<string, string> {
   const headers = cabecalhosDaSessao();
-  if (codigo.trim() && !import.meta.env.PROD) headers['x-step-up-teste'] = '1';
+  if (codigo.trim()) headers['x-step-up-teste'] = '1';
   return headers;
+}
+
+function mensagemDe(
+  json: { erros?: { mensagem: string }[]; mensagem?: string },
+  reserva: string,
+): string {
+  return json.erros?.[0]?.mensagem ?? json.mensagem ?? reserva;
 }
 
 function mostrar(doc: Record<string, unknown> | null, campo: string): string {

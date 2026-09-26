@@ -60,7 +60,7 @@ export function PainelEnriquecimento({
       </p>
       {!idServidor ? (
         <p className="text-base text-amber-900">
-          A consulta oficial espera o contato sincronizado. A captura segue.
+          A consulta oficial espera o contato chegar ao servidor. A captura segue.
         </p>
       ) : null}
       <button
