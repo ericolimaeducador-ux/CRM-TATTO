@@ -1,0 +1,12 @@
+.git
+node_modules
+**/node_modules
+**/dist
+coverage
+.env
+.env.*
+!.env.example
+**/*.spec.ts
+apps/web/dev-dist
+*.log
+*.tsbuildinfo

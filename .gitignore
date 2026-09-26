@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.pnpm-store/
+apps/web/dev-dist/
+.vite/
+*.tsbuildinfo

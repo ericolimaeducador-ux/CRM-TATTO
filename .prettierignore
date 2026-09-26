@@ -1,0 +1,10 @@
+.grok
+.cursor
+AGENTS.md
+INSTALAR.md
+PROGRESS_FASE_0.md
+README.md
+pnpm-lock.yaml
+dist
+coverage
+node_modules
