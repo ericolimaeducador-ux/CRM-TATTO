@@ -22,7 +22,20 @@ A câmera do captura7 exige HTTPS fora da máquina local. Este Compose publica a
 
 ## Backup
 
-Backup 3-2-1, criptografia antes de sair do ambiente e restauração cronometrada são o card F3-04. Não há backup neste estágio. RTO e RPO de produção não estão declarados porque não existe backup a medir.
+`node infra/backup/backup-321.mjs` cifra um dump lógico (AES-256-GCM), restaura numa base Mongo limpa e confere contagem e uma linha de `contatos_auditoria`. Sem `MONGO_URI` o ensaio sobe dois `mongod` em memória. `BACKUP_CHAVE` (32 bytes em base64) e `BACKUP_DIR` vêm do ambiente. Sem chave, a execução gera uma chave que morre com o processo e não é impressa.
+
+Ensaio neste host em 2026-09-26, com 1 contato e 1 linha de auditoria, chave efêmera, relógio de `Date.now()`:
+
+- RPO medido: 29 ms (da escrita mais nova até o arquivo cifrado fechado)
+- RTO medido: 19 ms (do início da restauração até a amostra da trilha conferir)
+- Ensaio anterior, no mesmo host e no mesmo volume: RPO 26 ms, RTO 15 ms
+- Contagens iguais e amostra da auditoria conferida
+
+Isso não é RTO/RPO de produção. A regra 3-2-1 **não está atendida**: há a base de origem e o arquivo cifrado no disco local; não há segunda mídia física nem cópia fora do local. `BACKUP_REMOTO_DESTINO` vazio não envia nada. Falta a conta de object storage do dono (URL `s3://` ou `b2://` e credencial fora do repositório).
+
+## Docker neste ambiente
+
+O arquivo Compose declara `mongo` como hostname, healthcheck e `depends_on` com `service_healthy`. Não achei nele a causa da ressalva da fase 0. Aqui o cliente Docker recebeu `permission denied` em `/var/run/docker.sock`, então `docker compose up` não rodou de novo. A ressalva da fase 0 continua: naquele host o `iptables-legacy` tinha FORWARD em DROP e a liberação do bridge não está no repositório.
 
 ## Fila de sincronização
 

@@ -68,3 +68,36 @@ Credenciais fora do repositório: sim
 Log de exportação gerado: não — o card não fechou
 Sobrescreve dado digitado por humano: não
 Ação necessária antes de seguir: texto do termo aprovado pelo dono
+
+## F3-03 — Webhook de saída
+
+Nenhum ERP foi nomeado. O contrato é genérico: `POST` no `ERP_WEBHOOK_URL` com corpo `versaoContrato: v1` e caminho `/v1/integracao/contatos-promovidos`. Assinatura `X-Captura7-Assinatura` = HMAC-SHA256 hex do corpo cru. `X-Captura7-Idempotencia` = `contatoId:versao`. Falha não desfaz a promoção. Retentativa 1s, 2s, 4s… teto 5 min. Fila em `webhooks_saida`. Log com hash do corpo, sem segredo e sem URL.
+
+O dono precisa fornecer, para ligar um destino real: a URL que aceita esse POST JSON, o segredo HMAC compartilhado, e a confirmação de que o receptor valida `X-Captura7-Assinatura` sobre o corpo cru e trata `X-Captura7-Idempotencia` como chave de não duplicar.
+
+### Parecer INT-06 — F3-03
+
+Integração: webhook de saída genérico — saída
+Fonte e contrato: corpo JSON `v1` em `/v1/integracao/contatos-promovidos`, HMAC-SHA256. Sem fornecedor.
+Comportamento em indisponibilidade: a promoção a cliente já foi gravada; a entrega fica na fila e retenta com backoff. Sem URL ou com placeholder, status `nao_configurado` e nenhuma chamada de rede.
+Idempotência: `contatoId:versao`
+Payload cru preservado: sim — `corpoJson` na fila `webhooks_saida`. Não é dado de enriquecimento de terceiro.
+Credenciais fora do repositório: sim
+Log de exportação gerado: não se aplica
+Sobrescreve dado digitado por humano: não
+Ação necessária antes de seguir: URL e segredo reais do dono
+
+## F3-04 — Backup 3-2-1
+
+Comando: `node infra/backup/backup-321.mjs`. Ensaio de 2026-09-26 neste host, 1 contato e 1 linha de `contatos_auditoria`, chave efêmera não gravada: RPO 29 ms, RTO 19 ms (ensaio anterior: 26 ms e 15 ms), contagens iguais, amostra da trilha conferida. 3-2-1 não atendida. `docker compose up` não rodou aqui: socket do Docker negou permissão. O Compose não foi alterado.
+
+### Parecer OPS-10 — F3-04
+
+Ambiente/pipeline tocado: `infra/backup/backup-321.mjs`, `.env.example`, `infra/README.md`
+`docker compose up` do zero funciona: não — neste ambiente o socket negou permissão; a ressalva da fase 0 segue no host, não no arquivo Compose
+TLS configurado: não se aplica — o Compose continua só em 127.0.0.1
+Backup: frequência o script é chamável e não há cron instalado · criptografado sim · destino externo ausente · regra 3-2-1 não
+Restauração testada: sim — RTO 19 ms · RPO 29 ms, medidos neste host no volume de 1 contato e 1 linha de auditoria, não como meta de produção. Ensaio anterior: 15 ms e 26 ms.
+Segredo fora do repositório: sim
+Alertas ativos: profundidade da fila já existia em `GET /v1/saude`; backup sem destino não dispara alerta externo
+Ação necessária antes de seguir: conta de object storage do dono e agendamento fora desta máquina

@@ -11,3 +11,4 @@ apps/web/dev-dist/
 *.tsbuildinfo
 test-results/
 playwright-report/
+infra/backup/saida/
