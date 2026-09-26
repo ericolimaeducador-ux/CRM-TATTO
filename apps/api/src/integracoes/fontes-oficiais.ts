@@ -4,6 +4,7 @@ import type { Model } from 'mongoose';
 import { aviso, type Aviso } from '../normalizacao/avisos';
 import { ClienteHttp } from './cliente-http';
 import { circuitoAberto, registrarResultado } from './circuito';
+import { dadoSemContatoDireto, payloadParaGuardar } from './descartar-qsa';
 import { mapearBrasilApi, mapearReceitaWs, mapearViaCep, type DadoOficial } from './mapear-oficial';
 
 const TTL_CNPJ_MS = 30 * 24 * 60 * 60 * 1000;
@@ -87,13 +88,16 @@ export class FontesOficiais {
     }
     try {
       const resposta = await this.http.buscar(url);
-      const dado = resposta.status >= 200 && resposta.status < 300 ? mapear(resposta.json) : null;
+      const mapeado =
+        resposta.status >= 200 && resposta.status < 300 ? mapear(resposta.json) : null;
+      const dado = dadoSemContatoDireto(mapeado);
+      const payload = payloadParaGuardar(resposta.json);
       registrarResultado(fonte, Boolean(dado));
       if (!dado) {
         return {
           dado: null,
           fonte,
-          payload: resposta.json,
+          payload,
           avisos: [
             aviso(
               fonte,
@@ -103,7 +107,7 @@ export class FontesOficiais {
           ],
         };
       }
-      return { dado, fonte, payload: resposta.json, avisos: [] };
+      return { dado, fonte, payload, avisos: [] };
     } catch {
       registrarResultado(fonte, false);
       return {
@@ -130,12 +134,20 @@ export class FontesOficiais {
         : item.fonte === 'receitaws'
           ? mapearReceitaWs
           : mapearViaCep;
-    const dado = mapear(item.payload);
+    const payload = payloadParaGuardar(item.payload);
+    if (JSON.stringify(payload) !== JSON.stringify(item.payload)) {
+      await this.gravar(chave, item.fonte, payload, item.expiraEm ?? null);
+    }
+    const dado = dadoSemContatoDireto(mapear(payload));
     if (!dado) return null;
-    return { dado, fonte: item.fonte, payload: item.payload, avisos: [] };
+    return { dado, fonte: item.fonte, payload, avisos: [] };
   }
 
   private async gravar(chave: string, fonte: string, payload: unknown, expiraEm: Date | null) {
-    await this.cache.updateOne({ chave }, { chave, fonte, payload, expiraEm }, { upsert: true });
+    await this.cache.updateOne(
+      { chave },
+      { chave, fonte, payload: payloadParaGuardar(payload), expiraEm },
+      { upsert: true },
+    );
   }
 }
