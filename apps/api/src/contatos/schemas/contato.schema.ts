@@ -47,7 +47,23 @@ export interface Contato {
     cnpjRaiz?: string;
     razaoSocial?: string;
   };
-  lgpd: { baseLegal: string; finalidade: string[]; canalColeta: string };
+  lgpd: {
+    baseLegal: string;
+    finalidade: string[];
+    canalColeta: string;
+    contatoComercial?: 'pendente' | 'concedido' | 'revogado';
+    consentimentos?: {
+      finalidade?: string;
+      emDispositivo?: Date;
+      emServidor?: Date;
+      versaoTermo?: string;
+      hashTexto?: string;
+      canal?: string;
+      revogadoEm?: Date;
+    }[];
+    revogadoEm?: Date;
+    eliminadoEm?: Date;
+  };
   criadoPor?: Types.ObjectId;
   criadoEm?: Date;
   alteradoPor?: Types.ObjectId;

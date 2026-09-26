@@ -68,7 +68,7 @@ describe('webhook de saída', () => {
       .send({ para: 'cliente' });
     expect(promovido.status).toBe(201);
     const entrega = await esperarEntrega(fila, id);
-    expect(entrega?.status).toBe('nao_configurado');
+    expect(entrega?.status).toBe('sem_consentimento');
     expect(chamadas).toBe(0);
   });
 
@@ -90,8 +90,9 @@ describe('webhook de saída', () => {
       }
       return new Response(null, { status: 204 });
     };
+    const contatoId = await contatoComErp(app);
     const evento = {
-      contatoId: new Types.ObjectId().toHexString(),
+      contatoId,
       versao: 4,
       autorId: GESTOR,
       em: '2026-09-26T00:00:00.000Z',
@@ -124,10 +125,41 @@ describe('webhook de saída', () => {
       em: '2026-09-26T00:00:00.000Z',
     });
     const doc = await fila.findOne({ chaveIdempotencia: `${contatoId}:2` }).lean();
-    expect(doc?.status).toBe('nao_configurado');
+    expect(doc?.status).toBe('sem_consentimento');
+    expect(chamadas).toBe(0);
+    const comConsentimento = await contatoComErp(app);
+    await servico.enfileirar({
+      contatoId: comConsentimento,
+      versao: 2,
+      autorId: GESTOR,
+      em: '2026-09-26T00:00:00.000Z',
+    });
+    const configurado = await fila.findOne({ chaveIdempotencia: `${comConsentimento}:2` }).lean();
+    expect(configurado?.status).toBe('nao_configurado');
     expect(chamadas).toBe(0);
   });
 });
+
+async function contatoComErp(app: INestApplication): Promise<string> {
+  const Contato = app.get(getModelToken('Contato'));
+  const doc = await Contato.create({
+    nome: 'Cliente com ERP',
+    status: 'cliente',
+    lgpd: {
+      contatoComercial: 'concedido',
+      consentimentos: [
+        {
+          finalidade: 'envio_erp',
+          emServidor: new Date(),
+          versaoTermo: '[A PREENCHER, D1]',
+          hashTexto: 'prova',
+          canal: 'autocadastro',
+        },
+      ],
+    },
+  });
+  return String(doc._id);
+}
 
 async function qualificar(app: INestApplication, nome: string): Promise<string> {
   const criado = await request(app.getHttpServer())

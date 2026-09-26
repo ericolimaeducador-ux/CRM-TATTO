@@ -32,6 +32,7 @@ const BRASIL = {
   cnae_fiscal_descricao: 'Atividades de atenção ambulatorial',
   descricao_porte: 'MICRO EMPRESA',
   descricao_situacao_cadastral: 'ATIVA',
+  qsa: [{ nome_socio: 'SOCIO QUE NAO PODE FICAR', qualificacao_socio: 'Sócio' }],
 };
 
 const RECEITA = {
@@ -108,6 +109,10 @@ describe('enriquecimento CNPJ e CEP', () => {
     expect(resposta.body.dados.pj.razaoSocial).toBe('Clinica Oficial Ltda');
     expect(resposta.body.dados.nome).toBe('Lead Sem Razao');
     expect(resposta.body.dados.origem.enriquecimentoBruto[0].fonte).toBe('brasilapi');
+    const cru = JSON.stringify(resposta.body.dados.origem.enriquecimentoBruto);
+    expect(cru).not.toContain('SOCIO QUE NAO PODE FICAR');
+    expect(cru).not.toContain('oficial@exemplo.com');
+    expect(cru).not.toContain('qsa');
     expect(chamadas.some((url) => url.includes('brasilapi.com.br'))).toBe(true);
     chamadas.length = 0;
     await consultarCnpj(id);

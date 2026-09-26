@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm, type UseFormRegisterReturn } from 'react-hook-form';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { garantirContato, lerUm, observarFila, salvarCampo } from '@/lib/offline/fila';
+import { cabecalhosDaSessao } from '@/lib/offline/sessao';
 import type { ContatoLocal } from '@/lib/offline/tipos';
 import { IndicadorSincronizacao } from './IndicadorSincronizacao';
 import { PainelEnriquecimento } from './PainelEnriquecimento';
@@ -41,6 +42,7 @@ export function FormularioCaptura() {
     (local.state as { naoReconhecido?: boolean } | null)?.naoReconhecido,
   );
   const [contato, setContato] = useState<ContatoLocal | null>(null);
+  const [statusServidor, setStatusServidor] = useState('');
   const ultimo = useRef<Record<string, string>>({});
   const pronto = useRef(false);
   const { register, watch, reset, setValue } = useForm<Campos>({ defaultValues: VAZIO });
@@ -114,12 +116,35 @@ export function FormularioCaptura() {
     };
   }, [valores, idLocal]);
 
+  useEffect(() => {
+    const idServidor = contato?.idServidor;
+    if (!idServidor) return;
+    void fetch(`/v1/contatos/${idServidor}`, { headers: cabecalhosDaSessao() })
+      .then((resposta) => resposta.json())
+      .then((json: { dados?: { lgpd?: { contatoComercial?: string } } }) => {
+        const comercial = json.dados?.lgpd?.contatoComercial;
+        if (comercial === 'pendente' || comercial === 'concedido' || comercial === 'revogado') {
+          setStatusServidor(comercial);
+        }
+      })
+      .catch(() => undefined);
+  }, [contato?.idServidor]);
+
   return (
     <section className="flex flex-col gap-4">
       <Link className="inline-flex min-h-12 items-center text-base underline" to="/capturar">
         Captura
       </Link>
       <h1 className="text-2xl font-semibold">Contato</h1>
+      <p className="border border-amber-800 bg-amber-50 p-3 text-base">
+        {textoConsentimento(contato, statusServidor)}
+      </p>
+      <Link
+        className="inline-flex min-h-12 items-center text-base underline"
+        to={`/contatos/${idLocal}/termo`}
+      >
+        Autorizações do titular
+      </Link>
       {contato ? <IndicadorSincronizacao estado={contato.estado} /> : null}
       {naoReconhecido ? (
         <p className="text-base text-amber-900">
@@ -217,6 +242,22 @@ function lerPendente(idLocal: string): Partial<Campos> {
   } catch {
     return {};
   }
+}
+
+function textoConsentimento(contato: ContatoLocal | null, statusServidor: string): string {
+  const status =
+    statusServidor ||
+    (contato?.consentimento?.contatoComercial
+      ? 'escolha neste aparelho, ainda sem confirmação do servidor'
+      : 'pendente');
+  if (status === 'concedido') return 'Consentimento de contato comercial: concedido.';
+  if (status === 'revogado') {
+    return 'Consentimento de contato comercial: revogado. Contato comercial, envio ao ERP e exportação seguem bloqueados.';
+  }
+  if (status === 'pendente') {
+    return 'Consentimento de contato comercial: pendente. O lead pode ficar salvo assim. Contato comercial, envio ao ERP e exportação seguem bloqueados até o titular autorizar.';
+  }
+  return `Consentimento de contato comercial: ${status}.`;
 }
 
 function Campo({ rotulo, registro }: { rotulo: string; registro: UseFormRegisterReturn }) {

@@ -4,6 +4,8 @@ import { BarraSincronizacao } from './features/captura/BarraSincronizacao';
 import { FormularioCaptura } from './features/captura/FormularioCaptura';
 import { ListaContatos } from './features/captura/ListaContatos';
 import { MeuQr } from './features/captura/MeuQr';
+import { PaginaAutocadastro } from './features/captura/PaginaAutocadastro';
+import { PaginaConsentimento } from './features/captura/PaginaConsentimento';
 import { PaginaDuplicatas } from './features/captura/PaginaDuplicatas';
 import { PaginaFila } from './features/captura/PaginaFila';
 import { PaginaMerge } from './features/captura/PaginaMerge';
@@ -31,6 +33,8 @@ export function App() {
           <Route path="/merge/:a/:b" element={<PaginaMerge />} />
           <Route path="/promover/:id" element={<PaginaPromover />} />
           <Route path="/meu-qr" element={<MeuQr />} />
+          <Route path="/p/:token" element={<PaginaAutocadastro />} />
+          <Route path="/contatos/:idLocal/termo" element={<PaginaConsentimento />} />
         </Routes>
       </main>
     </BrowserRouter>

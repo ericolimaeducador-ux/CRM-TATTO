@@ -142,3 +142,37 @@ reprocessamento da coleção — documentar o procedimento antes de produção.
 **Consequências.** Feature nova entra como módulo descoberto, não como edição do entrypoint. Se a descoberta falhar em silêncio, o guard deixa de ser global: o F0-05 cobre isso com teste do `APP_GUARD` no `AuthModule` e com a suíte HTTP do guard.
 
 **Status.** aceito · 2026-09-25
+
+---
+
+## ADR-008 — Captura mínima com consentimento pendente
+
+**Contexto.** A ADR-001 e a L1 proíbem campo obrigatório e botão de salvar desabilitado na captura de campo. A decisão D3 do dono (2026-09-26, opção a) manda colher o consentimento na hora, na mesma tela do autocadastro, com as caixas marcadas pelo titular. A Parte 3 da minuta diz para não concluir o registro de evento sem consentimento de contato comercial. As duas regras parecem se excluir.
+
+**Decisão.** O rascunho pode ser salvo com `lgpd.contatoComercial: "pendente"`. Esse estado fica visível e não é apresentado como autorização. Contato comercial, envio ao ERP e exportação ficam bloqueados até existir registro de consentimento daquela finalidade. A conclusão do autocadastro (D4) é outra tela: o botão "Concluir cadastro" só habilita com a caixa de contato comercial. A base do enriquecimento continua legítimo interesse; planilha e QR não recebem consentimento automático. O mapeamento antigo de `qr_proprio` e `google_forms` para `baseLegal: consentimento` fica substituído por esta ADR.
+
+**Alternativas consideradas.**
+- *Caixa obrigatória na captura:* rejeitada — viola a L1 e a ADR-001.
+- *Legítimo interesse para o contato comercial de evento:* rejeitada — o dono removeu essa alternativa na D3.
+- *Recusar gravar qualquer rascunho sem caixa:* rejeitada — o dono autorizou salvar com consentimento pendente, desde que o bloqueio das saídas seja honesto.
+
+**Consequências.** Existe lead sem base de contato comercial. Isso é estado explícito, não omissão. A trilha não guarda nome, e-mail nem telefone em claro (D10). O envio ao ERP continua sem finalidade coletada enquanto a D7 estiver aberta, então o webhook não entrega ninguém.
+
+**Status.** aceito · 2026-09-26
+
+---
+
+## ADR-009 — QR de autocadastro com prazo e uso único
+
+**Contexto.** O token emitido em `POST /v1/qr` não expirava e podia concluir vários cadastros. O limite por IP do autocadastro também acumulava endereços para sempre e, atrás do nginx do Compose, via todo mundo como o IP do proxy.
+
+**Decisão.** O token vale 2 horas (`QR_TOKEN_TTL_SEGUNDOS`, inteiro de 60 a 86400) e 1 conclusão (`QR_TOKEN_MAX_USOS`, inteiro de 1 a 20). Tentativa sem a caixa de contato comercial não gasta o uso. Esgotar, expirar ou revogar responde 410 e não grava contato. Quem emitiu, o gestor ou o admin revoga em `POST /v1/qr/:token/revogar`. O nginx do Compose grava só `$remote_addr` em `X-Forwarded-For`, sem acrescentar o valor que o cliente mandou. A API só confia nesse salto quando `CAPTURA7_TRUST_PROXY_SALTOS` é um inteiro de 1 a 5; `true` é recusado. O Compose usa `1`.
+
+**Alternativas consideradas.**
+- *Token eterno de uso ilimitado:* rejeitada — o link vazado cadastra para sempre.
+- *`trust proxy: true`:* rejeitada — qualquer cliente na porta publicada da API escolheria o IP do limite.
+- *Subchaves HKDF do pepper:* não feita. O mesmo `CIFRA_PEPPER` ainda assina o hash do documento e o pseudônimo da auditoria. Separar as chaves mudaria hashes já gravados. Fica pendente até existir plano de rehash.
+
+**Consequências.** Um QR de banca precisa ser reemitido depois de um cadastro ou de duas horas. Visitantes diferentes atrás do nginx não dividem o balde de 3 pedidos por minuto.
+
+**Status.** aceito · 2026-09-26

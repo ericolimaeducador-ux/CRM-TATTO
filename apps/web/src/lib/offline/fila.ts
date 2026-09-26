@@ -1,4 +1,4 @@
-import { patchCampo, postarContato, reportarProfundidade } from './api';
+import { patchCampo, postarConsentimento, postarContato, reportarProfundidade } from './api';
 import { atrasoMs } from './atraso';
 import {
   apagarOperacao,
@@ -93,6 +93,14 @@ export async function lerTodos(): Promise<ContatoLocal[]> {
   return listarContatos();
 }
 
+export async function guardarConsentimento(idLocal: string, emDispositivo: string): Promise<void> {
+  const contato = await garantirContato(idLocal);
+  contato.consentimento = { contatoComercial: true, emDispositivo, estado: 'local' };
+  await gravarContato(contato);
+  avisar();
+  agendar(0);
+}
+
 export async function lerUm(idLocal: string): Promise<ContatoLocal | undefined> {
   return lerContato(idLocal);
 }
@@ -169,6 +177,7 @@ export async function drenar(): Promise<void> {
       const espera = await sincronizar(idLocal, grupo);
       if (espera !== null) proxima = Math.min(proxima, espera);
     }
+    if (navigator.onLine) await enviarConsentimentosLocais();
     if (porContato.size > 0) agendar(Math.max(proxima, 0));
   } catch {
     // Sem IndexedDB neste ambiente a fila não drena. A tela continua.
@@ -256,6 +265,19 @@ async function definirEstado(
     await gravarContato(fresco);
     avisar();
   });
+}
+
+async function enviarConsentimentosLocais(): Promise<void> {
+  for (const contato of await listarContatos()) {
+    const escolha = contato.consentimento;
+    if (!escolha?.contatoComercial || escolha.estado === 'enviado' || !contato.idServidor) continue;
+    const resposta = await postarConsentimento(contato.idServidor, escolha.emDispositivo).catch(
+      () => null,
+    );
+    if (!resposta || resposta.http >= 400) continue;
+    escolha.estado = 'enviado';
+    await gravarContato(contato);
+  }
 }
 
 function avisar(): void {

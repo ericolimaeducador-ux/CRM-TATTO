@@ -16,13 +16,11 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 
 Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 3."
 
-### Fase 2 — Enriquecimento e ingestão
-
-- `[F2-04]` QR próprio + formulário público de autocadastro com termo de consentimento versionado — **@UI-04** + **@SEC-07** — **BLOQUEADO** — sem código neste ciclo; termo jurídico aberto em `.grok/ESCALONAMENTOS.md`
+Autorização escrita do dono (Professor Erico), 2026-09-26: "Autorizo implementar as mudanças do termo no captura7."
 
 ### Fase 3 — Saída controlada
 
-- `[F3-02]` Exportação CSV/XLSX/JSON com log de exportação (quem levou qual base, quando) — **@INT-06** + **@SEC-07** — **BLOQUEADO** — sem código neste ciclo; termo jurídico aberto em `.grok/ESCALONAMENTOS.md`
+- `[F3-02]` Exportação CSV/XLSX/JSON com log de exportação (quem levou qual base, quando) — **@INT-06** + **@SEC-07** — **BLOQUEADO** — D8 aberta; sem rota e sem arquivo neste ciclo
 
 ---
 
@@ -59,6 +57,14 @@ _(vazio)_
 - `[F3-04]` Backup 3-2-1 testado e cronometrado — **@OPS-10** — aceite: dump cifrado, restauração em base limpa, contagem e amostra da auditoria, RTO/RPO medidos — dep: [F3-03] — observação: ensaio neste host RPO 29 ms e RTO 19 ms em 1 contato e 1 linha de auditoria (anterior: 26 ms e 15 ms). 3-2-1 não atendida: falta o bucket do dono. `docker compose up` não rodou; o socket negou permissão
 - `[F3-05]` Testes completos — **@QA-09** — aceite: suítes das fases anteriores seguem verdes, com TOTP, webhook e a tela de promoção — dep: [F3-04] — observação: Jest 17/88, Vitest 6/14, Playwright 6. GitHub Actions não rodou daqui
 - `[F3-06]` Portão final — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_3.md — dep: [F3-05] — observação: APROVADO COM RESSALVAS. O portão prepara revisão e não substitui revisão humana. Parada 4.
+- `[F2-04]` QR próprio + formulário público de autocadastro com termo de consentimento versionado — **@UI-04** + **@SEC-07** — aceite: a URL pública mostra a minuta e só conclui com a caixa de contato comercial — dep: [F2-01] — observação: captcha sem provedor a partir da quarta tentativa; uso externo depende de advogado e de UX
+- `[T-00]` Registrar a autorização, a ADR-008 e a minuta v2 sem preencher colchetes — **@CC-00** — aceite: a autorização de 2026-09-26 está no board e a minuta em `docs/lgpd/` conserva `[A PREENCHER]` — dep: [] — observação: minuta copiada sem inventar dado da empresa
+- `[T-01]` Consentimento no schema e trilha só com identificador pseudonimizado — **@ARQ-02** — aceite: alteração de não-rascunho não grava nome em claro; update da trilha continua impossível — dep: [T-00] — observação: HMAC do valor e do autor; status continua legível
+- `[T-02]` Registro, revogação, eliminação e autocadastro público — **@SEC-07** — aceite: concluir autocadastro sem a caixa falha e não grava; eliminação não reescreve a trilha — dep: [T-01] — observação: prazo de guarda sem padrão e sem apagar a trilha
+- `[T-03]` QSA fora do payload, planilha pendente e webhook só com consentimento de ERP — **@INT-06** — aceite: o nome de sócio não aparece no cache nem no contato; planilha não fica consentida; sem `envio_erp` não há POST — dep: [T-02] — observação: D7 aberta, então o webhook não entrega ninguém
+- `[T-04]` Mesma tela de autorizações na captura e no QR, com destaque e botão condicional — **@UI-04** — aceite: a captura salva com pendente visível; "Concluir cadastro" nasce desabilitado — dep: [T-02] — observação: Playwright do termo verde em 360px
+- `[T-05]` Bateria do termo e regressão das fases anteriores — **@QA-09** — aceite: lint, build, Jest, Vitest, Playwright e varredura de segredos executados neste host — dep: [T-03, T-04] — observação: Jest 18/93, Vitest 7/15, Playwright 7, varredura limpa, em 2026-09-26
+- `[T-06]` Portão do ciclo do termo — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_TERMO.md — dep: [T-05] — observação: APROVADO COM RESSALVAS. O portão prepara revisão e não substitui revisão humana. Parada deste ciclo.
 
 **Critérios de aceite de `F0-02`:**
 1. Salvar `{ nome: "Ana" }` persiste sem erro de validação

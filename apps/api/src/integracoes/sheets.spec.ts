@@ -40,10 +40,10 @@ describe('ingestão Google Sheets', () => {
     zerarCircuitos();
     chamadas = 0;
     grade = [
-      ['Nome', 'E-mail', 'Telefone', 'Cidade'],
-      ['Ana Planilha', 'ana@exemplo.com', '11988887777', 'São Paulo'],
-      ['', '', '', ''],
-      ['Bia Planilha', 'bia@exemplo.com', '11977776666', 'Campinas'],
+      ['Nome', 'E-mail', 'Telefone', 'Cidade', 'Consentimento'],
+      ['Ana Planilha', 'ana@exemplo.com', '11988887777', 'São Paulo', 'sim'],
+      ['', '', '', '', ''],
+      ['Bia Planilha', 'bia@exemplo.com', '11977776666', 'Campinas', 'concedido'],
     ];
     app.get(ClienteHttp).fetchImpl = async () => {
       chamadas += 1;
@@ -87,17 +87,23 @@ describe('ingestão Google Sheets', () => {
     const repetida = await sincronizar();
     expect(repetida.body.dados.importados).toBe(0);
     grade = [
-      ['Nome', 'E-mail', 'Telefone', 'Cidade'],
-      ['Ana Planilha', 'ana@exemplo.com', '11988887777', 'São Paulo'],
-      ['Caio Planilha', 'caio@exemplo.com', '11966665555', 'Santos'],
-      ['', '', '', ''],
-      ['Bia Planilha', 'bia@exemplo.com', '11977776666', 'Campinas'],
+      ['Nome', 'E-mail', 'Telefone', 'Cidade', 'Consentimento'],
+      ['Ana Planilha', 'ana@exemplo.com', '11988887777', 'São Paulo', 'sim'],
+      ['Caio Planilha', 'caio@exemplo.com', '11966665555', 'Santos', 'sim'],
+      ['', '', '', '', ''],
+      ['Bia Planilha', 'bia@exemplo.com', '11977776666', 'Campinas', 'concedido'],
     ];
     const terceira = await sincronizar();
     expect(terceira.body.dados.importados).toBe(1);
     const lista = await request(app.getHttpServer()).get('/v1/contatos').set(cabecalho());
     const nomes = lista.body.dados.map((item: { nome?: string }) => item.nome).sort();
     expect(nomes).toEqual(['Ana Planilha', 'Bia Planilha', 'Caio Planilha']);
+    for (const item of lista.body.dados as {
+      lgpd?: { contatoComercial?: string; consentimentos?: unknown[] };
+    }[]) {
+      expect(item.lgpd?.contatoComercial).toBe('pendente');
+      expect(item.lgpd?.consentimentos ?? []).toEqual([]);
+    }
     expect(chamadas).toBe(3);
   });
 

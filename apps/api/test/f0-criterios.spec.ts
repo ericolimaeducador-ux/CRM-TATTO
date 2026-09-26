@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose, { type Connection } from 'mongoose';
+import { hmacDocumento } from '../src/seguranca/cifra';
 import { ErroNomeado } from '../src/contatos/schemas/erro-nomeado';
 import { contatoSchema } from '../src/contatos/schemas/contato.schema';
 import { registrarModelos, type ModelosContato } from '../src/contatos/schemas/registrar-modelos';
@@ -98,8 +99,10 @@ describe('critérios do F0-02', () => {
     const linhas = await modelos.ContatoAuditoria.find({ contatoId: contato._id }).lean();
     expect(linhas).toHaveLength(1);
     expect(linhas[0]?.campo).toBe('nome');
-    expect(linhas[0]?.valorAnterior).toBe('Gabi');
-    expect(linhas[0]?.valorNovo).toBe('Gabriela');
+    expect(linhas[0]?.valorAnterior).toBe(hmacDocumento('Gabi'));
+    expect(linhas[0]?.valorNovo).toBe(hmacDocumento('Gabriela'));
+    expect(JSON.stringify(linhas)).not.toContain('Gabi');
+    expect(JSON.stringify(linhas)).not.toContain('Helena');
     expect(String(linhas[0]?.autor)).toBe(String(autorId));
   });
 

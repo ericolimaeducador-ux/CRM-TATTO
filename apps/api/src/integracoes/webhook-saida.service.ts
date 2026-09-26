@@ -1,8 +1,9 @@
 import { createHash, createHmac } from 'node:crypto';
 import { Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import type { Model } from 'mongoose';
+import { Types, type Model } from 'mongoose';
 import { aoPromoverCliente, type PromocaoCliente } from '../contatos/promocao-publicada';
+import { envioErpLiberado, type LgpdMinimo } from '../lgpd/retencao';
 
 const TETO_MS = 5 * 60 * 1000;
 
@@ -25,7 +26,10 @@ export class WebhookSaidaService implements OnModuleInit, OnModuleDestroy {
   private timers = new Set<ReturnType<typeof setTimeout>>();
   private emCurso = new Set<string>();
 
-  constructor(@InjectModel('WebhookSaida') private readonly fila: Model<Entrega>) {}
+  constructor(
+    @InjectModel('WebhookSaida') private readonly fila: Model<Entrega>,
+    @InjectModel('Contato') private readonly contatos: Model<{ lgpd?: LgpdMinimo }>,
+  ) {}
 
   onModuleInit(): void {
     this.soltar = aoPromoverCliente((evento) => this.enfileirar(evento));
@@ -81,7 +85,22 @@ export class WebhookSaidaService implements OnModuleInit, OnModuleDestroy {
 
   private async enviar(chave: string): Promise<void> {
     const doc = await this.fila.findOne({ chaveIdempotencia: chave }).lean<Entrega | null>();
-    if (!doc || doc.status === 'entregue' || doc.status === 'nao_configurado') return;
+    if (
+      !doc ||
+      doc.status === 'entregue' ||
+      doc.status === 'nao_configurado' ||
+      doc.status === 'sem_consentimento'
+    ) {
+      return;
+    }
+    if (!(await this.temConsentimentoErp(doc.contatoId))) {
+      await this.fila.updateOne(
+        { chaveIdempotencia: chave },
+        { $set: { status: 'sem_consentimento', ultimoErro: 'sem consentimento de envio ao ERP' } },
+      );
+      this.registrar(doc, 'sem_consentimento');
+      return;
+    }
     const destino = destinoConfigurado();
     if (!destino) {
       await this.fila.updateOne(
@@ -138,6 +157,12 @@ export class WebhookSaidaService implements OnModuleInit, OnModuleDestroy {
       void this.tentar(doc.chaveIdempotencia);
     }, espera);
     this.timers.add(timer);
+  }
+
+  private async temConsentimentoErp(contatoId: string): Promise<boolean> {
+    if (!Types.ObjectId.isValid(contatoId)) return false;
+    const contato = await this.contatos.findById(contatoId).lean<{ lgpd?: LgpdMinimo } | null>();
+    return envioErpLiberado(contato?.lgpd);
   }
 
   private registrar(

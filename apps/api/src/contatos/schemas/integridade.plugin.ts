@@ -7,6 +7,7 @@ import {
   ExclusaoFisicaProibida,
   type CodigoDuplicidade,
 } from './erro-nomeado';
+import { pseudonimizarAutor, pseudonimizarCampo } from './pseudonimo';
 
 const CAMPOS_AUTORIA = ['criadoPor', 'alteradoPor', 'criadoEm', 'alteradoEm'] as const;
 const IGNORADOS_NA_AUDITORIA = new Set([
@@ -83,10 +84,10 @@ export function aplicarIntegridade(schema: Schema): void {
         contatoId: doc._id,
         versao: doc.get('versao'),
         campo: diff.campo,
-        valorAnterior: diff.valorAnterior,
-        valorNovo: diff.valorNovo,
+        valorAnterior: pseudonimizarCampo(diff.campo, diff.valorAnterior),
+        valorNovo: pseudonimizarCampo(diff.campo, diff.valorNovo),
         autor,
-        autorNome: doc.$locals.autorNome ?? 'sem nome',
+        autorNome: pseudonimizarAutor(doc.$locals.autorNome ?? 'sem nome'),
         timestampServidor: new Date(),
         origem: 'api',
       })),

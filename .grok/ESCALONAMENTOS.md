@@ -27,22 +27,79 @@ reversíveis a baixo custo.
 
 ---
 
-## [ABERTO] 2026-09-25 — SEC-07 — Texto do termo de consentimento
+## [RESOLVIDO] 2026-09-25 — SEC-07 — Texto do termo de consentimento
 
-⚠️ **O que está em aberto:** o conteúdo jurídico do termo exibido no autocadastro
+⚠️ **O que estava em aberto:** o conteúdo jurídico do termo exibido no autocadastro
 (`qr_proprio`) e no Google Forms, e quem o aprova.
-⚠️ **Por que não posso decidir sozinho:** é texto com efeito jurídico perante titular de
-dados. Redigi-lo por conta própria seria inventar base legal — vedado pela regra G de
-`010-integridade.mdc`.
-⚠️ **O que já verifiquei:** o schema suporta `lgpd.consentimentoTexto` e
-`lgpd.versaoTermo`; a mecânica de versionamento está pronta e independe do texto.
-⚠️ **Opções conhecidas (sem recomendar):** (a) texto redigido e aprovado por assessoria
-jurídica da 7Safe; (b) texto provisório marcado `versaoTermo: "RASCUNHO-NAO-JURIDICO"`,
-bloqueando exportação até substituição.
-→ **Resposta do usuário:**
+⚠️ **Por que não podia decidir sozinho:** é texto com efeito jurídico perante titular de
+dados. Redigi-lo por conta própria seria inventar base legal.
+⚠️ **O que já verifiquei:** a minuta v2 entrou em `docs/lgpd/` sem alterar os
+`[A PREENCHER]`. O agente não redigiu o texto.
+⚠️ **Opções conhecidas (sem recomendar):** ficaram sem uso. O dono entregou a minuta.
+→ **Resposta do usuário:** "Autorizo implementar as mudanças do termo no captura7." — 2026-09-26.
 
-**Impacto do bloqueio:** os cards F2-04 e F3-02 não fecham sem isso. A Fase 0 e a Fase 1
-seguem normalmente.
+**O que esta resolução não faz:** não libera uso externo. O F3-02 continua bloqueado pela D8.
+A revisão de advogado e a validação de UX seguem abertas no item abaixo.
+
+---
+
+## [ABERTO] 2026-09-26 — SEC-07 — Minuta v2 ainda não vale para uso externo
+
+⚠️ O que está em aberto: a minuta v2 precisa de revisão de advogado humano e de validação de UX antes de qualquer uso externo. Os campos `[A PREENCHER]` continuam no texto.
+⚠️ Por que não posso decidir sozinho: o próprio cabeçalho da minuta diz que o apoio interno não substitui advogado. Inventar razão social, CNPJ, canal, prazo ou encarregado violaria a instrução do dono.
+⚠️ O que já verifiquei: a tela usa o texto da minuta, inclusive os colchetes. A versão gravada é o literal `[A PREENCHER, D1]`.
+⚠️ Opções conhecidas (sem recomendar): (a) advogado devolve o texto fechado e o dono autoriza a troca da versão; (b) a minuta permanece só em uso interno de desenvolvimento.
+→ Resposta do usuário (preencher quando houver):
+
+---
+
+## [ABERTO] 2026-09-26 — SEC-07 — D7 papel do fornecedor do ERP
+
+⚠️ O que está em aberto: se o fornecedor do ERP é operador da 7Safe ou controlador separado. Sem isso não há caixa de consentimento para envio ao ERP nem base legal fechada da finalidade F3.
+⚠️ Por que não posso decidir sozinho: a minuta condiciona a caixa à D7. Escolher operador ou controlador seria decidir pelo dono.
+⚠️ O que já verifiquei: o webhook só envia contato com registro de consentimento da finalidade `envio_erp`. Essa finalidade não é coletada nesta entrega. Promoção sem esse registro fica `sem_consentimento` e não chama a rede.
+⚠️ Opções conhecidas (sem recomendar): (a) operador, e o item vira informação sem caixa; (b) controlador separado, e a caixa de envio ao ERP passa a ser coletada; (c) o webhook permanece sem entrega até uma das duas.
+→ Resposta do usuário (preencher quando houver):
+
+---
+
+## [ABERTO] 2026-09-26 — SEC-07 — D8 exportação continua bloqueada
+
+⚠️ O que está em aberto: a finalidade da exportação (F3-02) e o texto `[FINALIDADE — A PREENCHER, DECISÃO D8]`.
+⚠️ Por que não posso decidir sozinho: o dono manteve a D8 aberta e pediu para não implementar a exportação nem redigir texto jurídico extra.
+⚠️ O que já verifiquei: não há rota de CSV, XLSX ou JSON. `GET /v1/exportacoes` segue inexistente. A função de portão recusaria registro sem consentimento da finalidade, mas a rota não existe.
+⚠️ Opções conhecidas (sem recomendar): (a) o dono fecha a finalidade e autoriza o card; (b) a exportação permanece fora do produto.
+→ Resposta do usuário (preencher quando houver):
+
+---
+
+## [ABERTO] 2026-09-26 — SEC-07 — D11 origem dos leads de planilha
+
+⚠️ O que está em aberto: de onde vêm os contatos da planilha e como o titular é informado.
+⚠️ Por que não posso decidir sozinho: a minuta marca a D11 como pendente. A base legal e o aviso ao titular dependem dessa resposta.
+⚠️ O que já verifiquei: a importação grava `contatoComercial: pendente`, não copia coluna de consentimento e não marca o lead como consentido. Contato comercial e exportação ficam bloqueados.
+⚠️ Opções conhecidas (sem recomendar): (a) há consentimento coletado fora do app e o dono descreve a prova; (b) outra base legal, indicada pelo dono; (c) os leads seguem pendentes e bloqueados.
+→ Resposta do usuário (preencher quando houver):
+
+---
+
+## [ABERTO] 2026-09-26 — SEC-07 — D1 D2 D5 D9 D12 e canais sem número
+
+⚠️ O que está em aberto: razão social, CNPJ, endereço e versão oficial do termo (D1); encarregado (D2); canais de contato comercial (D5); prazos de guarda (D9); provedor de hospedagem e transferência internacional (D12); canal de revogação; proteção do registro offline no aparelho; confirmação do papel da Google no Sheets; nome do fornecedor do ERP.
+⚠️ Por que não posso decidir sozinho: são dados da empresa e escolhas jurídicas. A minuta manda deixá-los como `[A PREENCHER]`.
+⚠️ O que já verifiquei: o prazo de guarda da trilha lê `AUDITORIA_PRAZO_GUARDA_DIAS` e não tem valor padrão. Sem a variável, a rotina não apaga linha. Com a variável, também não apaga, porque a trilha é imutável.
+⚠️ Opções conhecidas (sem recomendar): o dono preenche cada colchete na minuta e autoriza a substituição do texto.
+→ Resposta do usuário (preencher quando houver):
+
+---
+
+## [ABERTO] 2026-09-26 — SEC-07 — Provedor de captcha do autocadastro
+
+⚠️ O que está em aberto: qual provedor de captcha vale depois da terceira tentativa pública por IP.
+⚠️ Por que não posso decidir sozinho: nenhum fornecedor foi nomeado. Inventar um criaria conta, segredo e tratamento de dado fora do pedido.
+⚠️ O que já verifiquei: o limite é 10 pedidos por minuto por IP. Do quarto em diante a API responde `CAPTCHA_NAO_CONFIGURADO` e não grava o cadastro.
+⚠️ Opções conhecidas (sem recomendar): (a) o dono indica o provedor e o contrato; (b) o autocadastro público segue com esse bloqueio a partir da quarta tentativa.
+→ Resposta do usuário (preencher quando houver):
 
 ---
 

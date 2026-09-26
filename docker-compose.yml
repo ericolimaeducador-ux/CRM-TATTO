@@ -16,6 +16,7 @@ services:
       dockerfile: apps/api/Dockerfile
     environment:
       NODE_ENV: development
+      CAPTURA7_TRUST_PROXY_SALTOS: '1'
       MONGO_URI: mongodb://mongo:27017/captura7
       PORT: '3000'
     depends_on:
