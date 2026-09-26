@@ -12,7 +12,7 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 |---|---|---|---|
 | F2-01 CNPJ + CEP | INT-06 | feito | parecer abaixo |
 | F2-02 Google Sheets | INT-06 | feito | parecer abaixo |
-| F2-03 Dedup + merge | DQ-08 + UI-04 | ⬜ não iniciado | |
+| F2-03 Dedup + merge | DQ-08 + UI-04 | feito | pareceres abaixo |
 | F2-04 QR próprio + autocadastro | UI-04 + SEC-07 | bloqueado | termo jurídico aberto; sem implementação |
 | F2-05 Testes 1–7 | QA-09 | ⬜ não iniciado | |
 | F2-06 Portão | REV-11 | ⬜ não iniciado | |
@@ -40,6 +40,28 @@ Credenciais fora do repositório: sim — `.env.example` só tem placeholder. Ex
 Log de exportação gerado: não se aplica
 Sobrescreve dado digitado por humano: não — linha nova cria contato; linha já vista não regrava
 Ação necessária antes de seguir: o dono precisa fornecer, fora do repositório, `SHEETS_PLANILHA_ID` (id da planilha de respostas do Forms), `SHEETS_TOKEN` (token OAuth com escopo spreadsheets.readonly; chave de API não lê planilha privada), `SHEETS_RESPONSAVEL_ID` (ObjectId de quem responde pela ingestão automática) e, se a aba não se chamar Respostas, `SHEETS_ABA`. Sem isso a prova de ponta a ponta contra o Google não existe; o teste cobre o contrato com fixture.
+
+## Parecer DQ-08 — F2-03
+
+Regras de normalização aplicadas: as já existentes na escrita; a comparação usa e-mail em minúsculas, telefone E.164 e nome sem acento
+Valores não normalizáveis: grava como veio + aviso — este card não cria caminho novo de rejeição
+Pesos do score de completude: `PESOS_COMPLETUDE` em `apps/api/src/qualidade/completude.ts` — não alterados
+Camadas de dedup ativas e seus limiares: `cpfHash`/`cnpjHash` 1.00 · e-mail 0.95 · telefone E.164 0.90 · Jaro-Winkler ≥ 0.92 e mesma cidade
+Falso positivo mais provável identificado: matriz e filial com a mesma raiz e ordem diferente, mesmo que compartilhem e-mail, telefone e cidade — mitigação: viram `relacionados` (`matriz`/`filial`/`grupo`) e nunca `duplicataSuspeita`
+Merge automático em algum caminho: não
+Precedência de valor respeitada: sim — a sugestão oficial continua só sugestão; aplicar é um PATCH humano
+Ação necessária antes de seguir: o escalonamento do campo `conflito` segue aberto e este card não depende dele. A escolha da fusão vai em `valoresEscolhidos`. O schema não mudou. A trilha do plugin grava `origem: api` (valor fixo do plugin); autor, instante, valor anterior e valor novo estão na linha. Recuperação de rascunho usa `motivoDescarte` porque o plugin não audita rascunho.
+
+## Parecer UI-04 — F2-03
+
+Telas/componentes criados: `/duplicatas`, `/merge/:a/:b`, painel Consultar CNPJ/CEP no formulário
+Toques até o caso mínimo de captura: 2 (Digitar e o nome) — o painel de consulta não entra nesse caminho
+Campo obrigatório introduzido: não
+Estado de sincronização visível e honesto: sim — os textos da fase 1 permanecem; a consulta não diz Salvo
+Acessibilidade: contraste [ok] · alvo ≥48px [ok] · cor+texto [ok]
+Ação crítica com confirmação e resumo: fundir mostra "B será descartado e recuperável por 90 dias" antes do botão, que permanece habilitado
+Testado em 360px: sim na suíte Playwright da fase, viewport 360×800; a tela empilha os dois registros abaixo de 640px
+Ação necessária antes de seguir: shadcn/ui não foi introduzido. A fase 1 fechou com Tailwind e os mesmos alvos de toque; trazer a biblioteca agora reestilizaria a captura sem mudar a regra. O campo de TOTP avisa que, em produção, o servidor ainda não valida o código de verdade.
 
 ## Veredito do Portão
 
