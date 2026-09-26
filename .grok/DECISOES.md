@@ -142,3 +142,20 @@ reprocessamento da coleção — documentar o procedimento antes de produção.
 **Consequências.** Feature nova entra como módulo descoberto, não como edição do entrypoint. Se a descoberta falhar em silêncio, o guard deixa de ser global: o F0-05 cobre isso com teste do `APP_GUARD` no `AuthModule` e com a suíte HTTP do guard.
 
 **Status.** aceito · 2026-09-25
+
+---
+
+## ADR-008 — Captura mínima com consentimento pendente
+
+**Contexto.** A ADR-001 e a L1 proíbem campo obrigatório e botão de salvar desabilitado na captura de campo. A decisão D3 do dono (2026-09-26, opção a) manda colher o consentimento na hora, na mesma tela do autocadastro, com as caixas marcadas pelo titular. A Parte 3 da minuta diz para não concluir o registro de evento sem consentimento de contato comercial. As duas regras parecem se excluir.
+
+**Decisão.** O rascunho pode ser salvo com `lgpd.contatoComercial: "pendente"`. Esse estado fica visível e não é apresentado como autorização. Contato comercial, envio ao ERP e exportação ficam bloqueados até existir registro de consentimento daquela finalidade. A conclusão do autocadastro (D4) é outra tela: o botão "Concluir cadastro" só habilita com a caixa de contato comercial. A base do enriquecimento continua legítimo interesse; planilha e QR não recebem consentimento automático. O mapeamento antigo de `qr_proprio` e `google_forms` para `baseLegal: consentimento` fica substituído por esta ADR.
+
+**Alternativas consideradas.**
+- *Caixa obrigatória na captura:* rejeitada — viola a L1 e a ADR-001.
+- *Legítimo interesse para o contato comercial de evento:* rejeitada — o dono removeu essa alternativa na D3.
+- *Recusar gravar qualquer rascunho sem caixa:* rejeitada — o dono autorizou salvar com consentimento pendente, desde que o bloqueio das saídas seja honesto.
+
+**Consequências.** Existe lead sem base de contato comercial. Isso é estado explícito, não omissão. A trilha não guarda nome, e-mail nem telefone em claro (D10). O envio ao ERP continua sem finalidade coletada enquanto a D7 estiver aberta, então o webhook não entrega ninguém.
+
+**Status.** aceito · 2026-09-26

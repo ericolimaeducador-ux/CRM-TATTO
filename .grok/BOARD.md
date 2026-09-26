@@ -16,19 +16,27 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 
 Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 3."
 
-### Fase 2 — Enriquecimento e ingestão
-
-- `[F2-04]` QR próprio + formulário público de autocadastro com termo de consentimento versionado — **@UI-04** + **@SEC-07** — **BLOQUEADO** — sem código neste ciclo; termo jurídico aberto em `.grok/ESCALONAMENTOS.md`
+Autorização escrita do dono (Professor Erico), 2026-09-26: "Autorizo implementar as mudanças do termo no captura7."
 
 ### Fase 3 — Saída controlada
 
-- `[F3-02]` Exportação CSV/XLSX/JSON com log de exportação (quem levou qual base, quando) — **@INT-06** + **@SEC-07** — **BLOQUEADO** — sem código neste ciclo; termo jurídico aberto em `.grok/ESCALONAMENTOS.md`
+- `[F3-02]` Exportação CSV/XLSX/JSON com log de exportação (quem levou qual base, quando) — **@INT-06** + **@SEC-07** — **BLOQUEADO** — D8 aberta; sem rota e sem arquivo neste ciclo
+
+### Ciclo do termo — depois da parada 4
+
+- `[T-00]` Registrar a autorização, a ADR-008 e a minuta v2 sem preencher colchetes — **@CC-00** — aceite: a autorização de 2026-09-26 está no board e a minuta em `docs/lgpd/` conserva `[A PREENCHER]` — dep: []
+- `[T-01]` Consentimento no schema e trilha só com identificador pseudonimizado — **@ARQ-02** — aceite: alteração de não-rascunho não grava nome em claro; update da trilha continua impossível — dep: [T-00]
+- `[T-02]` Registro, revogação, eliminação e autocadastro público — **@SEC-07** — aceite: concluir autocadastro sem a caixa falha e não grava; eliminação não reescreve a trilha — dep: [T-01]
+- `[T-03]` QSA fora do payload, planilha pendente e webhook só com consentimento de ERP — **@INT-06** — aceite: o nome de sócio não aparece no cache nem no contato; planilha não fica consentida; sem `envio_erp` não há POST — dep: [T-02]
+- `[T-04]` Mesma tela de autorizações na captura e no QR, com destaque e botão condicional — **@UI-04** — aceite: a captura salva com pendente visível; "Concluir cadastro" nasce desabilitado — dep: [T-02]
+- `[T-05]` Bateria do termo e regressão das fases anteriores — **@QA-09** — aceite: lint, build, Jest, Vitest, Playwright e varredura de segredos executados neste host — dep: [T-03, T-04]
+- `[T-06]` Portão do ciclo do termo — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_TERMO.md — dep: [T-05]
 
 ---
 
 ## EM CURSO
 
-_(vazio)_
+- `[F2-04]` QR próprio + formulário público de autocadastro com termo de consentimento versionado — **@UI-04** + **@SEC-07** — aceite: a URL pública mostra a minuta e só conclui com a caixa de contato comercial — dep: [F2-01]
 
 ## EM REVISÃO
 
