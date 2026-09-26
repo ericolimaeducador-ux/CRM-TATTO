@@ -5,13 +5,6 @@ export interface BaseLegalDerivada {
 }
 
 export function baseLegalPorModo(modo: string | undefined): BaseLegalDerivada {
-  if (modo === 'qr_proprio' || modo === 'google_forms') {
-    return {
-      baseLegal: 'consentimento',
-      finalidade: ['relacionamento comercial'],
-      canalColeta: modo,
-    };
-  }
   return {
     baseLegal: 'legitimo_interesse',
     finalidade: ['prospecção comercial B2B'],

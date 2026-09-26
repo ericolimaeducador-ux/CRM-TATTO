@@ -40,6 +40,8 @@ export class ContatosService {
     montado.doc.avisos = montado.avisos;
     montado.doc.sincronizadoEm = new Date();
     const contato = new this.contatos(semCaminhosPontilhados(montado.doc));
+    contato.set('lgpd.contatoComercial', 'pendente');
+    contato.set('lgpd.consentimentos', []);
     this.injetarLocais(contato, usuario, montado.cpfPuro, montado.cnpjPuro);
     try {
       await contato.save();

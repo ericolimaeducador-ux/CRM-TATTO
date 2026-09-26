@@ -9,6 +9,46 @@ export function exportacaoBloqueada(revogadoEm?: Date | null): boolean {
   return revogadoEm != null;
 }
 
+export interface LgpdMinimo {
+  contatoComercial?: string;
+  revogadoEm?: Date | null;
+  eliminadoEm?: Date | null;
+  consentimentos?: { finalidade?: string; revogadoEm?: Date | null }[];
+}
+
+export function contatoComercialLiberado(lgpd?: LgpdMinimo | null): boolean {
+  if (!lgpd || lgpd.revogadoEm || lgpd.eliminadoEm) return false;
+  return lgpd.contatoComercial === 'concedido';
+}
+
+export function envioErpLiberado(lgpd?: LgpdMinimo | null): boolean {
+  if (!lgpd || lgpd.revogadoEm || lgpd.eliminadoEm) return false;
+  return (lgpd.consentimentos ?? []).some(
+    (item) => item.finalidade === 'envio_erp' && item.revogadoEm == null,
+  );
+}
+
+export function exportacaoDaFinalidadeBloqueada(
+  lgpd: LgpdMinimo | null | undefined,
+  finalidade: 'contato_comercial' | 'envio_erp',
+): boolean {
+  if (finalidade === 'envio_erp') return !envioErpLiberado(lgpd);
+  return !contatoComercialLiberado(lgpd);
+}
+
+export function prazoGuardaAuditoriaDias(): number | null {
+  const bruto = process.env.AUDITORIA_PRAZO_GUARDA_DIAS;
+  if (bruto == null || bruto.trim() === '') return null;
+  const numero = Number(bruto);
+  if (!Number.isInteger(numero) || numero < 1) return null;
+  return numero;
+}
+
+export function aplicarGuardaAuditoria(): { apagadas: 0; motivo: string } {
+  if (prazoGuardaAuditoriaDias() == null) return { apagadas: 0, motivo: 'prazo_ausente' };
+  return { apagadas: 0, motivo: 'trilha_imutavel' };
+}
+
 export function devePurgarContato(revogadoEm: Date | undefined, agora: Date): boolean {
   if (!revogadoEm) return false;
   return agora.getTime() >= revogadoEm.getTime() + PRAZO_PURGA_REVOGACAO_DIAS * DIA_MS;

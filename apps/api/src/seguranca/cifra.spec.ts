@@ -82,11 +82,11 @@ describe('plugin de cifra no schema', () => {
     expect(lido?.lgpd?.baseLegal).toBe('legitimo_interesse');
   });
 
-  it('preenche consentimento no qr_proprio e respeita escolha explícita', async () => {
+  it('não marca consentimento automático no qr_proprio e respeita escolha explícita', async () => {
     const peloModo = new modelos.Contato({ nome: 'Bia', origem: { modo: 'qr_proprio' } });
     await peloModo.save();
-    expect(peloModo.lgpd.baseLegal).toBe('consentimento');
-    expect(peloModo.lgpd.finalidade).toContain('relacionamento comercial');
+    expect(peloModo.lgpd.baseLegal).toBe('legitimo_interesse');
+    expect(peloModo.lgpd.contatoComercial).toBe('pendente');
 
     const explicito = new modelos.Contato({
       nome: 'Caio',
