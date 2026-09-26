@@ -64,6 +64,11 @@ export class TotpService {
     await this.usuarios.deleteOne({ usuarioId });
   }
 
+  async inscrito(usuarioId: string): Promise<boolean> {
+    const doc = await this.usuarios.exists({ usuarioId, segredoCifrado: { $type: 'string' } });
+    return Boolean(doc);
+  }
+
   async confirmar(
     usuarioId: string,
     codigoInformado: string,

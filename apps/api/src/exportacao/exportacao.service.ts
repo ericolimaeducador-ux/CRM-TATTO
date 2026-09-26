@@ -61,6 +61,7 @@ export class ExportacaoService {
       ...(status ? { status } : {}),
       ...(origem ? { 'origem.modo': origem } : {}),
       'lgpd.eliminadoEm': null,
+      'lgpd.contatoComercial': 'concedido',
     };
     const itens = await this.contatos.find(filtros).sort({ criadoEm: 1 }).limit(5000).lean();
     const linhas = [COLUNAS.slice(), ...itens.map(linhaDe)];

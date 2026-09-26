@@ -61,6 +61,30 @@ export function podeAuditar(): boolean {
   return papel === 'gestor' || papel === 'admin' || papel === 'auditor';
 }
 
+export function podeExportar(): boolean {
+  return perfilLogado()?.papel === 'admin';
+}
+
+export function podeImportar(): boolean {
+  const papel = perfilLogado()?.papel;
+  return papel === 'gestor' || papel === 'admin';
+}
+
+export function marcarTotpPendente(pendente: boolean): void {
+  if (pendente) localStorage.setItem('captura7.totpPendente', '1');
+  else localStorage.removeItem('captura7.totpPendente');
+}
+
+export function totpPendenteLocal(): boolean {
+  return localStorage.getItem('captura7.totpPendente') === '1';
+}
+
+export function limparSessao(): void {
+  localStorage.removeItem('captura7.token');
+  localStorage.removeItem(PERFIL);
+  localStorage.removeItem('captura7.totpPendente');
+}
+
 export function codigoTotpDoCorpo(
   codigo: string,
   teste = headersDeTesteNoCliente(),

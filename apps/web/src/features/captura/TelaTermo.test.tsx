@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { TelaTermo } from './TelaTermo';
 
 const CURTO = `**Seus dados no captura7**
@@ -33,5 +34,43 @@ describe('tela do termo', () => {
     fireEvent.click(caixa);
     expect((botao as HTMLButtonElement).disabled).toBe(false);
     expect(screen.queryByText(/sincronizado/i)).toBeNull();
+    expect(document.body.textContent).not.toContain('**');
+    expect(document.body.textContent).not.toContain('☐');
+  });
+
+  it('mostra a caixa de ERP desligada e o fallback sem a 7Safe', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('rede');
+      }),
+    );
+    render(
+      <MemoryRouter>
+        <TelaTermo modo="vendedor" />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText(/Não consegui carregar o termo/)).toBeTruthy();
+    const destaque = screen.getByTestId('destaque-consentimento');
+    expect(destaque.textContent).toContain('pessoa física');
+    expect(destaque.textContent).not.toContain('7Safe');
+    const erp = screen.getByRole('checkbox', { name: /sistema externo/i });
+    expect((erp as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('mostra Turnstile quando o servidor envia a chave pública', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => ({
+        ok: true,
+        json: async () =>
+          String(url).includes('captcha')
+            ? { dados: { provedor: 'turnstile', sitekey: 'chave-publica' } }
+            : { dados: { versao: 'v', textoCurto: 'Curto', textoCompleto: 'Completo' } },
+      })),
+    );
+    render(<TelaTermo modo="autocadastro" token="abc" />);
+    expect(await screen.findByTestId('widget-captcha')).toBeTruthy();
+    expect(screen.getByLabelText('Token do captcha')).toBeTruthy();
   });
 });

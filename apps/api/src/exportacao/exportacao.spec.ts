@@ -55,11 +55,39 @@ describe('exportação do administrador', () => {
       .set(cabecalho('admin', ADMIN));
     expect(semPasso.status).toBe(403);
     expect(JSON.stringify(semPasso.body)).toContain('STEP_UP_NECESSARIO');
+    const Contato = app.get<Model<{ nome?: string }>>(getModelToken('Contato'));
+    await Contato.updateOne(
+      { nome: 'Lead Exportado' },
+      { $set: { 'lgpd.contatoComercial': 'concedido' } },
+    );
+    await request(app.getHttpServer())
+      .post('/v1/contatos')
+      .set(cabecalho('vendedor', VENDEDOR))
+      .send({ nome: 'Lead Revogado', email: 'revogado@exemplo.com' });
+    await request(app.getHttpServer())
+      .post('/v1/contatos')
+      .set(cabecalho('vendedor', VENDEDOR))
+      .send({ nome: 'Lead Pendente', email: 'pendente@exemplo.com' });
+    await request(app.getHttpServer())
+      .post('/v1/contatos')
+      .set(cabecalho('vendedor', VENDEDOR))
+      .send({ nome: 'Lead Eliminado', email: 'eliminado@exemplo.com' });
+    await Contato.updateOne(
+      { nome: 'Lead Revogado' },
+      { $set: { 'lgpd.contatoComercial': 'revogado', 'lgpd.revogadoEm': new Date() } },
+    );
+    await Contato.updateOne(
+      { nome: 'Lead Eliminado' },
+      { $set: { 'lgpd.contatoComercial': 'concedido', 'lgpd.eliminadoEm': new Date() } },
+    );
     const csv = await request(app.getHttpServer())
       .get('/v1/exportacoes?formato=csv&origem=manual')
       .set(cabecalho('admin', ADMIN, true));
     expect(csv.status).toBe(200);
     expect(csv.text).toContain('Lead Exportado');
+    expect(csv.text).not.toContain('Lead Revogado');
+    expect(csv.text).not.toContain('Lead Pendente');
+    expect(csv.text).not.toContain('Lead Eliminado');
     expect(csv.text).not.toContain('senha');
     const trilha = app.get<Model<{ autorId: string; quantidade: number }>>(
       getModelToken('ExportacaoAuditoria'),

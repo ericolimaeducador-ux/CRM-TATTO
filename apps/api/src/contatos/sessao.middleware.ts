@@ -7,6 +7,7 @@ export interface UsuarioSessao {
   papel: string;
   nome: string;
   stepUp: boolean;
+  totpPendente?: boolean;
 }
 
 export type RequisicaoComUsuario = Request & { usuario?: UsuarioSessao };

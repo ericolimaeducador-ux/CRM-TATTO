@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Headers, Post, Req } from '@nestjs/common';
-import { Papel, Publico } from './papeis.decorator';
+import { Body, Controller, Get, Headers, HttpCode, Post, Req } from '@nestjs/common';
+import { Papel, Publico, SemTotp } from './papeis.decorator';
 import { PAPEIS } from './perfil-permissoes';
 import { RespostaComErro } from '../contatos/erros-http';
 import type { RequisicaoComUsuario, UsuarioSessao } from '../contatos/sessao.middleware';
@@ -31,9 +31,40 @@ export class AuthController {
 
   @Get('eu')
   @Papel(...PAPEIS)
+  @SemTotp()
   eu(@Req() req: RequisicaoComUsuario) {
     const usuario = exigir(req);
     return { dados: usuario, avisos: [], erros: [] };
+  }
+
+  @Post('sair')
+  @HttpCode(200)
+  @Papel(...PAPEIS)
+  @SemTotp()
+  async sair(
+    @Headers('authorization') authorization: string | undefined,
+    @Req() req: RequisicaoComUsuario,
+  ) {
+    exigir(req);
+    await this.auth.sair((authorization ?? '').replace(/^Bearer\s+/i, '').trim());
+    return { dados: { encerrada: true }, avisos: [], erros: [] };
+  }
+
+  @Post('senha')
+  @HttpCode(200)
+  @Papel(...PAPEIS)
+  @SemTotp()
+  async senha(
+    @Body() corpo: { senhaAtual?: string; senhaNova?: string },
+    @Req() req: RequisicaoComUsuario,
+  ) {
+    const usuario = exigir(req);
+    const dados = await this.auth.trocarSenha(
+      usuario.id,
+      corpo.senhaAtual ?? '',
+      corpo.senhaNova ?? '',
+    );
+    return { dados, avisos: [], erros: [] };
   }
 }
 

@@ -13,6 +13,7 @@ export interface ContatoLocal {
   consentimento?: {
     contatoComercial: boolean;
     emDispositivo: string;
+    envioErp?: boolean;
     estado: 'local' | 'enviado';
   };
   conflito?: {

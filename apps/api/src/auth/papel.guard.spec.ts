@@ -3,7 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AuthModule } from './auth.module';
-import { ExigeStepUp, Papel } from './papeis.decorator';
+import { ExigeStepUp, Papel, SemTotp } from './papeis.decorator';
 import { PapelGuard } from './papel.guard';
 import { PERFIL_PERMISSOES, podeAcessarCarteira, podeEscrever } from './perfil-permissoes';
 
@@ -24,6 +24,16 @@ class ControladorComPapel {
   }
 }
 
+@Controller('conta')
+class ControladorSemTotp {
+  @Get()
+  @Papel('admin')
+  @SemTotp()
+  ping(): { ok: true } {
+    return { ok: true };
+  }
+}
+
 @Controller('exporta')
 class ControladorStepUp {
   @Get()
@@ -39,7 +49,12 @@ describe('PapelGuard', () => {
 
   beforeAll(async () => {
     const modulo = await Test.createTestingModule({
-      controllers: [ControladorSemPapel, ControladorComPapel, ControladorStepUp],
+      controllers: [
+        ControladorSemPapel,
+        ControladorComPapel,
+        ControladorStepUp,
+        ControladorSemTotp,
+      ],
       providers: [{ provide: APP_GUARD, useClass: PapelGuard }],
     }).compile();
     app = modulo.createNestApplication();
@@ -47,7 +62,7 @@ describe('PapelGuard', () => {
       (
         req: {
           header: (nome: string) => string | undefined;
-          usuario?: { papel?: string; stepUp?: boolean };
+          usuario?: { papel?: string; stepUp?: boolean; totpPendente?: boolean };
         },
         _res: unknown,
         next: () => void,
@@ -56,6 +71,7 @@ describe('PapelGuard', () => {
         req.usuario = {
           papel,
           stepUp: req.header('x-step-up-teste') === '1',
+          totpPendente: req.header('x-totp-pendente') === '1',
         };
         next();
       },
@@ -93,6 +109,20 @@ describe('PapelGuard', () => {
       .set('x-papel-teste', 'gestor')
       .set('x-step-up-teste', '1');
     expect(com.status).toBe(200);
+  });
+
+  it('segura o admin sem autenticador e libera a rota marcada', async () => {
+    const preso = await request(app.getHttpServer())
+      .get('/venda')
+      .set('x-papel-teste', 'admin')
+      .set('x-totp-pendente', '1');
+    expect(preso.status).toBe(403);
+    expect(JSON.stringify(preso.body)).toContain('TOTP_NAO_INSCRITO');
+    const livre = await request(app.getHttpServer())
+      .get('/conta')
+      .set('x-papel-teste', 'admin')
+      .set('x-totp-pendente', '1');
+    expect(livre.status).toBe(200);
   });
 
   it('registra o guard como APP_GUARD no AuthModule', () => {

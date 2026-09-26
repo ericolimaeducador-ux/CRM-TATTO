@@ -14,7 +14,7 @@ Sobe `mongo` (MongoDB 7, só em `127.0.0.1:27017`), `api` (`NODE_ENV=production`
 
 ## TLS
 
-O site do Compose escuta HTTPS com certificado autoassinado, gerado no volume `certs`. O celular na mesma rede aceita o aviso uma vez e então instala o PWA. A API não é publicada na rede: o nginx encaminha `/v1/` e grava só `$remote_addr` em `X-Forwarded-For`.
+O site do Compose escuta HTTPS com certificado assinado por uma CA local, gravada no volume `certs` (`ca.crt`, `captura7.crt`). O nome cobre `localhost`, `127.0.0.1` e os IPs de `CERT_IPS`. Instale `ca.crt` no computador e no celular, como em `INSTALAR-WINDOWS.md`. Sem essa CA, o aviso continua e o PWA offline pode não instalar. Visitante do QR precisa da mesma CA: IP privado não recebe certificado público. A API não é publicada na rede: o nginx encaminha `/v1/` e grava só `$remote_addr` em `X-Forwarded-For`.
 
 ## Segredos
 

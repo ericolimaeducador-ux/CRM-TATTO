@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { urlDaApi } from '@/lib/api-url';
 import { cabecalhosDaSessao } from '@/lib/offline/sessao';
+import { DesafioCaptcha, tokenDoWidget } from './DesafioCaptcha';
+import { limparMarcadores, MarkdownSimples } from './MarkdownSimples';
 
 interface TextoTermo {
   versao: string;
@@ -18,7 +20,7 @@ export function TelaTermo({
   modo: 'autocadastro' | 'vendedor';
   token?: string;
   idServidor?: string;
-  aoGuardarLocal?: (emDispositivo: string) => Promise<void>;
+  aoGuardarLocal?: (emDispositivo: string, envioErp: boolean) => Promise<void>;
 }) {
   const [texto, setTexto] = useState<TextoTermo | null>(null);
   const [marcado, setMarcado] = useState(false);
@@ -29,6 +31,8 @@ export function TelaTermo({
   const [mensagem, setMensagem] = useState('');
   const [captchaId, setCaptchaId] = useState('');
   const [pergunta, setPergunta] = useState('');
+  const [provedorCaptcha, setProvedorCaptcha] = useState('local');
+  const [sitekey, setSitekey] = useState('');
   const [respostaCaptcha, setRespostaCaptcha] = useState('');
   const [envioErp, setEnvioErp] = useState(false);
 
@@ -36,12 +40,18 @@ export function TelaTermo({
     if (modo !== 'autocadastro') return;
     void fetch(urlDaApi('/v1/publico/captcha'))
       .then((resposta) => resposta.json())
-      .then((json: { dados?: { id?: string; pergunta?: string } }) => {
-        if (json.dados?.id && json.dados.pergunta) {
-          setCaptchaId(json.dados.id);
-          setPergunta(json.dados.pergunta);
-        }
-      })
+      .then(
+        (json: {
+          dados?: { id?: string; pergunta?: string; provedor?: string; sitekey?: string };
+        }) => {
+          if (json.dados?.provedor) setProvedorCaptcha(json.dados.provedor);
+          if (json.dados?.sitekey) setSitekey(json.dados.sitekey);
+          if (json.dados?.id && json.dados.pergunta) {
+            setCaptchaId(json.dados.id);
+            setPergunta(json.dados.pergunta);
+          }
+        },
+      )
       .catch(() => setMensagem('Não consegui carregar o desafio. Nada foi gravado.'));
   }, [modo]);
 
@@ -55,14 +65,23 @@ export function TelaTermo({
   }, []);
 
   const curto = texto?.textoCurto ?? '';
-  const destaque = linha(curto, 'Importante: este cadastro existe');
-  const comercial = linha(curto, 'Contato comercial (necessário para concluir o cadastro)');
+  const destaque = limparMarcadores(linha(curto, 'Importante: este cadastro existe'));
+  const comercial = limparMarcadores(
+    linha(curto, 'Contato comercial (necessário para concluir o cadastro)'),
+  );
+  const captchaExterno = modo === 'autocadastro' && provedorCaptcha !== 'local';
+  const captchaLocalPendente =
+    modo === 'autocadastro' &&
+    provedorCaptcha === 'local' &&
+    Boolean(captchaId) &&
+    !respostaCaptcha.trim();
+  const captchaExternoPendente = captchaExterno && !tokenDoWidget(respostaCaptcha);
 
   async function concluir() {
     if (!marcado) return;
     const emDispositivo = new Date().toISOString();
     if (modo === 'vendedor' && !idServidor) {
-      await aoGuardarLocal?.(emDispositivo);
+      await aoGuardarLocal?.(emDispositivo, envioErp);
       setMensagem(
         'A escolha do titular ficou neste aparelho, com o horário deste aparelho, e sobe com a fila.',
       );
@@ -83,9 +102,10 @@ export function TelaTermo({
             envioErp,
             emDispositivo,
             captchaId,
-            captchaResposta: respostaCaptcha,
+            captchaResposta: provedorCaptcha === 'local' ? respostaCaptcha : undefined,
+            captchaToken: provedorCaptcha === 'local' ? undefined : tokenDoWidget(respostaCaptcha),
           }
-        : { contatoComercial: true, emDispositivo };
+        : { contatoComercial: true, emDispositivo, envioErp };
     const resposta = await fetch(urlDaApi(caminho), {
       method: 'POST',
       headers:
@@ -115,7 +135,7 @@ export function TelaTermo({
         data-testid="destaque-consentimento"
       >
         {destaque ||
-          'Importante: este cadastro existe para que a 7Safe possa entrar em contato com você para apresentar produtos e serviços. Por isso, sem a autorização de contato comercial abaixo não é possível concluir o cadastro. Você pode revogar essa autorização depois, a qualquer momento e de graça.'}
+          'Importante: este cadastro existe para que o controlador, pessoa física, possa entrar em contato com você. O canal é o e-mail em CONTROLADOR_EMAIL. Por isso, sem a autorização de contato comercial abaixo não é possível concluir o cadastro.'}
       </p>
       <label className="flex min-h-12 items-start gap-3 text-base">
         <input
@@ -126,29 +146,26 @@ export function TelaTermo({
         />
         <span>{comercial || 'Contato comercial (necessário para concluir o cadastro).'}</span>
       </label>
+      <label className="flex min-h-12 items-start gap-3 text-base">
+        <input
+          className="mt-1 h-6 w-6"
+          type="checkbox"
+          checked={envioErp}
+          onChange={(evento) => setEnvioErp(evento.target.checked)}
+        />
+        <span>
+          Envio a sistema externo, opcional e desligado. Enquanto ERP_WEBHOOK_URL estiver vazio,
+          esta caixa não envia nada.
+        </span>
+      </label>
       {modo === 'autocadastro' ? (
-        <label className="flex min-h-12 items-start gap-3 text-base">
-          <input
-            className="mt-1 h-6 w-6"
-            type="checkbox"
-            checked={envioErp}
-            onChange={(evento) => setEnvioErp(evento.target.checked)}
-          />
-          <span>
-            Envio a sistema externo, se o controlador configurar um. Esta caixa é opcional.
-          </span>
-        </label>
-      ) : null}
-      {modo === 'autocadastro' && pergunta ? (
-        <label className="flex flex-col gap-1 text-base">
-          Resposta do desafio
-          <span data-testid="pergunta-captcha">{pergunta}</span>
-          <input
-            className="min-h-12 rounded border border-stone-300 px-3"
-            value={respostaCaptcha}
-            onChange={(evento) => setRespostaCaptcha(evento.target.value)}
-          />
-        </label>
+        <DesafioCaptcha
+          provedor={provedorCaptcha}
+          sitekey={sitekey}
+          pergunta={pergunta}
+          valor={respostaCaptcha}
+          aoMudar={setRespostaCaptcha}
+        />
       ) : null}
       {modo === 'autocadastro' ? (
         <div className="flex flex-col gap-3">
@@ -157,7 +174,7 @@ export function TelaTermo({
           <Campo rotulo="Telefone" valor={telefone} aoMudar={setTelefone} />
         </div>
       ) : null}
-      <pre className="whitespace-pre-wrap font-sans text-base">{curto}</pre>
+      {curto ? <MarkdownSimples texto={curto} /> : null}
       <div className="flex flex-col gap-3">
         <button
           type="button"
@@ -169,17 +186,13 @@ export function TelaTermo({
         <button
           type="button"
           className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white disabled:opacity-40"
-          disabled={
-            !marcado || (modo === 'autocadastro' && Boolean(captchaId) && !respostaCaptcha.trim())
-          }
+          disabled={!marcado || captchaLocalPendente || captchaExternoPendente}
           onClick={() => void concluir()}
         >
           Concluir cadastro
         </button>
       </div>
-      {completo ? (
-        <pre className="whitespace-pre-wrap font-sans text-base">{texto?.textoCompleto}</pre>
-      ) : null}
+      {completo ? <MarkdownSimples texto={texto?.textoCompleto ?? ''} /> : null}
       {mensagem ? <p className="text-base">{mensagem}</p> : null}
       <p className="text-base">Versão do termo: {texto?.versao ?? '2026-09-26-uso-pessoal'}</p>
       {modo === 'vendedor' ? (

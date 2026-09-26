@@ -11,6 +11,23 @@ export function zerarDesafios(): void {
   desafios.clear();
 }
 
+export function descreverCaptcha(): {
+  provedor: string;
+  id?: string;
+  pergunta?: string;
+  sitekey?: string;
+} {
+  const provedor = (process.env.CAPTCHA_PROVEDOR ?? 'local').trim().toLowerCase();
+  if (provedor === 'hcaptcha' || provedor === 'turnstile') {
+    const bruto =
+      provedor === 'hcaptcha' ? process.env.HCAPTCHA_SITEKEY : process.env.TURNSTILE_SITEKEY;
+    const sitekey = bruto?.trim() && !/preencha/i.test(bruto) ? bruto.trim() : '';
+    return { provedor, sitekey };
+  }
+  const local = emitirDesafioLocal();
+  return { provedor: 'local', id: local.id, pergunta: local.pergunta };
+}
+
 export function emitirDesafioLocal(agora = Date.now()): { id: string; pergunta: string } {
   const a = randomInt(2, 10);
   const b = randomInt(2, 10);

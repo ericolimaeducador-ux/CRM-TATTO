@@ -1,10 +1,11 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { CHAVE_PAPEIS, CHAVE_PUBLICO, CHAVE_STEP_UP } from './papeis.decorator';
+import { CHAVE_PAPEIS, CHAVE_PUBLICO, CHAVE_SEM_TOTP, CHAVE_STEP_UP } from './papeis.decorator';
 
 interface UsuarioDaRequisicao {
   papel?: string;
   stepUp?: boolean;
+  totpPendente?: boolean;
 }
 
 @Injectable()
@@ -29,6 +30,17 @@ export class PapelGuard implements CanActivate {
       throw new ForbiddenException({
         codigo: 'PAPEL_INSUFICIENTE',
         mensagem: 'Seu papel não faz esta ação. Se a tarefa é sua, peça a um gestor ou admin.',
+      });
+    }
+
+    if (
+      usuario.totpPendente === true &&
+      !this.reflector.getAllAndOverride<boolean>(CHAVE_SEM_TOTP, alvos)
+    ) {
+      throw new ForbiddenException({
+        codigo: 'TOTP_NAO_INSCRITO',
+        mensagem:
+          'O administrador precisa inscrever o autenticador neste primeiro acesso. As outras ações ficam fechadas até lá.',
       });
     }
 

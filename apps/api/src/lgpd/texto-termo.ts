@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { mesesDeRetencao } from './retencao';
+import { diasDePurgaRevogacao, diasDeRascunho, mesesDeRetencao } from './retencao';
 
 export const VERSAO_TERMO = '2026-09-26-uso-pessoal';
 
@@ -26,7 +26,9 @@ export function textoDoTermo(): TextoTermo {
   if (!bruto) bruto = lerMinuta();
   const minuta = bruto
     .replaceAll('{{CONTROLADOR_EMAIL}}', emailDoControlador())
-    .replaceAll('{{RETENCAO_MESES}}', String(mesesDeRetencao()));
+    .replaceAll('{{RETENCAO_MESES}}', String(mesesDeRetencao()))
+    .replaceAll('{{PURGA_REVOGACAO_DIAS}}', String(diasDePurgaRevogacao()))
+    .replaceAll('{{RASCUNHO_DIAS}}', String(diasDeRascunho()));
   const textoCurto = entre(minuta, '**Seus dados no captura7**', '## PARTE 2').trim();
   const textoCompleto = entre(minuta, '## PARTE 2 — Versão completa', '## PARTE 3').trim();
   return {

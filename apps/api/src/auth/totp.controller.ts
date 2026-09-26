@@ -1,6 +1,6 @@
 import { Body, Controller, Post, Req } from '@nestjs/common';
-import { PERFIL_PERMISSOES } from './perfil-permissoes';
-import { Papel } from './papeis.decorator';
+import { PAPEIS } from './perfil-permissoes';
+import { Papel, SemTotp } from './papeis.decorator';
 import { RespostaComErro } from '../contatos/erros-http';
 import type { RequisicaoComUsuario, UsuarioSessao } from '../contatos/sessao.middleware';
 import { TotpService } from './totp.service';
@@ -10,7 +10,8 @@ export class TotpController {
   constructor(private readonly totp: TotpService) {}
 
   @Post('inscrever')
-  @Papel(...PERFIL_PERMISSOES.transicionar_cliente)
+  @Papel(...PAPEIS)
+  @SemTotp()
   async inscrever(@Req() req: RequisicaoComUsuario, @Body() corpo: { codigoTotp?: string }) {
     const usuario = exigirUsuario(req);
     const dados = await this.totp.inscrever(usuario.id, {

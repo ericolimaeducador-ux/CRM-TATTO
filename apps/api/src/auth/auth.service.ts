@@ -25,6 +25,12 @@ interface SessaoDoc {
   stepUpAte?: Date | null;
 }
 
+interface AuditoriaAuth {
+  evento: string;
+  usuarioId: string;
+  em: Date;
+}
+
 const FALHAS = new Map<string, number[]>();
 
 @Injectable()
@@ -32,6 +38,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @InjectModel('Usuario') private readonly usuarios: Model<UsuarioDoc>,
     @InjectModel('SessaoToken') private readonly sessoes: Model<SessaoDoc>,
+    @InjectModel('AuthAuditoria') private readonly auditoria: Model<AuditoriaAuth>,
     private readonly totp: TotpService,
   ) {}
 
@@ -64,9 +71,19 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       );
     }
     FALHAS.delete(login);
+    const usuarioId = String(usuario._id);
+    const inscrito = await this.totp.inscrito(usuarioId);
     let stepUpAte: Date | null = null;
-    if (codigoTotp?.trim()) {
-      const veredito = await this.totp.confirmar(String(usuario._id), codigoTotp);
+    if (inscrito) {
+      if (!codigoTotp?.trim()) {
+        throw new RespostaComErro(
+          403,
+          'TOTP_OBRIGATORIO',
+          'Este usuário já inscreveu o autenticador. Informe o código de 6 dígitos. Nada foi aberto.',
+          null,
+        );
+      }
+      const veredito = await this.totp.confirmar(usuarioId, codigoTotp);
       if (!veredito.aceito) {
         throw new RespostaComErro(403, veredito.codigo, veredito.mensagem, null);
       }
@@ -76,7 +93,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     const expiraEm = new Date(Date.now() + 12 * 60 * 60 * 1000);
     await this.sessoes.create({
       tokenHash: hashToken(token),
-      usuarioId: String(usuario._id),
+      usuarioId,
       papel: usuario.papel,
       nome: usuario.nome,
       expiraEm,
@@ -85,8 +102,9 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     return {
       token,
       expiraEm,
-      usuario: { id: String(usuario._id), papel: usuario.papel, nome: usuario.nome },
+      usuario: { id: usuarioId, papel: usuario.papel, nome: usuario.nome },
       stepUp: stepUpAte != null,
+      precisaInscreverTotp: usuario.papel === 'admin' && !inscrito,
     };
   }
 
@@ -116,7 +134,39 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       .lean<SessaoDoc | null>();
     if (!sessao || new Date(sessao.expiraEm).getTime() <= Date.now()) return null;
     const stepUp = sessao.stepUpAte != null && new Date(sessao.stepUpAte).getTime() > Date.now();
-    return { id: sessao.usuarioId, papel: sessao.papel, nome: sessao.nome, stepUp };
+    const totpPendente = sessao.papel === 'admin' && !(await this.totp.inscrito(sessao.usuarioId));
+    return { id: sessao.usuarioId, papel: sessao.papel, nome: sessao.nome, stepUp, totpPendente };
+  }
+
+  async sair(token: string): Promise<void> {
+    if (!token) return;
+    await this.sessoes.deleteOne({ tokenHash: hashToken(token) });
+  }
+
+  async trocarSenha(usuarioId: string, senhaAtual: string, senhaNova: string) {
+    const usuario = await this.usuarios.findById(usuarioId).lean<UsuarioDoc | null>();
+    if (!usuario || !(await senhaConfere(senhaAtual, usuario.senhaHash))) {
+      throw new RespostaComErro(
+        401,
+        'SENHA_ATUAL_INVALIDA',
+        'A senha atual não confere. A senha não mudou.',
+        null,
+      );
+    }
+    let senhaHash: string;
+    try {
+      senhaHash = await hashSenha(senhaNova);
+    } catch {
+      throw new RespostaComErro(
+        422,
+        'SENHA_CURTA',
+        'A senha nova precisa de 12 caracteres ou mais. A senha não mudou.',
+        null,
+      );
+    }
+    await this.usuarios.updateOne({ _id: usuario._id }, { $set: { senhaHash } });
+    await this.auditoria.create({ evento: 'troca_senha', usuarioId, em: new Date() });
+    return { trocada: true };
   }
 
   async criarUsuario(loginBruto: string, senha: string, nome: string, papel: string) {

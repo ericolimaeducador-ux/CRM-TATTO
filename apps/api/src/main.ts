@@ -1,3 +1,4 @@
+import './carregar-env-bootstrap';
 import 'reflect-metadata';
 import type { Express, Request, Response } from 'express';
 import { NestFactory } from '@nestjs/core';

@@ -37,6 +37,19 @@ describe('gestão de usuários', () => {
   });
 
   it('cria, recusa papel e login repetido, muda perfil com TOTP e desativa', async () => {
+    const preso = await request(app.getHttpServer())
+      .post('/v1/usuarios')
+      .set(auth())
+      .send({ login: 'ana', senha: 'senha-bem-longa', nome: 'Ana', papel: 'vendedor' });
+    expect(preso.status).toBe(403);
+    expect(JSON.stringify(preso.body)).toContain('TOTP_NAO_INSCRITO');
+    const inscricao = await request(app.getHttpServer())
+      .post('/v1/auth/totp/inscrever')
+      .set(auth())
+      .send({});
+    expect(inscricao.status).toBe(201);
+    const codigo = codigoNoPasso(inscricao.body.dados.segredoBase32 as string, passoAtual());
+
     const criado = await request(app.getHttpServer())
       .post('/v1/usuarios')
       .set(auth())
@@ -66,12 +79,6 @@ describe('gestão de usuários', () => {
     expect(semPasso.status).toBe(403);
     expect(JSON.stringify(semPasso.body)).toContain('STEP_UP_NECESSARIO');
 
-    const inscricao = await request(app.getHttpServer())
-      .post('/v1/auth/totp/inscrever')
-      .set(auth())
-      .send({});
-    expect(inscricao.status).toBe(201);
-    const codigo = codigoNoPasso(inscricao.body.dados.segredoBase32 as string, passoAtual());
     const passo = await request(app.getHttpServer())
       .post('/v1/auth/step-up')
       .set(auth())
