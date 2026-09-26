@@ -14,6 +14,7 @@ import { zerarPedidosPublicos } from './pedidos-publicos';
 import { textoDoTermo } from './texto-termo';
 
 const VENDEDOR = new Types.ObjectId().toHexString();
+const OUTRO = new Types.ObjectId().toHexString();
 const GESTOR = new Types.ObjectId().toHexString();
 
 describe('termo de consentimento', () => {
@@ -109,21 +110,82 @@ describe('termo de consentimento', () => {
   });
 
   it('pede captcha não configurado a partir da quarta tentativa do mesmo IP', async () => {
-    const qr = await request(app.getHttpServer())
-      .post('/v1/qr')
-      .set(cabecalho('vendedor', VENDEDOR));
-    const token = qr.body.dados.token as string;
     for (let i = 0; i < 3; i += 1) {
+      const token = await emitirQr();
       const ok = await request(app.getHttpServer())
         .post('/v1/publico/autocadastro')
         .send({ token, nome: `Pessoa ${i}`, contatoComercial: true });
       expect(ok.status).toBe(201);
     }
+    const token = await emitirQr();
     const parado = await request(app.getHttpServer())
       .post('/v1/publico/autocadastro')
       .send({ token, nome: 'Quarta', contatoComercial: true });
     expect(parado.status).toBe(429);
     expect(parado.body.erros[0].codigo).toBe('CAPTCHA_NAO_CONFIGURADO');
+  });
+
+  it('expira, gasta uma vez e revoga o token do QR', async () => {
+    const token = await emitirQr();
+    const modelo = app.get<Model<{ expiraEm: Date; usos: number }>>(
+      getModelToken('TokenAutocadastro'),
+    );
+    await modelo.updateOne({ token }, { $set: { expiraEm: new Date(Date.now() - 1000) } });
+    const expirado = await concluir(token, 'Expirado');
+    expect(expirado.status).toBe(410);
+    expect(expirado.body.erros[0].codigo).toBe('TOKEN_EXPIRADO');
+
+    await modelo.updateOne(
+      { token },
+      { $set: { expiraEm: new Date(Date.now() + 60_000), usos: 0, limiteUsos: 1 } },
+    );
+    expect((await concluir(token, 'Primeiro Uso')).status).toBe(201);
+    const esgotado = await concluir(token, 'Segundo Uso');
+    expect(esgotado.status).toBe(410);
+    expect(esgotado.body.erros[0].codigo).toBe('TOKEN_ESGOTADO');
+
+    const fresco = await emitirQr();
+    const alheio = await request(app.getHttpServer())
+      .post(`/v1/qr/${fresco}/revogar`)
+      .set(cabecalho('vendedor', OUTRO));
+    expect(alheio.status).toBe(403);
+    const revogado = await request(app.getHttpServer())
+      .post(`/v1/qr/${fresco}/revogar`)
+      .set(cabecalho('vendedor', VENDEDOR));
+    expect(revogado.status).toBe(201);
+    zerarPedidosPublicos();
+    const depois = await concluir(fresco, 'Revogado');
+    expect(depois.status).toBe(410);
+    expect(depois.body.erros[0].codigo).toBe('TOKEN_REVOGADO');
+  });
+
+  it('não soma o limite de visitantes diferentes atrás do proxy', async () => {
+    const http = app.getHttpAdapter().getInstance() as {
+      set: (chave: string, valor: unknown) => void;
+    };
+    http.set('trust proxy', 1);
+    for (let i = 0; i < 3; i += 1) {
+      const token = await emitirQr();
+      const ok = await request(app.getHttpServer())
+        .post('/v1/publico/autocadastro')
+        .set('X-Forwarded-For', '203.0.113.10')
+        .send({ token, nome: `Proxy ${i}`, contatoComercial: true });
+      expect(ok.status).toBe(201);
+    }
+    const tokenQuarto = await emitirQr();
+    const quarto = await request(app.getHttpServer())
+      .post('/v1/publico/autocadastro')
+      .set('X-Forwarded-For', '203.0.113.10')
+      .send({ token: tokenQuarto, nome: 'Proxy Quarto', contatoComercial: true });
+    expect(quarto.status).toBe(429);
+    expect(quarto.body.erros[0].codigo).toBe('CAPTCHA_NAO_CONFIGURADO');
+    const tokenOutro = await emitirQr();
+    const outro = await request(app.getHttpServer())
+      .post('/v1/publico/autocadastro')
+      .set('X-Forwarded-For', '203.0.113.11')
+      .send({ token: tokenOutro, nome: 'Outro Visitante', contatoComercial: true });
+    expect(outro.status).toBe(201);
+    http.set('trust proxy', false);
   });
 
   it('revoga na hora e elimina sem reescrever a trilha nem deixar o nome em claro', async () => {
@@ -185,6 +247,20 @@ describe('termo de consentimento', () => {
       Auditoria.updateOne({ _id: antes[0]?._id }, { valorNovo: 'Elisa' }),
     ).rejects.toBeInstanceOf(AuditoriaImutavel);
   });
+
+  async function emitirQr(): Promise<string> {
+    const qr = await request(app.getHttpServer())
+      .post('/v1/qr')
+      .set(cabecalho('vendedor', VENDEDOR));
+    expect(qr.status).toBe(201);
+    return qr.body.dados.token as string;
+  }
+
+  function concluir(token: string, nome: string) {
+    return request(app.getHttpServer())
+      .post('/v1/publico/autocadastro')
+      .send({ token, nome, contatoComercial: true });
+  }
 });
 
 function cabecalho(papel: string, id: string): Record<string, string> {

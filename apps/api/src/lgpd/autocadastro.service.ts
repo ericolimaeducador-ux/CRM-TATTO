@@ -9,10 +9,15 @@ import type { UsuarioSessao } from '../contatos/sessao.middleware';
 import type { AutocadastroDto } from './autocadastro.dto';
 import { gravarConcessao } from './consentimento.service';
 import { classificarPedido } from './pedidos-publicos';
+import { limiteDeUsosDoToken, prazoTokenSegundos } from './prazo-token';
 
 interface TokenDoc {
   token: string;
   vendedorId: Types.ObjectId;
+  expiraEm: Date;
+  usos: number;
+  limiteUsos: number;
+  revogadoEm?: Date | null;
 }
 
 interface DocNovo {
@@ -33,12 +38,32 @@ export class AutocadastroService {
 
   async emitir(usuario: UsuarioSessao): Promise<{ token: string; caminho: string }> {
     const token = randomBytes(24).toString('hex');
+    const agora = new Date();
     await this.tokens.create({
       token,
       vendedorId: new Types.ObjectId(usuario.id),
-      criadoEm: new Date(),
+      criadoEm: agora,
+      expiraEm: new Date(agora.getTime() + prazoTokenSegundos() * 1000),
+      usos: 0,
+      limiteUsos: limiteDeUsosDoToken(),
+      revogadoEm: null,
     });
     return { token, caminho: `/p/${token}` };
+  }
+
+  async revogar(tokenBruto: string, usuario: UsuarioSessao) {
+    const doc = await this.tokens.findOne({ token: tokenBruto });
+    if (!doc) recusar(404, 'TOKEN_AUSENTE', 'Este QR não está ativo. Nada foi revogado.');
+    const dono = String(doc.vendedorId) === usuario.id;
+    const gestao = usuario.papel === 'gestor' || usuario.papel === 'admin';
+    if (!dono && !gestao) {
+      recusar(403, 'PAPEL_INSUFICIENTE', 'Só quem emitiu o QR, ou um gestor, pode revogá-lo.');
+    }
+    if (!doc.revogadoEm) {
+      doc.revogadoEm = new Date();
+      await doc.save();
+    }
+    return { token: doc.token, revogadoEm: doc.revogadoEm };
   }
 
   async concluir(corpo: AutocadastroDto, ip: string) {
@@ -67,15 +92,7 @@ export class AutocadastroService {
         null,
       );
     }
-    const token = await this.tokens.findOne({ token: corpo.token ?? '' }).lean<TokenDoc>();
-    if (!token) {
-      throw new RespostaComErro(
-        404,
-        'TOKEN_AUSENTE',
-        'Este QR não está ativo. Peça outro ao vendedor. Nada foi gravado.',
-        null,
-      );
-    }
+    const token = await this.reservar(corpo.token ?? '');
     const montado = montarCriacao({
       nome: corpo.nome,
       email: corpo.email,
@@ -92,4 +109,45 @@ export class AutocadastroService {
     const gravado = await this.contatos.findById(contato._id).lean();
     return { dados: gravado, avisos: montado.avisos, erros: [] };
   }
+
+  private async reservar(tokenBruto: string): Promise<TokenDoc> {
+    const token = tokenBruto.trim();
+    const doc = await this.tokens.findOne({ token }).lean<TokenDoc>();
+    if (!doc) {
+      recusar(
+        404,
+        'TOKEN_AUSENTE',
+        'Este QR não está ativo. Peça outro ao vendedor. Nada foi gravado.',
+      );
+    }
+    if (doc.revogadoEm) {
+      recusar(
+        410,
+        'TOKEN_REVOGADO',
+        'Este QR foi revogado. Peça outro ao vendedor. Nada foi gravado.',
+      );
+    }
+    if (new Date(doc.expiraEm).getTime() <= Date.now()) {
+      recusar(410, 'TOKEN_EXPIRADO', 'Este QR expirou. Peça outro ao vendedor. Nada foi gravado.');
+    }
+    const reservado = await this.tokens
+      .findOneAndUpdate(
+        { token, revogadoEm: null, expiraEm: { $gt: new Date() }, usos: { $lt: doc.limiteUsos } },
+        { $inc: { usos: 1 } },
+        { new: true },
+      )
+      .lean<TokenDoc>();
+    if (!reservado) {
+      recusar(
+        410,
+        'TOKEN_ESGOTADO',
+        'Este QR já foi usado. Peça outro ao vendedor. Nada foi gravado.',
+      );
+    }
+    return reservado;
+  }
+}
+
+function recusar(status: number, codigo: string, mensagem: string): never {
+  throw new RespostaComErro(status, codigo, mensagem, null);
 }

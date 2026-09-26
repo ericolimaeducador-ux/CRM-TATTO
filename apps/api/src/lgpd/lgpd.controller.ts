@@ -49,6 +49,13 @@ export class QrController {
     const emitido = await this.autocadastro.emitir(exigirUsuario(req));
     return { dados: emitido, avisos: [], erros: [] };
   }
+
+  @Post('qr/:token/revogar')
+  @Papel(...PERFIL_PERMISSOES.criar_contato)
+  async revogar(@Param('token') token: string, @Req() req: RequisicaoComUsuario) {
+    const dados = await this.autocadastro.revogar(token, exigirUsuario(req));
+    return { dados, avisos: [], erros: [] };
+  }
 }
 
 @Controller('v1/contatos')

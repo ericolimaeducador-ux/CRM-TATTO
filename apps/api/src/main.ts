@@ -7,6 +7,7 @@ import {
   garantirIndicesSeExistirem,
 } from './composicao/carregar-registradores';
 import { LogJson } from './observabilidade/log-json';
+import { saltosDeProxyConfiavel } from './lgpd/proxy-confiavel';
 import { profundidadeFila } from './observabilidade/fila-sincronizacao';
 
 async function bootstrap(): Promise<void> {
@@ -14,6 +15,8 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { logger: new LogJson() });
   app.enableCors({ origin: [/^http:\/\/127\.0\.0\.1:\d+$/, /^http:\/\/localhost:\d+$/] });
   const expressApp = app.getHttpAdapter().getInstance() as Express;
+  const saltos = saltosDeProxyConfiavel();
+  if (saltos !== null) expressApp.set('trust proxy', saltos);
   expressApp.get('/v1/saude', (_req: Request, res: Response) => {
     res.status(200).json({
       status: 'ok',
