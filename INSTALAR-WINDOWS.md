@@ -21,7 +21,13 @@ Há dois caminhos. O primeiro usa o Docker Desktop e é o que instala o aplicati
    CONTROLADOR_EMAIL=seu-email@provedor.com
    ```
 
-   Troque pelo seu e-mail. Se quiser outro prazo de guarda, acrescente `RETENCAO_MESES=24`. O padrão já é 24 meses sem interação.
+   Troque pelo seu e-mail. Se quiser outro prazo de guarda, acrescente `RETENCAO_MESES=24`. O padrão já é 24 meses sem interação. No mesmo arquivo, coloque o IP do Wi-Fi antes da primeira subida, para o certificado já nascer com esse endereço:
+
+   ```
+   CERT_IPS=192.168.0.20
+   ```
+
+   Troque pelo IPv4 que o `ipconfig` mostrar no adaptador do Wi-Fi. Vários IPs se separam por vírgula.
 
 5. Suba o sistema:
 
@@ -33,7 +39,26 @@ Há dois caminhos. O primeiro usa o Docker Desktop e é o que instala o aplicati
 
 6. Espere as três partes ficarem saudáveis: banco, API e site. Deixe essa janela aberta.
 
-7. No navegador do computador, abra `https://localhost`. O certificado é criado nesta máquina e o navegador vai avisar que ele não é de uma autoridade conhecida. Isso é esperado. Avance pelo aviso (em português costuma ser "Avançado" e depois "Continuar"). A página do captura7 deve abrir.
+7. O site usa uma autoridade certificadora local, não um certificado solto. Copie o arquivo da CA para a pasta do projeto:
+
+   ```
+   docker compose cp web:/certs/ca.crt .\ca.crt
+   ```
+
+   No PowerShell, instale essa CA no usuário do Windows:
+
+   ```
+   certutil -addstore -user Root .\ca.crt
+   ```
+
+   Feche e abra o navegador. `https://localhost` deve abrir sem aviso. Se você já tinha subido uma versão antiga, apague o certificado velho e suba de novo para a CA nascer:
+
+   ```
+   docker compose exec web rm -f /certs/captura7.crt /certs/captura7.key /certs/ca.crt /certs/ca.key
+   docker compose restart web
+   ```
+
+   Se o IP mudou, apague só `captura7.crt` e `captura7.key`, ajuste `CERT_IPS` e reinicie o serviço `web`. A mesma CA assina o certificado novo.
 
 8. Crie o administrador. Em outro PowerShell, na mesma pasta:
 
@@ -43,7 +68,7 @@ Há dois caminhos. O primeiro usa o Docker Desktop e é o que instala o aplicati
 
    Troque `erico` e a senha. Se o login já existir, o comando avisa e não troca a senha.
 
-9. No navegador, toque em **Entrar**. Use o usuário e a senha. Depois toque em **Inscrever autenticador**. Copie o segredo para um aplicativo de códigos de 6 dígitos (o autenticador do celular). Digite o código no campo e toque em **Confirmar passo extra**. A exportação só funciona depois desse passo, e o passo vale cinco minutos.
+9. No navegador, toque em **Entrar**. Use o usuário e a senha. No primeiro acesso o administrador precisa tocar em **Inscrever autenticador** antes do resto da tela. Copie o segredo para um aplicativo de códigos de 6 dígitos. Nos próximos acessos o código é obrigatório para quem já inscreveu, inclusive vendedor, gestor e auditor. **Sair** encerra a sessão no servidor. **Trocar senha** pede a senha atual e uma nova com 12 ou mais caracteres. A exportação só funciona depois de **Confirmar passo extra**, e o passo vale cinco minutos. Os botões de exportar e importar só aparecem para quem tem essa permissão: exportar é do administrador; importar é de gestor ou administrador.
 
 10. Descubra o IP do computador. No PowerShell:
 
@@ -55,9 +80,29 @@ Há dois caminhos. O primeiro usa o Docker Desktop e é o que instala o aplicati
 
 11. Se o Windows Firewall perguntar, permita o Docker nas redes privadas. Se o celular não abrir a página, em "Firewall do Windows Defender" libere as portas **80** e **443** para redes privadas.
 
-12. No celular, na mesma rede Wi-Fi, abra `https://192.168.0.20` (use o IP que você anotou). Aceite o aviso do certificado uma vez. No Chrome: menu, **Adicionar à tela inicial** ou **Instalar aplicativo**. No Safari: compartilhar, **Adicionar à Tela de Início**. O ícone abre o captura7 como aplicativo.
+12. Instale a mesma `ca.crt` no celular. Sem isso o navegador avisa e o aplicativo pode não funcionar offline. Um IP de rede local (`192.168.x.x`) não recebe certificado de uma autoridade pública, então não há como evitar a instalação da CA.
 
-13. O QR de autocadastro usa o mesmo endereço da página. Abra o captura7 pelo IP (`https://192.168.0.20`), entre, e use **Meu QR**. O celular de quem for se cadastrar precisa alcançar esse IP. O QR vale duas horas e um cadastro. Para outro cadastro, gere outro QR. Você pode revogar o QR atual.
+    **Android.** Copie `ca.crt` para o celular (cabo, Drive ou e-mail para você mesmo). Em Ajustes, Segurança, Criptografia e credenciais, toque em **Instalar um certificado** e escolha **Certificado CA**. Confirme a instalação. Abra o Chrome em `https://192.168.0.20` (use o IP que você anotou). A página abre sem aviso. Menu, **Adicionar à tela inicial** ou **Instalar aplicativo**.
+
+    **iPhone.** Envie `ca.crt` por AirDrop ou e-mail e abra o arquivo. Instale o perfil em Ajustes. Isso ainda não confia na CA para sites. Vá em Ajustes, Geral, Sobre, e no final da tela toque em **Ajustes de Confiança do Certificado** (Certificate Trust Settings). Ative a confiança total de `captura7-ca-local`. Abra o Safari em `https://192.168.0.20`. Compartilhar, **Adicionar à Tela de Início**.
+
+13. O QR de autocadastro usa o mesmo endereço. Quem for se cadastrar pelo QR precisa alcançar esse IP **e** ter a mesma CA instalada, com a confiança total no iPhone. Sem a CA, o celular do visitante continua no aviso do certificado e o cadastro offline não fica garantido. O QR vale duas horas e um cadastro. Para outro cadastro, gere outro QR. Você pode revogar o QR atual.
+
+Se preferir gerar a CA no Windows antes do Docker, com o Git for Windows instalado:
+
+```
+.\infra\tls\gerar-ca-local.ps1 -Ips 192.168.0.20
+```
+
+Os arquivos ficam em `certs-local`. Essa pasta não entra no Git. Para o site usar esses arquivos em vez dos que o container criou:
+
+```
+docker compose cp .\certs-local\ca.crt web:/certs/ca.crt
+docker compose cp .\certs-local\ca.key web:/certs/ca.key
+docker compose cp .\certs-local\captura7.crt web:/certs/captura7.crt
+docker compose cp .\certs-local\captura7.key web:/certs/captura7.key
+docker compose restart web
+```
 
 ## Caminho 2 — sem Docker
 
@@ -98,6 +143,8 @@ Este caminho abre o site em HTTP. O navegador do celular funciona. O botão de i
    pnpm --filter @captura7/api start
    ```
 
+   Esse comando roda `node dist/main.js`. A API lê o `.env` da pasta do projeto (dois níveis acima de `apps/api`) e também um `.env` na pasta atual, se existir. Variável que o Windows já tiver definida não é trocada. Nada do arquivo é impresso no log. No Docker as variáveis vêm do Compose, então esse arquivo não é obrigatório lá.
+
    Na outra janela:
 
    ```
@@ -118,15 +165,15 @@ Este caminho abre o site em HTTP. O navegador do celular funciona. O botão de i
 ## O que fica desligado
 
 - O envio para ERP só liga se você preencher `ERP_WEBHOOK_URL` e `ERP_WEBHOOK_SEGREDO` com valores reais e se a pessoa marcar a caixa opcional de envio. Com a URL vazia, promover um contato não mostra erro.
-- O captcha padrão é uma conta de somar, resolvida no seu computador. Para trocar por hCaptcha ou Turnstile, defina `CAPTCHA_PROVEDOR=hcaptcha` ou `CAPTCHA_PROVEDOR=turnstile` e o segredo correspondente. Sem o segredo, o cadastro público não grava.
+- O captcha padrão é uma conta de somar, resolvida no seu computador. Para trocar por hCaptcha ou Turnstile, defina `CAPTCHA_PROVEDOR=hcaptcha` ou `CAPTCHA_PROVEDOR=turnstile`, o segredo e a chave pública (`HCAPTCHA_SITEKEY` ou `TURNSTILE_SITEKEY`). A tela passa a mostrar o widget. Sem o segredo, o cadastro público não grava. Sem a chave pública, a tela avisa e não conclui.
 
 ## Planilha do Google
 
-No Google Planilhas: Arquivo, Fazer download, Valores separados por vírgula (.csv). No captura7, entre como administrador, cole o texto em **Planilha CSV do Google** e toque em **Importar planilha**. Linha com o mesmo e-mail ou telefone de um cadastro já existente é pulada e não é fundida. A origem fica `importado`.
+No Google Planilhas: Arquivo, Fazer download, Valores separados por vírgula (.csv) ou planilha Excel (.xlsx). No captura7, entre como gestor ou administrador, cole o texto ou escolha o arquivo em **Arquivo CSV ou XLSX** e toque em **Importar planilha**. Linha com o mesmo e-mail, telefone, CPF ou CNPJ é pulada. Linha só com nome igual a um cadastro que também só tem nome é pulada. O mesmo nome em outra empresa entra como novo. Não há fusão automática. A origem fica `importado`.
 
 ## Exportar
 
-Entre, inscreva o autenticador, confirme o código e toque em **Baixar CSV** ou **Baixar XLSX**. O sistema registra quem exportou e quando.
+Entre como administrador, inscreva o autenticador, confirme o código e toque em **Baixar CSV** ou **Baixar XLSX**. Só saem contatos com consentimento de contato comercial válido e ativo. Revogados, eliminados e sem essa autorização ficam de fora. O sistema registra quem exportou e quando.
 
 ## Cópia do banco
 
@@ -150,7 +197,7 @@ O prazo de 24 meses, os 30 dias depois da revogação e os 180 dias do rascunho 
 
 ## Se algo não abrir
 
-- `https://localhost` avisa do certificado: avance o aviso. Não instale outro certificado da internet.
+- `https://localhost` avisa do certificado: instale o `ca.crt` desta máquina, como no passo 7. Não instale certificado baixado da internet.
 - Celular não abre o IP: confira o Wi-Fi, o IPv4 e o firewall nas portas 80 e 443.
 - A API não sobe e fala de pepper: o valor está vazio, curto ou ainda contém `preencha`. Gere outro e, no Docker, não apague o volume se já houver dados.
 - Esqueceu a senha do administrador: o comando de criar não troca senha de login existente. Escolha outro `ADMIN_LOGIN` ou apague esse usuário no MongoDB antes de criar de novo.

@@ -14,7 +14,9 @@ export function PaginaConsentimento() {
     <TelaTermo
       modo="vendedor"
       idServidor={contato?.idServidor}
-      aoGuardarLocal={(emDispositivo) => guardarConsentimento(idLocal, emDispositivo)}
+      aoGuardarLocal={(emDispositivo, envioErp) =>
+        guardarConsentimento(idLocal, emDispositivo, envioErp)
+      }
     />
   );
 }

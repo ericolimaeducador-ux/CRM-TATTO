@@ -60,6 +60,7 @@ services:
         VITE_API_URL: ${VITE_API_URL:-}
     environment:
       CERT_DIR: /certs
+      CERT_IPS: ${CERT_IPS:-}
     volumes:
       - certs:/certs
     depends_on:

@@ -15,7 +15,7 @@ Erico Henrique de Lima Araujo, pessoa física, vai tratar os dados que você inf
 - **Exportação.** O administrador, com verificação em duas etapas, pode exportar a base em CSV ou XLSX para uso pessoal do controlador. A exportação fica na trilha de auditoria, com quem exportou e quando.
 - **Planilha.** Leads importados de CSV, XLSX ou Google Sheets entram com origem "importado" e base legal de legítimo interesse. Não são tratados como se você tivesse marcado a caixa de consentimento.
 
-Você pode **revogar** sua autorização quando quiser, de graça, pelo e-mail {{CONTROLADOR_EMAIL}} ou pela tela de autorizações do aplicativo. Guardamos seus dados por **{{RETENCAO_MESES}} meses sem interação**; depois disso o cadastro é eliminado. Canal de contato do controlador: **{{CONTROLADOR_EMAIL}}**.
+Você pode **revogar** sua autorização quando quiser, de graça, pelo e-mail {{CONTROLADOR_EMAIL}} ou pela tela de autorizações do aplicativo. Guardamos seus dados por **{{RETENCAO_MESES}} meses sem interação**; depois disso o cadastro é eliminado. Um rascunho parado por **{{RASCUNHO_DIAS}} dias** também é eliminado. Depois da revogação, o cadastro é eliminado automaticamente em **{{PURGA_REVOGACAO_DIAS}} dias**, e o documento sai {{PURGA_REVOGACAO_DIAS}} dias depois da eliminação. A trilha de auditoria não é apagada. Canal de contato do controlador: **{{CONTROLADOR_EMAIL}}**.
 
 *Versão do termo: 2026-09-26-uso-pessoal — registrada com data e hora da sua escolha e com a forma de coleta (QR code ou vendedor).*
 
@@ -30,7 +30,7 @@ Os dados ficam no **computador local do controlador**. Não há provedor de nuve
 | F1 | **Contato comercial** | Contato pelos canais que você informou | **Consentimento** — Art. 7, I, e Art. 8. Vale para o autocadastro e para o lead em que o vendedor colhe a caixa na hora. A caixa é condição para concluir o autocadastro (Art. 9, §3) | Caixa própria; revogação a qualquer momento (Art. 8, §5, e Art. 18, IX) |
 | F2 | **Uso da base importada** | Leads de planilha entram para organização pessoal do controlador | **Legítimo interesse** — Art. 7, IX. A origem fica marcada como importado. A caixa de consentimento não é marcada sozinha | Você pode pedir eliminação (Art. 18, VI) |
 | F3 | **Envio a sistema externo** | Se um webhook for configurado e você autorizar, o contato de cliente segue para esse endereço | Consentimento específico `envio_erp`. Sem a caixa, o webhook não envia o registro. Com a variável vazia, o envio fica desligado e não gera erro | Caixa opcional |
-| F4 | **Exportação da base** | O administrador, com TOTP, exporta CSV ou XLSX | Uso pessoal do controlador. Não é finalidade de venda do produto. Registros eliminados não saem. A trilha guarda autor, papel, formato, filtros, quantidade e horário | Só o administrador, com passo extra |
+| F4 | **Exportação da base** | O administrador, com TOTP, exporta CSV ou XLSX | Uso pessoal do controlador. Só saem contatos com consentimento de contato comercial válido e ativo. Revogados, eliminados e sem essa autorização ficam de fora. A trilha guarda autor, papel, formato, filtros, quantidade e horário | Só o administrador, com passo extra |
 
 | Quem recebe | Para quê | Papel |
 |---|---|---|
@@ -44,13 +44,15 @@ Medidas do Art. 46: cifragem em repouso dos documentos; exportação só do admi
 | Situação | Prazo |
 |---|---|
 | Lead sem interação | {{RETENCAO_MESES}} meses a partir da última alteração; depois o cadastro é eliminado |
-| Lead que revogou o consentimento | Eliminação quando você pede (Art. 18, VI). Até lá, contato comercial, envio externo e uso dessa autorização ficam bloqueados |
+| Rascunho parado | {{RASCUNHO_DIAS}} dias sem alteração; depois o cadastro é eliminado |
+| Lead que revogou o consentimento | Eliminação automática {{PURGA_REVOGACAO_DIAS}} dias após a revogação. Até lá, contato comercial, envio externo e exportação ficam bloqueados. O pedido do titular (Art. 18, VI) também elimina na hora, depois de confirmar o nome ou a palavra ELIMINAR |
+| Documento já eliminado | Apagado {{PURGA_REVOGACAO_DIAS}} dias depois da eliminação. A trilha de auditoria permanece |
 | Registro de consentimento e revogação | O mesmo prazo de {{RETENCAO_MESES}} meses, junto do cadastro |
 | Trilha de auditoria pseudonimizada | Não é apagada por este prazo. Ela não guarda nome, e-mail nem telefone em claro (Art. 16) |
 
 **Seus direitos (Art. 18).** Confirmação e acesso, correção, anonimização, bloqueio ou eliminação, informação sobre compartilhamento, e revogação do consentimento. A eliminação (Art. 18, VI) apaga os dados do cadastro e não reescreve a trilha antiga.
 
-**Como revogar:** escreva para {{CONTROLADOR_EMAIL}} ou use a tela de autorizações. A revogação é gratuita e vale a partir do pedido. O tratamento feito antes continua válido até um pedido de eliminação (Art. 8, §5).
+**Como revogar:** escreva para {{CONTROLADOR_EMAIL}} ou use a tela de autorizações. A revogação é gratuita e vale a partir do pedido. O cadastro é eliminado automaticamente {{PURGA_REVOGACAO_DIAS}} dias depois. A trilha de auditoria não é apagada (Art. 8, §5, e Art. 16).
 
 Se este termo mudar de forma relevante e a mudança afetar uma finalidade autorizada por consentimento, pediremos nova autorização (Art. 8, §6). Versão atual: **2026-09-26-uso-pessoal**, de 26/09/2026.
 

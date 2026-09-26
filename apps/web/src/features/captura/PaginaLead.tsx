@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { urlDaApi } from '@/lib/api-url';
 import { textoDaResposta } from '@/lib/texto-resposta';
 import { cabecalhosDaSessao, podeAuditar, podeGerir } from '@/lib/offline/sessao';
+import { AcoesSensiveis } from './AcoesSensiveis';
 
 interface ContatoLido {
   nome?: string;
@@ -74,13 +75,13 @@ export function PaginaLead() {
             rotulo="Reabrir como capturado"
             aoClicar={() => transicao(id, { para: 'capturado' }, setMensagem, setContato)}
           />
-          <Acao
-            rotulo="Revogar consentimento"
-            aoClicar={() => postar(id, 'revogacao', setMensagem, setContato)}
-          />
-          <Acao
-            rotulo="Eliminar titular"
-            aoClicar={() => postar(id, 'eliminacao', setMensagem, setContato)}
+          <AcoesSensiveis
+            id={id}
+            nome={contato?.nome ?? ''}
+            aoAtualizar={(atual, texto) => {
+              if (atual) setContato(atual);
+              setMensagem(texto);
+            }}
           />
         </>
       ) : null}
@@ -152,32 +153,6 @@ async function transicao(
   }
   if (json.dados) definirContato(json.dados);
   definirMensagem(`Status agora: ${json.dados?.status ?? 'atualizado'}.`);
-}
-
-async function postar(
-  id: string,
-  acao: 'revogacao' | 'eliminacao',
-  definirMensagem: (texto: string) => void,
-  definirContato: (contato: ContatoLido | null) => void,
-): Promise<void> {
-  const resposta = await fetch(urlDaApi(`/v1/contatos/${id}/${acao}`), {
-    method: 'POST',
-    headers: cabecalhosDaSessao(),
-    body: '{}',
-  });
-  const json = (await resposta.json()) as {
-    dados?: ContatoLido;
-    erros?: { mensagem?: string }[];
-    mensagem?: string;
-  };
-  if (!resposta.ok) {
-    definirMensagem(textoDaResposta(json, 'Nada foi alterado.'));
-    return;
-  }
-  if (json.dados) definirContato(json.dados);
-  definirMensagem(
-    acao === 'revogacao' ? 'Consentimento revogado.' : 'Dados do titular eliminados.',
-  );
 }
 
 async function carregarTrilha(

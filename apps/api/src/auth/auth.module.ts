@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { UsuariosController } from './usuarios.controller';
 import { UsuariosService } from './usuarios.service';
 import { PapelGuard } from './papel.guard';
+import { authAuditoriaSchema } from './auth-auditoria.schema';
 import { sessaoTokenSchema } from './sessao-token.schema';
 import { TotpModule } from './totp.module';
 import { usuarioSchema } from './usuario.schema';
@@ -17,6 +18,7 @@ import { usuarioSchema } from './usuario.schema';
     MongooseModule.forFeature([
       { name: 'Usuario', schema: usuarioSchema },
       { name: 'SessaoToken', schema: sessaoTokenSchema },
+      { name: 'AuthAuditoria', schema: authAuditoriaSchema },
     ]),
   ],
   controllers: [AuthController, UsuariosController],

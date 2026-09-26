@@ -44,10 +44,12 @@ export function reportarProfundidade(profundidade: number): Promise<RespostaEscr
 export function postarConsentimento(
   idServidor: string,
   emDispositivo: string,
+  envioErp = false,
 ): Promise<RespostaEscrita> {
   return enviar(`/v1/contatos/${idServidor}/consentimento`, 'POST', {
     contatoComercial: true,
     emDispositivo,
+    envioErp,
   });
 }
 

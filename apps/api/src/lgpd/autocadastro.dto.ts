@@ -50,4 +50,8 @@ export class ConsentimentoDto {
   @IsOptional()
   @IsString()
   emDispositivo?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  envioErp?: boolean;
 }

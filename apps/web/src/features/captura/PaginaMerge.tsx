@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { urlDaApi } from '@/lib/api-url';
-import { cabecalhosDaSessao, codigoTotpDoCorpo } from '@/lib/offline/sessao';
+import { cabecalhosDaSessao } from '@/lib/offline/sessao';
 
 const CAMPOS = [
   ['nome', 'Nome'],
@@ -59,9 +59,7 @@ export function PaginaMerge() {
         </fieldset>
       ))}
       <label className="flex flex-col gap-1 text-base">
-        Código TOTP. O servidor confere os 6 dígitos. No modo de teste do aplicativo o código não
-        vai no corpo: a sessão de teste libera o passo. Fora dele, sem código válido, nada é
-        fundido.
+        Código TOTP. O servidor confere os 6 dígitos. Sem código válido, nada é fundido.
         <input
           className="min-h-12 rounded border border-stone-300 px-3"
           value={codigo}
@@ -126,15 +124,14 @@ async function fundir(
   definirMensagem: (texto: string) => void,
   definirFeito: (feito: boolean) => void,
 ): Promise<void> {
-  const codigoTotp = codigoTotpDoCorpo(codigo);
   const resposta = await fetch(urlDaApi(`/v1/contatos/${a}/merge`), {
     method: 'POST',
-    headers: cabecalhos(codigo),
+    headers: cabecalhosDaSessao(),
     body: JSON.stringify({
       absorvidoId: b,
       confirmacao: true,
       valoresEscolhidos: escolha,
-      ...(codigoTotp ? { codigoTotp } : {}),
+      ...(codigo.trim() ? { codigoTotp: codigo.trim() } : {}),
     }),
   });
   const json = (await resposta.json()) as { erros?: { mensagem: string }[] };
@@ -154,11 +151,10 @@ async function recuperar(
   codigo: string,
   definirMensagem: (texto: string) => void,
 ): Promise<void> {
-  const codigoTotp = codigoTotpDoCorpo(codigo);
   const resposta = await fetch(urlDaApi(`/v1/contatos/${id}/recuperar`), {
     method: 'POST',
-    headers: cabecalhos(codigo),
-    body: JSON.stringify(codigoTotp ? { codigoTotp } : {}),
+    headers: cabecalhosDaSessao(),
+    body: JSON.stringify(codigo.trim() ? { codigoTotp: codigo.trim() } : {}),
   });
   const json = (await resposta.json()) as { erros?: { mensagem: string }[] };
   definirMensagem(
@@ -166,12 +162,6 @@ async function recuperar(
       ? 'O contato descartado voltou ao status anterior.'
       : mensagemDe(json, 'A recuperação não aconteceu.'),
   );
-}
-
-function cabecalhos(codigo: string): Record<string, string> {
-  const headers = cabecalhosDaSessao();
-  if (codigo.trim() && headers['x-usuario-id']) headers['x-step-up-teste'] = '1';
-  return headers;
 }
 
 function mensagemDe(

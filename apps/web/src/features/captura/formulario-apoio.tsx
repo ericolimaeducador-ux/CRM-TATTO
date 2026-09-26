@@ -101,12 +101,14 @@ export function textoConsentimento(contato: ContatoLocal | null, statusServidor:
     (contato?.consentimento?.contatoComercial
       ? 'escolha neste aparelho, ainda sem confirmação do servidor'
       : 'pendente');
-  if (status === 'concedido') return 'Consentimento de contato comercial: concedido.';
+  if (status === 'concedido') {
+    return 'Consentimento de contato comercial: concedido. Este lead pode entrar na exportação do administrador.';
+  }
   if (status === 'revogado') {
-    return 'Consentimento de contato comercial: revogado. Contato comercial, envio ao ERP e exportação seguem bloqueados.';
+    return 'Consentimento de contato comercial: revogado. Este lead fica fora da exportação.';
   }
   if (status === 'pendente') {
-    return 'Consentimento de contato comercial: pendente. O lead pode ficar salvo assim. Contato comercial, envio ao ERP e exportação seguem bloqueados até o titular autorizar.';
+    return 'Consentimento de contato comercial: pendente. O lead pode ficar salvo assim. Ele fica fora da exportação até o titular autorizar.';
   }
   return `Consentimento de contato comercial: ${status}.`;
 }

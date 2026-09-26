@@ -80,9 +80,13 @@ export async function lerTodos(): Promise<ContatoLocal[]> {
   return listarContatos();
 }
 
-export async function guardarConsentimento(idLocal: string, emDispositivo: string): Promise<void> {
+export async function guardarConsentimento(
+  idLocal: string,
+  emDispositivo: string,
+  envioErp = false,
+): Promise<void> {
   const contato = await garantirContato(idLocal);
-  contato.consentimento = { contatoComercial: true, emDispositivo, estado: 'local' };
+  contato.consentimento = { contatoComercial: true, emDispositivo, envioErp, estado: 'local' };
   await gravarContato(contato);
   avisar();
   agendar(0);
@@ -231,9 +235,11 @@ async function enviarConsentimentosLocais(): Promise<void> {
   for (const contato of await listarContatos()) {
     const escolha = contato.consentimento;
     if (!escolha?.contatoComercial || escolha.estado === 'enviado' || !contato.idServidor) continue;
-    const resposta = await postarConsentimento(contato.idServidor, escolha.emDispositivo).catch(
-      () => null,
-    );
+    const resposta = await postarConsentimento(
+      contato.idServidor,
+      escolha.emDispositivo,
+      escolha.envioErp === true,
+    ).catch(() => null);
     if (!resposta || resposta.http >= 400) continue;
     escolha.estado = 'enviado';
     await gravarContato(contato);

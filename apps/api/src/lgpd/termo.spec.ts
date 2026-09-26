@@ -49,11 +49,13 @@ describe('termo de consentimento', () => {
     const resposta = await request(app.getHttpServer()).get('/v1/publico/termo/atual');
     expect(resposta.status).toBe(200);
     expect(resposta.body.dados.versao).toBe('2026-09-26-uso-pessoal');
-    expect(resposta.body.dados.textoCurto).toContain('Erico Henrique de Lima Araujo');
-    expect(resposta.body.dados.textoCurto).toContain('erico@exemplo.com');
-    expect(resposta.body.dados.textoCurto).toContain('24 meses');
+    const curto = String(resposta.body.dados.textoCurto);
+    expect(curto).toContain('Erico Henrique de Lima Araujo');
+    expect(curto).toContain('erico@exemplo.com');
+    expect(curto).toMatch(/24 meses[\s\S]*180 dias[\s\S]*30 dias/);
+    expect(String(resposta.body.dados.textoCompleto)).not.toContain('quando você pede');
     expect(resposta.body.dados.textoCompleto).toContain('computador local do controlador');
-    expect(resposta.body.dados.textoCurto).not.toContain('[A PREENCHER');
+    expect(curto).not.toContain('[A PREENCHER');
     expect(resposta.body.dados.hash).toBe(textoDoTermo().hash);
     expect(resposta.body.dados.textoCompleto).toContain('Art. 18, VI');
   });
@@ -216,9 +218,10 @@ describe('termo de consentimento', () => {
     const antes = await Auditoria.find({ contatoId: id }).lean();
     expect(antes.length).toBeGreaterThan(0);
     const foto = JSON.stringify(antes);
-    const revogado = await request(app.getHttpServer())
-      .post(`/v1/contatos/${id}/revogacao`)
-      .set(cabecalho('gestor', GESTOR));
+    const cru = (caminho: string, corpo: object = {}) =>
+      request(app.getHttpServer()).post(caminho).set(cabecalho('gestor', GESTOR)).send(corpo);
+    expect((await cru(`/v1/contatos/${id}/revogacao`)).status).toBe(422);
+    const revogado = await cru(`/v1/contatos/${id}/revogacao`, { confirmar: true });
     expect(revogado.status).toBe(201);
     expect(revogado.body.dados.lgpd.contatoComercial).toBe('revogado');
     const bloqueio = await request(app.getHttpServer())
@@ -229,9 +232,8 @@ describe('termo de consentimento', () => {
       .post(`/v1/contatos/${id}/eliminacao`)
       .set(cabecalho('vendedor', VENDEDOR));
     expect(vendedor.status).toBe(403);
-    const eliminado = await request(app.getHttpServer())
-      .post(`/v1/contatos/${id}/eliminacao`)
-      .set(cabecalho('gestor', GESTOR));
+    expect((await cru(`/v1/contatos/${id}/eliminacao`, { confirmacao: 'nao' })).status).toBe(422);
+    const eliminado = await cru(`/v1/contatos/${id}/eliminacao`, { confirmacao: 'ELIMINAR' });
     expect(eliminado.status).toBe(201);
     expect(eliminado.body.dados.nome ?? null).toBeNull();
     expect(JSON.stringify(eliminado.body.dados.emails)).toBe('[]');

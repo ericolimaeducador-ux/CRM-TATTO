@@ -27,12 +27,13 @@ export class ConsentimentoService {
     usuario: UsuarioSessao,
     contatoComercial: boolean | undefined,
     emDispositivo: string | undefined,
+    envioErp?: boolean,
   ) {
     const doc = await this.exigir(id, usuario);
     if (contatoComercial !== true) {
       return { dados: doc.toObject(), avisos: [], erros: [] };
     }
-    gravarConcessao(doc, usuario.id, 'vendedor_evento', emDispositivo);
+    gravarConcessao(doc, usuario.id, 'vendedor_evento', emDispositivo, envioErp === true);
     await this.salvar(doc, usuario);
     return { dados: await this.ler(doc._id), avisos: [], erros: [] };
   }
@@ -53,9 +54,10 @@ export class ConsentimentoService {
     return { dados: await this.ler(doc._id), avisos: [], erros: [] };
   }
 
-  async eliminar(id: string, usuario: UsuarioSessao) {
+  async eliminar(id: string, usuario: UsuarioSessao, confirmacao?: string) {
     this.exigirGestor(usuario);
     const doc = await this.exigir(id, usuario);
+    if (confirmacao !== undefined) conferirEliminacao(confirmacao, doc.get('nome'));
     for (const campo of ['nome', 'nomeSocial', 'observacoes'] as const) doc.set(campo, null);
     doc.set('emails', []);
     doc.set('telefones', []);
@@ -193,6 +195,18 @@ function listaDe(valor: unknown): Record<string, unknown>[] {
   if (!Array.isArray(valor)) return [];
   return valor.map((item) =>
     item && typeof item === 'object' ? { ...(item as Record<string, unknown>) } : {},
+  );
+}
+
+function conferirEliminacao(confirmacao: string, nome: unknown): void {
+  const texto = confirmacao.trim();
+  const atual = typeof nome === 'string' ? nome.trim() : '';
+  if (texto === 'ELIMINAR' || (atual !== '' && texto === atual)) return;
+  throw new RespostaComErro(
+    422,
+    'CONFIRMACAO_INVALIDA',
+    'Digite o nome do titular ou ELIMINAR. Nada foi apagado.',
+    null,
   );
 }
 

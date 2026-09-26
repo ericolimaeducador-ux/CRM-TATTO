@@ -4,6 +4,7 @@ coverage/
 .env
 .env.*
 !.env.example
+certs-local/
 *.log
 .pnpm-store/
 apps/web/dev-dist/

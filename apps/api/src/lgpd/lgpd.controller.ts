@@ -7,7 +7,7 @@ import type { RequisicaoComUsuario, UsuarioSessao } from '../contatos/sessao.mid
 import { AutocadastroDto, ConsentimentoDto } from './autocadastro.dto';
 import { AutocadastroService } from './autocadastro.service';
 import { ConsentimentoService } from './consentimento.service';
-import { emitirDesafioLocal } from './captcha';
+import { descreverCaptcha } from './captcha';
 import { textoDoTermo } from './texto-termo';
 
 @Controller('v1/publico')
@@ -17,7 +17,7 @@ export class PublicoController {
 
   @Get('captcha')
   captcha() {
-    return { dados: emitirDesafioLocal(), avisos: [], erros: [] };
+    return { dados: descreverCaptcha(), avisos: [], erros: [] };
   }
 
   @Get('termo/atual')
@@ -80,19 +80,36 @@ export class ConsentimentoController {
       exigirUsuario(req),
       corpo.contatoComercial,
       corpo.emDispositivo,
+      corpo.envioErp,
     );
   }
 
   @Post(':id/revogacao')
   @Papel('gestor', 'admin')
-  revogar(@Param('id') id: string, @Req() req: RequisicaoComUsuario) {
+  revogar(
+    @Param('id') id: string,
+    @Body() corpo: { confirmar?: boolean },
+    @Req() req: RequisicaoComUsuario,
+  ) {
+    if (corpo?.confirmar !== true) {
+      throw new RespostaComErro(
+        422,
+        'CONFIRMACAO_AUSENTE',
+        'Confirme a revogação. Nada foi alterado.',
+        null,
+      );
+    }
     return this.consentimento.revogar(id, exigirUsuario(req));
   }
 
   @Post(':id/eliminacao')
   @Papel('gestor', 'admin')
-  eliminar(@Param('id') id: string, @Req() req: RequisicaoComUsuario) {
-    return this.consentimento.eliminar(id, exigirUsuario(req));
+  eliminar(
+    @Param('id') id: string,
+    @Body() corpo: { confirmacao?: string },
+    @Req() req: RequisicaoComUsuario,
+  ) {
+    return this.consentimento.eliminar(id, exigirUsuario(req), corpo?.confirmacao ?? '');
   }
 
   @Post(':id/contato-comercial')

@@ -27,13 +27,22 @@ export class ImportacaoService {
     for (const linha of lerPlanilha(matriz)) {
       const contato = contatoDaLinha(linha);
       contato.idLocal = `importado-${linha.hash}`;
-      if (await duplicataDeCampos(this.modelo, contato)) {
+      if (
+        await duplicataDeCampos(this.modelo, {
+          email: contato.email,
+          telefone: contato.telefone,
+          cpf: contato.cpf,
+          cnpj: contato.cnpj,
+          nome: contato.nome,
+          razaoSocial: contato.razaoSocial,
+        })
+      ) {
         duplicatas += 1;
         avisos.push(
           aviso(
             'planilha',
             'DUPLICATA',
-            'Esta linha repete e-mail ou telefone já gravado. Não foi fundida.',
+            'Esta linha repete um contato já gravado. Não foi fundida.',
           ),
         );
         continue;

@@ -12,6 +12,12 @@ const ALIAS: Record<string, string> = {
   observações: 'observacoes',
   cep: 'cep',
   cidade: 'cidade',
+  empresa: 'razaoSocial',
+  instituicao: 'razaoSocial',
+  instituição: 'razaoSocial',
+  'razao social': 'razaoSocial',
+  'razão social': 'razaoSocial',
+  razaosocial: 'razaoSocial',
 };
 
 export interface LinhaPlanilha {
@@ -47,6 +53,7 @@ export function contatoDaLinha(linha: LinhaPlanilha): CriarContatoDto {
     telefone: linha.campos.telefone,
     cnpj: linha.campos.cnpj,
     cpf: linha.campos.cpf,
+    razaoSocial: linha.campos.razaoSocial,
     cep: linha.campos.cep,
     cidade: linha.campos.cidade,
     observacoes: linha.campos.observacoes,

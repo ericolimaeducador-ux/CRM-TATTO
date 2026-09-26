@@ -87,6 +87,44 @@ describe('importação de planilha', () => {
       .send({ texto: csv });
     expect(vendedor.status).toBe(403);
   });
+
+  it('deduplica CPF e nome com empresa, e não conta nome só como novo', async () => {
+    const criado = await request(app.getHttpServer())
+      .post('/v1/contatos')
+      .set(cabecalho())
+      .send({ nome: 'Documento Importado', cpf: '52998224725', email: 'doc@exemplo.com' });
+    expect(criado.status).toBe(201);
+    const porCpf = await request(app.getHttpServer())
+      .post('/v1/importacoes')
+      .set(cabecalho())
+      .send({
+        texto: 'nome,cpf,email\nOutro Nome,529.982.247-25,outro.doc@exemplo.com\n',
+      });
+    expect(porCpf.body.dados.importados).toBe(0);
+    expect(porCpf.body.dados.duplicatas).toBe(1);
+    const nomes = await request(app.getHttpServer())
+      .post('/v1/importacoes')
+      .set(cabecalho())
+      .send({ texto: 'nome,empresa\nSo Nome,\n' });
+    expect(nomes.body.dados.importados).toBe(1);
+    const repetido = await request(app.getHttpServer())
+      .post('/v1/importacoes')
+      .set(cabecalho())
+      .send({ texto: 'nome\nso nome\n' });
+    expect(repetido.body.dados.importados).toBe(0);
+    expect(repetido.body.dados.duplicatas).toBe(1);
+    const outraCasa = await request(app.getHttpServer())
+      .post('/v1/importacoes')
+      .set(cabecalho())
+      .send({ texto: 'nome,empresa\nSo Nome,Casa Alfa\n' });
+    expect(outraCasa.body.dados.importados).toBe(1);
+    const mesmaCasa = await request(app.getHttpServer())
+      .post('/v1/importacoes')
+      .set(cabecalho())
+      .send({ texto: 'nome,instituição\nso nome,casa alfa\n' });
+    expect(mesmaCasa.body.dados.duplicatas).toBe(1);
+    expect(mesmaCasa.body.dados.importados).toBe(0);
+  });
 });
 
 function cabecalho(papel = 'gestor'): Record<string, string> {

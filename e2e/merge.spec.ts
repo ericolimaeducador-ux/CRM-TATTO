@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { codigoTotp } from './codigo-totp';
 
 const GESTOR = {
   id: '507f1f77bcf86cd799439011',
@@ -33,13 +34,18 @@ test('a fusão mostra o efeito e só descarta depois da escolha', async ({ page,
   });
   expect(semConfirmacao.status()).toBe(422);
 
+  const inscricao = await request.post('/v1/auth/totp/inscrever', { headers: cabecalhos });
+  expect(inscricao.ok()).toBeTruthy();
+  const segredo = ((await inscricao.json()) as { dados: { segredoBase32: string } }).dados
+    .segredoBase32;
+
   await page.addInitScript((sessao) => {
     localStorage.setItem('captura7.sessao', JSON.stringify(sessao));
   }, GESTOR);
   await page.goto(`/merge/${idA}/${idB}`);
   await expect(page.getByText('B será descartado e recuperável por 90 dias.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Fundir com esta escolha' })).toBeEnabled();
-  await page.getByLabel(/Código TOTP/).fill('123456');
+  await page.getByLabel(/Código TOTP/).fill(codigoTotp(segredo));
   await page.getByRole('button', { name: 'Fundir com esta escolha' }).click();
   await expect(
     page.getByText('O contato B foi descartado e pode ser recuperado por 90 dias.'),
