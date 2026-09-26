@@ -14,6 +14,8 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 
 Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 2."
 
+Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 3."
+
 ### Fase 2 — Enriquecimento e ingestão
 
 - `[F2-04]` QR próprio + formulário público de autocadastro com termo de consentimento versionado — **@UI-04** + **@SEC-07** — **BLOQUEADO** — sem código neste ciclo; termo jurídico aberto em `.grok/ESCALONAMENTOS.md`
