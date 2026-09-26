@@ -12,8 +12,22 @@ import {
 import type { ContatoLocal, EstadoSync, Operacao } from './tipos';
 
 const ouvintes = new Set<() => void>();
+const seriePorContato = new Map<string, Promise<void>>();
 let timer: ReturnType<typeof setTimeout> | undefined;
 let drenando = false;
+
+function emSerie(idLocal: string, trabalho: () => Promise<void>): Promise<void> {
+  const anterior = seriePorContato.get(idLocal) ?? Promise.resolve();
+  const execucao = anterior.then(trabalho, trabalho);
+  seriePorContato.set(
+    idLocal,
+    execucao.then(
+      () => undefined,
+      () => undefined,
+    ),
+  );
+  return execucao;
+}
 
 export function observarFila(ouvinte: () => void): () => void {
   ouvintes.add(ouvinte);
@@ -50,24 +64,29 @@ export async function salvarCampo(
   campo: string,
   valor: string,
 ): Promise<ContatoLocal> {
-  const contato = await garantirContato(idLocal);
-  contato.campos[campo] = valor;
-  contato.estado = 'local';
-  contato.atualizadoEm = Date.now();
-  contato.conflito = undefined;
-  await gravarContato(contato);
-  await gravarOperacao({
-    id: crypto.randomUUID(),
-    idLocal,
-    tipo: contato.idServidor ? 'patch' : 'criar',
-    campo,
-    valor,
-    tentativas: 0,
-    proximaEm: Date.now(),
+  let gravado: ContatoLocal | undefined;
+  await emSerie(idLocal, async () => {
+    const contato = await garantirContato(idLocal);
+    contato.campos[campo] = valor;
+    contato.estado = 'local';
+    contato.atualizadoEm = Date.now();
+    contato.conflito = undefined;
+    await gravarContato(contato);
+    await gravarOperacao({
+      id: crypto.randomUUID(),
+      idLocal,
+      tipo: contato.idServidor ? 'patch' : 'criar',
+      campo,
+      valor,
+      tentativas: 0,
+      proximaEm: Date.now(),
+    });
+    gravado = contato;
+    avisar();
+    agendar(0);
   });
-  avisar();
-  agendar(0);
-  return contato;
+  if (!gravado) throw new Error('gravação do campo não concluiu');
+  return gravado;
 }
 
 export async function lerTodos(): Promise<ContatoLocal[]> {
@@ -225,12 +244,18 @@ async function definirEstado(
   estado: EstadoSync,
   tentativas = contato.tentativas,
 ): Promise<void> {
-  contato.estado = estado;
-  contato.tentativas = tentativas;
-  contato.atualizadoEm = Date.now();
-  if (estado === 'sincronizado') contato.conflito = undefined;
-  await gravarContato(contato);
-  avisar();
+  await emSerie(contato.idLocal, async () => {
+    const fresco = (await lerContato(contato.idLocal)) ?? contato;
+    fresco.estado = estado;
+    fresco.tentativas = tentativas;
+    fresco.atualizadoEm = Date.now();
+    if (contato.idServidor) fresco.idServidor = contato.idServidor;
+    if (contato.versaoServidor !== undefined) fresco.versaoServidor = contato.versaoServidor;
+    if (estado === 'sincronizado') fresco.conflito = undefined;
+    else if (contato.conflito) fresco.conflito = contato.conflito;
+    await gravarContato(fresco);
+    avisar();
+  });
 }
 
 function avisar(): void {
