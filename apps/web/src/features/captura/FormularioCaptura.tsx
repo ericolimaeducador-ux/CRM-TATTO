@@ -45,7 +45,7 @@ export function FormularioCaptura() {
   const { register, watch, reset } = useForm<Campos>({ defaultValues: VAZIO });
   const valores = watch();
   const valoresRef = useRef(valores);
-  valoresRef.current = camposNoDom(valores);
+  const filaGravacao = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     const aoDigitar = (evento: Event) => {
@@ -53,47 +53,63 @@ export function FormularioCaptura() {
       if (!(el instanceof HTMLInputElement) || !(el.name in VAZIO)) return;
       valoresRef.current = { ...valoresRef.current, [el.name]: el.value };
     };
+    const aoSair = () => {
+      const agora = valoresRef.current;
+      const temAlgo = (Object.keys(VAZIO) as (keyof Campos)[]).some((campo) => agora[campo]);
+      if (temAlgo) gravarPendente(idLocal, agora);
+    };
     window.addEventListener('input', aoDigitar, true);
-    return () => window.removeEventListener('input', aoDigitar, true);
-  }, []);
+    window.addEventListener('pagehide', aoSair);
+    return () => {
+      window.removeEventListener('input', aoDigitar, true);
+      window.removeEventListener('pagehide', aoSair);
+      aoSair();
+    };
+  }, [idLocal]);
 
   useEffect(() => {
     pronto.current = false;
+    let vivo = true;
     void garantirContato(idLocal).then(async (criado) => {
+      if (!vivo) return;
       const atual = (await lerUm(idLocal)) ?? criado;
+      if (!vivo) return;
       setContato(atual);
       const base = { ...VAZIO, ...atual.campos };
-      const campos = { ...base, ...lerPendente(idLocal) };
+      const campos: Campos = { ...base, ...lerPendente(idLocal) };
+      for (const campo of Object.keys(VAZIO) as (keyof Campos)[]) {
+        if (valoresRef.current[campo]) campos[campo] = valoresRef.current[campo];
+      }
       ultimo.current = base;
+      valoresRef.current = campos;
       pronto.current = true;
       reset(campos);
     });
-    return observarFila(() => {
+    const parar = observarFila(() => {
       void lerUm(idLocal).then((atual) => {
         if (atual) setContato(atual);
       });
     });
+    return () => {
+      vivo = false;
+      parar();
+    };
   }, [idLocal, reset]);
 
   useEffect(() => {
     if (!pronto.current) return;
-    const atuais = valores;
-    const aoSair = () => {
-      const agora = camposNoDom(valoresRef.current);
-      const sujo = (Object.keys(VAZIO) as (keyof Campos)[]).some(
-        (campo) => agora[campo] !== (ultimo.current[campo] ?? ''),
-      );
-      if (sujo) gravarPendente(idLocal, agora);
+    const gravar = () => {
+      filaGravacao.current = filaGravacao.current
+        .then(() => gravarCampos(idLocal, valoresRef.current, ultimo, valoresRef, setContato))
+        .then(
+          () => undefined,
+          () => undefined,
+        );
     };
-    window.addEventListener('pagehide', aoSair);
-    const timer = window.setTimeout(
-      () => void gravarCampos(idLocal, atuais, ultimo, valoresRef, setContato),
-      800,
-    );
+    const timer = window.setTimeout(gravar, 800);
     return () => {
       window.clearTimeout(timer);
-      window.removeEventListener('pagehide', aoSair);
-      void gravarCampos(idLocal, camposNoDom(valoresRef.current), ultimo, valoresRef, setContato);
+      gravar();
     };
   }, [valores, idLocal]);
 
@@ -157,16 +173,7 @@ async function gravarCampos(
   for (const campo of alterados) ultimo.current[campo] = atuais[campo];
   const foto = JSON.stringify(atuais);
   for (const campo of alterados) definir(await salvarCampo(idLocal, campo, atuais[campo]));
-  if (JSON.stringify(valoresRef.current) === foto) limparPendente(idLocal);
-}
-
-function camposNoDom(base: Campos): Campos {
-  const saida = { ...base };
-  for (const campo of Object.keys(VAZIO) as (keyof Campos)[]) {
-    const el = document.querySelector(`input[name="${campo}"]`);
-    if (el instanceof HTMLInputElement) saida[campo] = el.value;
-  }
-  return saida;
+  if (JSON.stringify(valoresRef.current) === foto) limparPendenteSeIgual(idLocal, foto);
 }
 
 function chavePendente(idLocal: string): string {
@@ -177,8 +184,10 @@ function gravarPendente(idLocal: string, campos: Campos): void {
   localStorage.setItem(chavePendente(idLocal), JSON.stringify(campos));
 }
 
-function limparPendente(idLocal: string): void {
-  localStorage.removeItem(chavePendente(idLocal));
+function limparPendenteSeIgual(idLocal: string, foto: string): void {
+  if (localStorage.getItem(chavePendente(idLocal)) === foto) {
+    localStorage.removeItem(chavePendente(idLocal));
+  }
 }
 
 function lerPendente(idLocal: string): Partial<Campos> {
