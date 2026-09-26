@@ -46,9 +46,11 @@ function chaveCifra(): Buffer {
 }
 
 function pepper(): string {
-  const valor = process.env.CIFRA_PEPPER;
-  if (!valor) {
-    throw new Error('CIFRA_PEPPER ausente. Gere o pepper fora do repositório.');
+  const valor = process.env.CIFRA_PEPPER?.trim() ?? '';
+  if (!valor || /preencha/i.test(valor) || valor.length < 32) {
+    throw new Error(
+      'CIFRA_PEPPER ausente, placeholder ou curto demais. Gere pelo menos 32 caracteres fora do repositório.',
+    );
   }
   return valor;
 }

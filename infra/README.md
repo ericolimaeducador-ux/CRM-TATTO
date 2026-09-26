@@ -18,7 +18,7 @@ A câmera do captura7 exige HTTPS fora da máquina local. Este Compose publica a
 
 ## Segredos
 
-`CIFRA_CHAVE_BASE64` e `CIFRA_PEPPER` não têm valor no repositório. Em `NODE_ENV=development` o entrypoint gera os dois na memória do processo e registra `segredo_efemero_dev`. O valor morre com o container. Em `production` a API recusa subir se algum dos dois faltar. O arquivo versionado é só `.env.example`, com placeholders.
+`CIFRA_CHAVE_BASE64` e `CIFRA_PEPPER` não têm valor no repositório. A imagem final da API nasce com `NODE_ENV=production`. O Compose de desenvolvimento sobrescreve para `development`: aí o entrypoint gera os dois na memória do processo e registra `segredo_efemero_dev`. O valor morre com o container. Em `production` a API recusa subir se algum dos dois faltar. Pepper vazio, placeholder (`preencha-...`) ou com menos de 32 caracteres também é recusado na hora de cifrar. O arquivo versionado é só `.env.example`, com placeholders. Não há `JWT_SEGREDO`: nenhum código emite JWT.
 
 ## Backup
 
