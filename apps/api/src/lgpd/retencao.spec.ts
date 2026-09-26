@@ -3,6 +3,7 @@ import {
   CAMPOS_PURGADOS_NA_REVOGACAO,
   aplicarGuardaAuditoria,
   contatoComercialLiberado,
+  deveExpirarPorInatividade,
   devePurgarContato,
   deveSinalizarRascunho,
   envioErpLiberado,
@@ -42,6 +43,19 @@ describe('base legal e retenção', () => {
     expect(devePurgarContato(revogadoEm, new Date('2026-01-30T00:00:00.000Z'))).toBe(false);
     expect(devePurgarContato(revogadoEm, new Date('2026-01-31T00:00:00.000Z'))).toBe(true);
     expect(CAMPOS_PURGADOS_NA_REVOGACAO).toEqual(['emails', 'telefones', 'enderecos']);
+  });
+
+  it('expira o cadastro depois dos meses sem interação', () => {
+    const alteradoEm = new Date('2024-01-15T00:00:00.000Z');
+    expect(deveExpirarPorInatividade(alteradoEm, new Date('2025-12-31T00:00:00.000Z'), 24)).toBe(
+      false,
+    );
+    expect(deveExpirarPorInatividade(alteradoEm, new Date('2026-01-15T00:00:00.000Z'), 24)).toBe(
+      true,
+    );
+    expect(deveExpirarPorInatividade(undefined, new Date('2027-01-01T00:00:00.000Z'), 24)).toBe(
+      false,
+    );
   });
 
   it('sinaliza rascunho parado há 180 dias', () => {

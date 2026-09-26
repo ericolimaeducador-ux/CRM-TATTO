@@ -137,6 +137,18 @@ export const contatoSchema = new Schema(
       ],
     },
     lgpd: { type: lgpdSchema, default: () => ({}) },
+    conflito: {
+      type: new Schema(
+        {
+          detectadoEm: { type: Date },
+          campo: { type: String },
+          versaoLocal: { type: Schema.Types.Mixed },
+          versaoServidor: { type: Schema.Types.Mixed },
+          resolvidoEm: { type: Date },
+        },
+        { _id: false },
+      ),
+    },
     criadoPor: { type: Schema.Types.ObjectId },
     criadoEm: { type: Date },
     alteradoPor: { type: Schema.Types.ObjectId },

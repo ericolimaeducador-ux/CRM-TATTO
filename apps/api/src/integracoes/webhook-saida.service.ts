@@ -105,7 +105,7 @@ export class WebhookSaidaService implements OnModuleInit, OnModuleDestroy {
     if (!destino) {
       await this.fila.updateOne(
         { chaveIdempotencia: chave },
-        { $set: { status: 'nao_configurado', ultimoErro: 'URL ou segredo ausente' } },
+        { $set: { status: 'nao_configurado', ultimoErro: '' } },
       );
       this.registrar(doc, 'nao_configurado');
       return;

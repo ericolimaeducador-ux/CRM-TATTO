@@ -150,7 +150,7 @@ export const origemSchema = new Schema(
   {
     modo: {
       type: String,
-      enum: ['qr_lido', 'qr_proprio', 'manual', 'google_forms', 'importacao'],
+      enum: ['qr_lido', 'qr_proprio', 'manual', 'google_forms', 'importacao', 'importado'],
       default: 'manual',
     },
     capturadoPor: { type: Schema.Types.ObjectId },

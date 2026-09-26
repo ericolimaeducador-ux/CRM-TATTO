@@ -17,6 +17,5 @@ ENV PORT=3000
 EXPOSE 3000
 COPY infra/docker/entrypoint-api.sh /entrypoint-api.sh
 USER root
-RUN chmod +x /entrypoint-api.sh
-USER node
+RUN apk add --no-cache su-exec && chmod +x /entrypoint-api.sh
 CMD ["/entrypoint-api.sh"]

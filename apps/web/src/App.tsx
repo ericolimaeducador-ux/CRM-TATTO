@@ -5,6 +5,7 @@ import { FormularioCaptura } from './features/captura/FormularioCaptura';
 import { ListaContatos } from './features/captura/ListaContatos';
 import { MeuQr } from './features/captura/MeuQr';
 import { PaginaAutocadastro } from './features/captura/PaginaAutocadastro';
+import { PaginaEntrar } from './features/captura/PaginaEntrar';
 import { PaginaConsentimento } from './features/captura/PaginaConsentimento';
 import { PaginaDuplicatas } from './features/captura/PaginaDuplicatas';
 import { PaginaFila } from './features/captura/PaginaFila';
@@ -24,6 +25,7 @@ export function App() {
         <BarraSincronizacao />
         <Routes>
           <Route path="/" element={<TelaCaptura />} />
+          <Route path="/entrar" element={<PaginaEntrar />} />
           <Route path="/capturar" element={<TelaCaptura />} />
           <Route path="/capturar/qr" element={<PaginaQr />} />
           <Route path="/contatos" element={<ListaContatos />} />

@@ -50,7 +50,7 @@ export function contatoDaLinha(linha: LinhaPlanilha): CriarContatoDto {
     cep: linha.campos.cep,
     cidade: linha.campos.cidade,
     observacoes: linha.campos.observacoes,
-    origem: { modo: 'google_forms', payloadBruto: JSON.stringify(linha.campos) },
+    origem: { modo: 'importado', payloadBruto: JSON.stringify(linha.campos) },
   };
 }
 

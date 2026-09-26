@@ -176,3 +176,35 @@ reprocessamento da coleção — documentar o procedimento antes de produção.
 **Consequências.** Um QR de banca precisa ser reemitido depois de um cadastro ou de duas horas. Visitantes diferentes atrás do nginx não dividem o balde de 3 pedidos por minuto.
 
 **Status.** aceito · 2026-09-26
+
+---
+
+## ADR-010 — Uso pessoal no computador do controlador
+
+**Contexto.** Os PRs 1 a 5 estavam na `main`. Em 26/09/2026, às 17h26 BRT, o dono autorizou por escrito: "Autorizo o PR que libera tudo. Não tenho ERP por enquanto e vou rodar no meu computador." O captura7 não será vendido. Não há CNPJ nem empresa controladora. A LGPD continua aplicável à pessoa física que trata dados pessoais.
+
+**Decisão.**
+
+- **D1.** O controlador é a pessoa física Erico Henrique de Lima Araujo. Não há razão social nem CNPJ. A versão do termo é o literal `2026-09-26-uso-pessoal`. O e-mail de contato vem de `CONTROLADOR_EMAIL` e aparece no termo. Sem valor, o termo mostra `defina CONTROLADOR_EMAIL`.
+- **D2.** Não há encarregado separado. O canal do titular é o e-mail do controlador.
+- **D5.** O contato comercial usa os canais que o titular informar no cadastro. Não há número de WhatsApp corporativo inventado.
+- **D7.** Não há ERP. A saída continua o webhook assinado. `ERP_WEBHOOK_URL` vazio, ausente ou placeholder deixa o envio desligado: a promoção segue, o estado fica `nao_configurado` e `ultimoErro` fica vazio. O POST só ocorre com URL e segredo reais e com consentimento `envio_erp`. A caixa dessa finalidade é opcional no autocadastro.
+- **D8.** O administrador exporta CSV e XLSX em `GET /v1/exportacoes`, com os filtros `status` e `origem`, depois do passo extra do TOTP. A trilha `auditoria_exportacao` guarda quem (id e papel), formato, filtros, quantidade e quando. A finalidade é o uso pessoal do controlador. JSON não entra: a autorização nomeou CSV e XLSX. A trava da D8 sai.
+- **D9.** O cadastro sem interação por `RETENCAO_MESES` (padrão 24, inteiro de 1 a 120) é eliminado pelo job horário. O prazo aparece no termo. A trilha de auditoria não é apagada.
+- **D11.** CSV, XLSX e a sincronização já existente da planilha entram com origem `importado`, base legal `legitimo_interesse` e deduplicação por e-mail ou telefone, sem fusão automática. O consentimento não é copiado da coluna. O lead importado pode ser usado; a caixa de contato comercial não é marcada sozinha. A trava da D11 sai.
+- **D12.** A hospedagem é o computador local do controlador. Não há transferência internacional nem provedor de nuvem no termo.
+- **Captcha.** Todo autocadastro público resolve um desafio. O padrão `CAPTCHA_PROVEDOR=local` é uma soma no servidor, de uso único, sem conta externa. `hcaptcha` e `turnstile` substituem o desafio quando o segredo existe; sem segredo o cadastro não grava. Prazo de 2 horas, uso único e revogação do QR permanecem os da ADR-009.
+- **Login.** Sessão por usuário e senha com scrypt e token opaco. O TOTP já existente confirma o passo extra. `pnpm criar-admin` cria o primeiro administrador e não troca a senha se o login já existe. Cabeçalhos de teste continuam ignorados em `NODE_ENV=production`.
+- **Conflito.** O schema passa a ter `conflito`. Na versão divergente o servidor grava as duas versões. A escrita seguinte, quando a versão confere, apaga o campo. A escolha continua humana.
+
+**Alternativas consideradas.**
+
+- *Manter os colchetes e as travas:* rejeitada — o dono autorizou o uso pessoal e a retirada das travas D8 e D11.
+- *Inventar CNPJ, razão social ou DPO:* rejeitada — não existem.
+- *Webhook obrigatório ou erro quando a URL está vazia:* rejeitada — não há ERP e o fluxo não pode parecer quebrado.
+- *Captcha só a partir da quarta tentativa, dependente de conta externa:* rejeitada — o uso local precisa funcionar sem essa conta.
+- *Apagar a trilha de auditoria no mesmo prazo do cadastro:* rejeitada — a trilha continua imutável.
+
+**Consequências.** A ADR-008 segue valendo para a captura de campo: rascunho com consentimento pendente não libera contato comercial. Esta ADR substitui, neste uso pessoal, o bloqueio de exportação, o bloqueio de uso do lead importado, a ausência de login e os placeholders do termo. A subchave HKDF do pepper continua pendente, como na ADR-009. O certificado do Compose é autoassinado: o celular avisa uma vez e, depois disso, o endereço HTTPS da rede local instala o aplicativo.
+
+**Status.** aceito · 2026-09-26

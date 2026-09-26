@@ -4,6 +4,8 @@ services:
     restart: unless-stopped
     volumes:
       - mongo-data:/data/db
+    ports:
+      - '127.0.0.1:27017:27017'
     healthcheck:
       test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok"]
       interval: 5s
@@ -15,10 +17,20 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       CAPTURA7_TRUST_PROXY_SALTOS: '1'
       MONGO_URI: mongodb://mongo:27017/captura7
       PORT: '3000'
+      SEGREDOS_ARQUIVO: /segredos/captura7.env
+      CAPTCHA_PROVEDOR: ${CAPTCHA_PROVEDOR:-local}
+      RETENCAO_MESES: ${RETENCAO_MESES:-24}
+      CONTROLADOR_EMAIL: ${CONTROLADOR_EMAIL:-}
+      ERP_WEBHOOK_URL: ${ERP_WEBHOOK_URL:-}
+      ERP_WEBHOOK_SEGREDO: ${ERP_WEBHOOK_SEGREDO:-}
+      HCAPTCHA_SEGREDO: ${HCAPTCHA_SEGREDO:-}
+      TURNSTILE_SEGREDO: ${TURNSTILE_SEGREDO:-}
+    volumes:
+      - segredos:/segredos
     depends_on:
       mongo:
         condition: service_healthy
@@ -41,11 +53,18 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+    environment:
+      CERT_DIR: /certs
+    volumes:
+      - certs:/certs
     depends_on:
       api:
         condition: service_healthy
     ports:
-      - '127.0.0.1:5173:80'
+      - '80:80'
+      - '443:443'
 
 volumes:
   mongo-data:
+  segredos:
+  certs:

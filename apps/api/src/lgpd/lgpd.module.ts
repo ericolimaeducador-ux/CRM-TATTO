@@ -6,6 +6,7 @@ import { contatoSchema } from '../contatos/schemas/contato.schema';
 import { SessaoMiddleware } from '../contatos/sessao.middleware';
 import { aplicarSegurancaNoSchema } from '../seguranca/aplicar-no-schema';
 import { AutocadastroService } from './autocadastro.service';
+import { ExpurgoService } from './expurgo.service';
 import { ConsentimentoController, PublicoController, QrController } from './lgpd.controller';
 import { ConsentimentoService } from './consentimento.service';
 import { tokenAutocadastroSchema } from './token-autocadastro.schema';
@@ -22,7 +23,7 @@ aplicarSegurancaNoSchema(contatoSchema);
     ]),
   ],
   controllers: [PublicoController, QrController, ConsentimentoController],
-  providers: [ConsentimentoService, AutocadastroService],
+  providers: [ConsentimentoService, AutocadastroService, ExpurgoService],
 })
 export class LgpdModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

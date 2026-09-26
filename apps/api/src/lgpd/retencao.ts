@@ -10,10 +10,33 @@ export function exportacaoBloqueada(revogadoEm?: Date | null): boolean {
 }
 
 export interface LgpdMinimo {
+  baseLegal?: string;
   contatoComercial?: string;
   revogadoEm?: Date | null;
   eliminadoEm?: Date | null;
   consentimentos?: { finalidade?: string; revogadoEm?: Date | null }[];
+}
+
+export function mesesDeRetencao(): number {
+  const bruto = Number(process.env.RETENCAO_MESES ?? 24);
+  if (!Number.isInteger(bruto) || bruto < 1 || bruto > 120) return 24;
+  return bruto;
+}
+
+export function importadoLiberado(lgpd?: LgpdMinimo | null, modo?: string): boolean {
+  if (!lgpd || lgpd.revogadoEm || lgpd.eliminadoEm) return false;
+  return modo === 'importado' && lgpd.baseLegal === 'legitimo_interesse';
+}
+
+export function deveExpirarPorInatividade(
+  alteradoEm: Date | undefined,
+  agora: Date,
+  meses = mesesDeRetencao(),
+): boolean {
+  if (!alteradoEm) return false;
+  const limite = new Date(alteradoEm);
+  limite.setMonth(limite.getMonth() + meses);
+  return agora.getTime() >= limite.getTime();
 }
 
 export function contatoComercialLiberado(lgpd?: LgpdMinimo | null): boolean {

@@ -19,8 +19,18 @@ export function sessaoLocal(): SessaoLocal {
   return nova;
 }
 
+export function guardarToken(token: string): void {
+  localStorage.setItem('captura7.token', token);
+}
+
+export function tokenDaSessao(): string {
+  return localStorage.getItem('captura7.token') ?? '';
+}
+
 export function cabecalhosDaSessao(): Record<string, string> {
   const base: Record<string, string> = { 'content-type': 'application/json' };
+  const token = tokenDaSessao();
+  if (token) base.authorization = `Bearer ${token}`;
   if (!headersDeTesteNoCliente()) return base;
   const sessao = sessaoLocal();
   return {

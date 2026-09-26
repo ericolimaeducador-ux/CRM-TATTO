@@ -36,8 +36,8 @@ export function MeuQr() {
     <section className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">Meu QR</h1>
       <p className="text-base">
-        O texto é a minuta interna. Ainda precisa de advogado e de validação de UX antes de uso
-        externo.
+        Quem estiver na mesma rede Wi-Fi abre o endereço deste computador. O QR vale duas horas e um
+        cadastro.
       </p>
       <button
         type="button"

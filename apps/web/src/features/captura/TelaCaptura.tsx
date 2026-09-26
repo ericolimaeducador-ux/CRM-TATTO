@@ -28,6 +28,9 @@ export function TelaCaptura() {
       >
         Meu QR
       </button>
+      <Link className="inline-flex min-h-12 items-center text-base underline" to="/entrar">
+        Entrar
+      </Link>
       <Link className="inline-flex min-h-12 items-center text-base underline" to="/contatos">
         Contatos deste aparelho
       </Link>

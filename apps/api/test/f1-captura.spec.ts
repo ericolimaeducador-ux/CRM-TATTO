@@ -7,6 +7,7 @@ import { Types, type Connection } from 'mongoose';
 import request from 'supertest';
 import { AuthModule } from '../src/auth/auth.module';
 import { ContatosModule } from '../src/contatos/contatos.module';
+import { ExportacaoModule } from '../src/exportacao/exportacao.module';
 import { garantirIndices } from '../src/contatos/schemas/registrar-modelos';
 
 const GESTOR = new Types.ObjectId().toHexString();
@@ -24,7 +25,12 @@ describe('captura da fase 1', () => {
     process.env.CIFRA_PEPPER = randomBytes(32).toString('hex');
     memoria = await MongoMemoryServer.create();
     const modulo = await Test.createTestingModule({
-      imports: [MongooseModule.forRoot(memoria.getUri()), AuthModule, ContatosModule],
+      imports: [
+        MongooseModule.forRoot(memoria.getUri()),
+        AuthModule,
+        ContatosModule,
+        ExportacaoModule,
+      ],
     }).compile();
     app = modulo.createNestApplication();
     await app.init();
@@ -177,7 +183,7 @@ describe('captura da fase 1', () => {
     const exportacao = await request(app.getHttpServer())
       .get('/v1/exportacoes')
       .set(cabecalho('gestor'));
-    expect(exportacao.status).toBe(404);
+    expect(exportacao.status).toBe(403);
   });
 
   it('não oferece exclusão física nem alteração da trilha', async () => {

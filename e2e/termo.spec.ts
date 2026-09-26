@@ -26,7 +26,11 @@ test('captura segue sem trava e o autocadastro só conclui com a caixa', async (
   expect((caixa?.y ?? 999) + (caixa?.height ?? 0)).toBeLessThanOrEqual(800);
   const concluir = page.getByRole('button', { name: 'Concluir cadastro' });
   await expect(concluir).toBeDisabled();
-  await page.getByRole('checkbox').check();
+  await page.getByRole('checkbox', { name: /Contato comercial/ }).check();
+  const pergunta = page.getByTestId('pergunta-captcha');
+  await expect(pergunta).toBeVisible();
+  const numeros = ((await pergunta.innerText()).match(/\d+/g) ?? []).map(Number);
+  await page.getByLabel('Resposta do desafio').fill(String((numeros[0] ?? 0) + (numeros[1] ?? 0)));
   await expect(concluir).toBeEnabled();
   await concluir.click();
   await expect(page.getByText('Cadastro concluído.')).toBeVisible();

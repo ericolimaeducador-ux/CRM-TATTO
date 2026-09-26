@@ -7,12 +7,18 @@ import type { RequisicaoComUsuario, UsuarioSessao } from '../contatos/sessao.mid
 import { AutocadastroDto, ConsentimentoDto } from './autocadastro.dto';
 import { AutocadastroService } from './autocadastro.service';
 import { ConsentimentoService } from './consentimento.service';
+import { emitirDesafioLocal } from './captcha';
 import { textoDoTermo } from './texto-termo';
 
 @Controller('v1/publico')
 @Publico()
 export class PublicoController {
   constructor(private readonly autocadastro: AutocadastroService) {}
+
+  @Get('captcha')
+  captcha() {
+    return { dados: emitirDesafioLocal(), avisos: [], erros: [] };
+  }
 
   @Get('termo/atual')
   atual() {

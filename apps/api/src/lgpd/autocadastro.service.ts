@@ -8,6 +8,7 @@ import type { Contato } from '../contatos/schemas/contato.schema';
 import type { UsuarioSessao } from '../contatos/sessao.middleware';
 import type { AutocadastroDto } from './autocadastro.dto';
 import { gravarConcessao } from './consentimento.service';
+import { conferirCaptcha } from './captcha';
 import { classificarPedido } from './pedidos-publicos';
 import { limiteDeUsosDoToken, prazoTokenSegundos } from './prazo-token';
 
@@ -76,11 +77,20 @@ export class AutocadastroService {
         null,
       );
     }
-    if (classe === 'captcha') {
+    const captcha = await conferirCaptcha(corpo);
+    if (captcha === 'nao_configurado') {
       throw new RespostaComErro(
         429,
         'CAPTCHA_NAO_CONFIGURADO',
-        'A partir da quarta tentativa deste endereço o autocadastro pede captcha, e nenhum provedor foi indicado. Nada foi gravado.',
+        'O captcha externo foi pedido e o segredo não está configurado. Nada foi gravado.',
+        null,
+      );
+    }
+    if (captcha !== 'ok') {
+      throw new RespostaComErro(
+        422,
+        'CAPTCHA_INVALIDO',
+        'O desafio não confere. Peça outro e tente de novo. Nada foi gravado.',
         null,
       );
     }
@@ -102,7 +112,13 @@ export class AutocadastroService {
     const contato = new this.contatos(montado.doc) as unknown as DocNovo;
     contato.set('origem.modo', 'qr_proprio');
     contato.set('origem.vendedorAtribuido', token.vendedorId);
-    gravarConcessao(contato, String(token.vendedorId), 'autocadastro', corpo.emDispositivo);
+    gravarConcessao(
+      contato,
+      String(token.vendedorId),
+      'autocadastro',
+      corpo.emDispositivo,
+      corpo.envioErp === true,
+    );
     contato.$locals.autorId = token.vendedorId;
     contato.$locals.autorNome = 'autocadastro';
     await contato.save();

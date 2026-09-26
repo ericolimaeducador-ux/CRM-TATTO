@@ -3,6 +3,14 @@ import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Types, type Model } from 'mongoose';
 import { podeAcessarCarteira } from '../auth/perfil-permissoes';
 import type { Aviso } from '../normalizacao/avisos';
+import {
+  duplicidadeNomeada,
+  ehDuplicidadeDocumento,
+  ehIdLocalDuplicado,
+  idDoVendedor,
+  plano,
+  semCaminhosPontilhados,
+} from './contato-escrita';
 import { ErroNomeado } from './schemas/erro-nomeado';
 import type { Contato } from './schemas/contato.schema';
 import { montarCriacao, montarPatch } from './aplicar-campo';
@@ -81,7 +89,7 @@ export class ContatosService {
         422,
         'CONFLITO_VERSAO',
         'Este contato mudou em outro aparelho. Escolha campo a campo qual valor fica. Nada foi sobrescrito.',
-        antes,
+        await this.marcarConflito(id, campo, valor, versaoConhecida, antes),
       );
     }
     const patch = montarPatch(antes, campo, valor);
@@ -95,12 +103,12 @@ export class ContatosService {
     patch.set.avisos = patch.avisos;
     const gravado = await this.atualizarCondicional(id, antes, patch.set, patch.unset, usuario);
     if (!gravado) {
-      const atual = await this.contatos.findById(id).lean();
+      const atual = plano(await this.contatos.findById(id).lean());
       throw new RespostaComErro(
         422,
         'CONFLITO_VERSAO',
         'Este contato mudou em outro aparelho. Escolha campo a campo qual valor fica. Nada foi sobrescrito.',
-        plano(atual),
+        await this.marcarConflito(id, campo, valor, versaoConhecida, atual),
       );
     }
     return { http: 200, dados: gravado, avisos: patch.avisos, antes };
@@ -195,8 +203,8 @@ export class ContatosService {
         sincronizadoEm: new Date(),
       },
       $inc: { versao: 1 },
+      $unset: { ...unset, conflito: '' },
     };
-    if (Object.keys(unset).length > 0) atualizacao.$unset = unset;
     try {
       const resultado = await this.contatos.updateOne(
         { _id: id, versao: antes.versao },
@@ -228,6 +236,26 @@ export class ContatosService {
     return plano(await this.contatos.findById(id).lean());
   }
 
+  private async marcarConflito(
+    id: string,
+    campo: string | undefined,
+    valor: unknown,
+    versaoConhecida: number | undefined,
+    atual: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const conflito = {
+      detectadoEm: new Date(),
+      campo: campo ?? '',
+      versaoLocal: { versao: versaoConhecida ?? null, valor: valor ?? null },
+      versaoServidor: {
+        versao: atual.versao ?? null,
+        valor: campo ? (atual[campo] ?? null) : null,
+      },
+    };
+    await this.contatos.updateOne({ _id: id }, { $set: { conflito } });
+    return { ...atual, conflito };
+  }
+
   private injetarLocais(
     contato: { $locals: Record<string, unknown> },
     usuario: UsuarioSessao,
@@ -239,50 +267,4 @@ export class ContatosService {
     if (cpfPuro) contato.$locals.cpfPuro = cpfPuro;
     if (cnpjPuro) contato.$locals.cnpjPuro = cnpjPuro;
   }
-}
-
-function semCaminhosPontilhados(doc: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(doc).filter(([chave]) => !chave.includes('.')));
-}
-
-function plano(valor: unknown): Record<string, unknown> {
-  return JSON.parse(JSON.stringify(valor ?? {})) as Record<string, unknown>;
-}
-
-function idDoVendedor(doc: Record<string, unknown>): string | undefined {
-  const origem = doc.origem as { vendedorAtribuido?: unknown } | undefined;
-  if (!origem?.vendedorAtribuido) return undefined;
-  return String(origem.vendedorAtribuido);
-}
-
-function ehIdLocalDuplicado(erro: unknown): boolean {
-  return codigoMongo(erro) === 11000 && JSON.stringify(erro).includes('idLocal');
-}
-
-function ehDuplicidadeDocumento(erro: unknown): boolean {
-  if (codigoMongo(erro) !== 11000) return false;
-  const texto = JSON.stringify(erro);
-  return texto.includes('cpfHash') || texto.includes('cnpjHash');
-}
-
-function duplicidadeNomeada(erro: unknown): ErroNomeado | undefined {
-  const texto = JSON.stringify(erro);
-  if (texto.includes('cnpjHash')) {
-    return new ErroNomeado(
-      'CNPJ_DUPLICADO',
-      'Já existe um contato fora de rascunho com este CNPJ. Abra a duplicata e peça a um gestor para decidir. Este registro permanece no status anterior.',
-    );
-  }
-  if (texto.includes('cpfHash')) {
-    return new ErroNomeado(
-      'CPF_DUPLICADO',
-      'Já existe um contato fora de rascunho com este CPF. Abra a duplicata e peça a um gestor para decidir. Este registro permanece no status anterior.',
-    );
-  }
-  return undefined;
-}
-
-function codigoMongo(erro: unknown): number | undefined {
-  if (!erro || typeof erro !== 'object' || !('code' in erro)) return undefined;
-  return typeof erro.code === 'number' ? erro.code : undefined;
 }
