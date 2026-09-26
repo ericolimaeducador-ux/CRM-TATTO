@@ -5,7 +5,7 @@ import { podeAcessarCarteira } from '../auth/perfil-permissoes';
 import { RespostaComErro } from '../contatos/erros-http';
 import type { Contato } from '../contatos/schemas/contato.schema';
 import type { UsuarioSessao } from '../contatos/sessao.middleware';
-import { contatoComercialLiberado } from './retencao';
+import { contatoComercialLiberado, importadoLiberado } from './retencao';
 import { textoDoTermo } from './texto-termo';
 
 interface DocMutavel {
@@ -82,7 +82,8 @@ export class ConsentimentoService {
   async tentarContato(id: string, usuario: UsuarioSessao) {
     const doc = await this.exigir(id, usuario);
     const lgpd = doc.get('lgpd') as Parameters<typeof contatoComercialLiberado>[0];
-    if (!contatoComercialLiberado(lgpd)) {
+    const modo = (doc.get('origem') as { modo?: string } | undefined)?.modo;
+    if (!contatoComercialLiberado(lgpd) && !importadoLiberado(lgpd, modo)) {
       throw new RespostaComErro(
         403,
         'CONTATO_COMERCIAL_BLOQUEADO',
@@ -157,27 +158,34 @@ export function gravarConcessao(
   responsavelId: string,
   canal: 'vendedor_evento' | 'autocadastro',
   emDispositivo: string | undefined,
+  envioErp = false,
 ): void {
   const texto = textoDoTermo();
   const agora = new Date();
   const dispositivo = dataDe(emDispositivo) ?? agora;
   const lista = listaDe(doc.get('lgpd.consentimentos'));
-  lista.push({
-    finalidade: 'contato_comercial',
+  const prova = {
     emDispositivo: dispositivo,
     emServidor: agora,
     versaoTermo: texto.versao,
     hashTexto: texto.hash,
     canal,
     responsavelId: new Types.ObjectId(responsavelId),
-  });
+  };
+  lista.push({ finalidade: 'contato_comercial', ...prova });
+  if (envioErp) lista.push({ finalidade: 'envio_erp', ...prova });
   doc.set('lgpd.consentimentos', lista);
   doc.set('lgpd.contatoComercial', 'concedido');
   doc.set('lgpd.consentimentoEm', agora);
   doc.set('lgpd.versaoTermo', texto.versao);
-  doc.set('lgpd.baseLegal', 'legitimo_interesse');
-  doc.set('lgpd.finalidade', ['prospecção comercial B2B']);
+  doc.set('lgpd.baseLegal', 'consentimento');
+  doc.set(
+    'lgpd.finalidade',
+    envioErp ? ['contato comercial', 'envio ao erp'] : ['contato comercial'],
+  );
   doc.set('lgpd.canalColeta', canal);
+  const locais = (doc as { $locals?: { baseLegalExplicita?: boolean } }).$locals;
+  if (locais) locais.baseLegalExplicita = true;
   doc.markModified('lgpd.consentimentos');
 }
 

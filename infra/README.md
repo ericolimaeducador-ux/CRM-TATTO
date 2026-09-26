@@ -1,6 +1,6 @@
 # Infra — captura7
 
-Ambiente de desenvolvimento. Não é deploy de produção.
+Uso pessoal no computador do controlador. O passo a passo para leigo no Windows está em [INSTALAR-WINDOWS.md](../INSTALAR-WINDOWS.md).
 
 ## Subir
 
@@ -10,17 +10,19 @@ Na raiz do repositório, com Docker instalado:
 docker compose up --build
 ```
 
-Sobe `mongo` (MongoDB 7), `api` (porta 127.0.0.1:3000) e `web` (porta 127.0.0.1:5173). Não exige `.env`.
+Sobe `mongo` (MongoDB 7, só em `127.0.0.1:27017`), `api` (`NODE_ENV=production`, só em `127.0.0.1:3000`) e `web` nas portas 80 e 443. O primeiro boot grava chave e pepper no volume `segredos` e não imprime os valores. Um `.env` ao lado do Compose só é necessário para `CONTROLADOR_EMAIL` e, se um dia existir, para a URL do webhook.
 
 ## TLS
 
-A câmera do captura7 exige HTTPS fora da máquina local. Este Compose publica as portas só em `127.0.0.1` e fala HTTP. `localhost` é a única exceção de TLS, e ela para aqui: qualquer host acessível por rede precisa de TLS antes de existir câmera. Isso não está neste card.
+O site do Compose escuta HTTPS com certificado autoassinado, gerado no volume `certs`. O celular na mesma rede aceita o aviso uma vez e então instala o PWA. A API não é publicada na rede: o nginx encaminha `/v1/` e grava só `$remote_addr` em `X-Forwarded-For`.
 
 ## Segredos
 
-`CIFRA_CHAVE_BASE64` e `CIFRA_PEPPER` não têm valor no repositório. A imagem final da API nasce com `NODE_ENV=production`. O Compose de desenvolvimento sobrescreve para `development`: aí o entrypoint gera os dois na memória do processo e registra `segredo_efemero_dev`. O valor morre com o container. Em `production` a API recusa subir se algum dos dois faltar. Pepper vazio, placeholder (`preencha-...`) ou com menos de 32 caracteres também é recusado na hora de cifrar. O arquivo versionado é só `.env.example`, com placeholders. Não há `JWT_SEGREDO`: nenhum código emite JWT.
+`CIFRA_CHAVE_BASE64` e `CIFRA_PEPPER` não têm valor no repositório. A imagem da API nasce com `NODE_ENV=production`. No Compose, se o volume `segredos` ainda não tem o arquivo, o entrypoint gera os dois, grava com permissão 0600 e não imprime os valores. Pepper vazio, placeholder (`preencha-...`) ou com menos de 32 caracteres é recusado, e a chave precisa decodificar 32 bytes. O arquivo versionado é só `.env.example`, com placeholders. Não há `JWT_SEGREDO`: nenhum código emite JWT.
 
 ## Backup
+
+Cópia simples, para pen drive ou outro computador: [README.md](../README.md), seção "Backup do Mongo". O script é `infra/backup/backup-mongo.sh` (`mongodump --gzip`). No Compose: `docker compose exec mongo mongodump` e `docker compose cp`, como no guia do Windows.
 
 `node infra/backup/backup-321.mjs` cifra um dump lógico (AES-256-GCM), restaura numa base Mongo limpa e confere contagem e uma linha de `contatos_auditoria`. Sem `MONGO_URI` o ensaio sobe dois `mongod` em memória. `BACKUP_CHAVE` (32 bytes em base64) e `BACKUP_DIR` vêm do ambiente. Sem chave, a execução gera uma chave que morre com o processo e não é impressa.
 

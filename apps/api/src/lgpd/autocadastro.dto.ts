@@ -22,8 +22,24 @@ export class AutocadastroDto {
   contatoComercial?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  envioErp?: boolean;
+
+  @IsOptional()
   @IsString()
   emDispositivo?: string;
+
+  @IsOptional()
+  @IsString()
+  captchaId?: string;
+
+  @IsOptional()
+  @IsString()
+  captchaResposta?: string;
+
+  @IsOptional()
+  @IsString()
+  captchaToken?: string;
 }
 
 export class ConsentimentoDto {

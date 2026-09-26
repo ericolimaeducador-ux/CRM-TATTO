@@ -22,6 +22,7 @@ describe('termo de consentimento', () => {
   let memoria: MongoMemoryServer;
 
   beforeAll(async () => {
+    process.env.CONTROLADOR_EMAIL = 'erico@exemplo.com';
     process.env.NODE_ENV = 'test';
     process.env.CIFRA_CHAVE_BASE64 = randomBytes(32).toString('base64');
     process.env.CIFRA_PEPPER = randomBytes(32).toString('hex');
@@ -44,13 +45,15 @@ describe('termo de consentimento', () => {
     await memoria.stop();
   });
 
-  it('publica a minuta com os colchetes e não inventa versão', async () => {
+  it('publica o termo do controlador pessoa física', async () => {
     const resposta = await request(app.getHttpServer()).get('/v1/publico/termo/atual');
     expect(resposta.status).toBe(200);
-    expect(resposta.body.dados.versao).toBe('[A PREENCHER, D1]');
-    expect(resposta.body.dados.textoCurto).toContain('[A PREENCHER, D1]');
-    expect(resposta.body.dados.textoCurto).toContain('DECISÃO D5');
-    expect(resposta.body.dados.textoCurto).toContain('DECISÃO D7');
+    expect(resposta.body.dados.versao).toBe('2026-09-26-uso-pessoal');
+    expect(resposta.body.dados.textoCurto).toContain('Erico Henrique de Lima Araujo');
+    expect(resposta.body.dados.textoCurto).toContain('erico@exemplo.com');
+    expect(resposta.body.dados.textoCurto).toContain('24 meses');
+    expect(resposta.body.dados.textoCompleto).toContain('computador local do controlador');
+    expect(resposta.body.dados.textoCurto).not.toContain('[A PREENCHER');
     expect(resposta.body.dados.hash).toBe(textoDoTermo().hash);
     expect(resposta.body.dados.textoCompleto).toContain('Art. 18, VI');
   });
@@ -77,14 +80,16 @@ describe('termo de consentimento', () => {
     expect(qr.status).toBe(201);
     const token = qr.body.dados.token as string;
     const antes = await app.get<Model<unknown>>(getModelToken('Contato')).countDocuments();
-    const recusado = await request(app.getHttpServer())
-      .post('/v1/publico/autocadastro')
-      .send({ token, nome: 'Sem Caixa', contatoComercial: false });
+    const recusado = await postarPublico(app, {
+      token,
+      nome: 'Sem Caixa',
+      contatoComercial: false,
+    });
     expect(recusado.status).toBe(422);
     expect(recusado.body.erros[0].codigo).toBe('CONSENTIMENTO_OBRIGATORIO');
     expect(await app.get<Model<unknown>>(getModelToken('Contato')).countDocuments()).toBe(antes);
     const emDispositivo = '2020-01-01T00:00:00.000Z';
-    const aceito = await request(app.getHttpServer()).post('/v1/publico/autocadastro').send({
+    const aceito = await postarPublico(app, {
       token,
       nome: 'Com Caixa',
       email: 'caixa@exemplo.com',
@@ -93,11 +98,11 @@ describe('termo de consentimento', () => {
     });
     expect(aceito.status).toBe(201);
     expect(aceito.body.dados.lgpd.contatoComercial).toBe('concedido');
-    expect(aceito.body.dados.lgpd.baseLegal).toBe('legitimo_interesse');
+    expect(aceito.body.dados.lgpd.baseLegal).toBe('consentimento');
     const prova = aceito.body.dados.lgpd.consentimentos[0];
     expect(prova.finalidade).toBe('contato_comercial');
     expect(prova.canal).toBe('autocadastro');
-    expect(prova.versaoTermo).toBe('[A PREENCHER, D1]');
+    expect(prova.versaoTermo).toBe('2026-09-26-uso-pessoal');
     expect(prova.hashTexto).toBe(textoDoTermo().hash);
     expect(new Date(prova.emDispositivo).toISOString()).toBe(emDispositivo);
     expect(prova.emServidor).toBeTruthy();
@@ -109,20 +114,15 @@ describe('termo de consentimento', () => {
     expect(liberado.status).toBe(201);
   });
 
-  it('pede captcha não configurado a partir da quarta tentativa do mesmo IP', async () => {
-    for (let i = 0; i < 3; i += 1) {
-      const token = await emitirQr();
-      const ok = await request(app.getHttpServer())
-        .post('/v1/publico/autocadastro')
-        .send({ token, nome: `Pessoa ${i}`, contatoComercial: true });
-      expect(ok.status).toBe(201);
-    }
+  it('recusa o autocadastro sem o desafio e aceita a conta certa', async () => {
     const token = await emitirQr();
-    const parado = await request(app.getHttpServer())
+    const sem = await request(app.getHttpServer())
       .post('/v1/publico/autocadastro')
-      .send({ token, nome: 'Quarta', contatoComercial: true });
-    expect(parado.status).toBe(429);
-    expect(parado.body.erros[0].codigo).toBe('CAPTCHA_NAO_CONFIGURADO');
+      .send({ token, nome: 'Sem Desafio', contatoComercial: true });
+    expect(sem.status).toBe(422);
+    expect(sem.body.erros[0].codigo).toBe('CAPTCHA_INVALIDO');
+    const ok = await postarPublico(app, { token, nome: 'Com Desafio', contatoComercial: true });
+    expect(ok.status).toBe(201);
   });
 
   it('expira, gasta uma vez e revoga o token do QR', async () => {
@@ -166,10 +166,11 @@ describe('termo de consentimento', () => {
     http.set('trust proxy', 1);
     for (let i = 0; i < 3; i += 1) {
       const token = await emitirQr();
-      const ok = await request(app.getHttpServer())
-        .post('/v1/publico/autocadastro')
-        .set('X-Forwarded-For', '203.0.113.10')
-        .send({ token, nome: `Proxy ${i}`, contatoComercial: true });
+      const ok = await postarPublico(
+        app,
+        { token, nome: `Proxy ${i}`, contatoComercial: true },
+        '203.0.113.10',
+      );
       expect(ok.status).toBe(201);
     }
     const tokenQuarto = await emitirQr();
@@ -177,13 +178,14 @@ describe('termo de consentimento', () => {
       .post('/v1/publico/autocadastro')
       .set('X-Forwarded-For', '203.0.113.10')
       .send({ token: tokenQuarto, nome: 'Proxy Quarto', contatoComercial: true });
-    expect(quarto.status).toBe(429);
-    expect(quarto.body.erros[0].codigo).toBe('CAPTCHA_NAO_CONFIGURADO');
+    expect(quarto.status).toBe(422);
+    expect(quarto.body.erros[0].codigo).toBe('CAPTCHA_INVALIDO');
     const tokenOutro = await emitirQr();
-    const outro = await request(app.getHttpServer())
-      .post('/v1/publico/autocadastro')
-      .set('X-Forwarded-For', '203.0.113.11')
-      .send({ token: tokenOutro, nome: 'Outro Visitante', contatoComercial: true });
+    const outro = await postarPublico(
+      app,
+      { token: tokenOutro, nome: 'Outro Visitante', contatoComercial: true },
+      '203.0.113.11',
+    );
     expect(outro.status).toBe(201);
     http.set('trust proxy', false);
   });
@@ -256,12 +258,31 @@ describe('termo de consentimento', () => {
     return qr.body.dados.token as string;
   }
 
-  function concluir(token: string, nome: string) {
-    return request(app.getHttpServer())
-      .post('/v1/publico/autocadastro')
-      .send({ token, nome, contatoComercial: true });
+  async function concluir(token: string, nome: string) {
+    return postarPublico(app, { token, nome, contatoComercial: true });
   }
 });
+
+async function postarPublico(app: INestApplication, corpo: Record<string, unknown>, ip?: string) {
+  const completo = await comCaptcha(app, corpo);
+  const pedido = request(app.getHttpServer()).post('/v1/publico/autocadastro');
+  if (ip) pedido.set('X-Forwarded-For', ip);
+  return pedido.send(completo);
+}
+
+async function comCaptcha(
+  app: INestApplication,
+  corpo: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const desafio = await request(app.getHttpServer()).get('/v1/publico/captcha');
+  const pergunta = String(desafio.body.dados.pergunta);
+  const numeros = pergunta.match(/\d+/g)?.map(Number) ?? [0, 0];
+  return {
+    ...corpo,
+    captchaId: desafio.body.dados.id,
+    captchaResposta: String((numeros[0] ?? 0) + (numeros[1] ?? 0)),
+  };
+}
 
 function cabecalho(papel: string, id: string): Record<string, string> {
   return {

@@ -60,6 +60,10 @@ export class TotpService {
     };
   }
 
+  async zerar(usuarioId: string): Promise<void> {
+    await this.usuarios.deleteOne({ usuarioId });
+  }
+
   async confirmar(
     usuarioId: string,
     codigoInformado: string,

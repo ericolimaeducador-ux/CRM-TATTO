@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { urlDaApi } from '@/lib/api-url';
 import { cabecalhosDaSessao } from '@/lib/offline/sessao';
 
 interface TextoTermo {
@@ -26,9 +27,26 @@ export function TelaTermo({
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
   const [mensagem, setMensagem] = useState('');
+  const [captchaId, setCaptchaId] = useState('');
+  const [pergunta, setPergunta] = useState('');
+  const [respostaCaptcha, setRespostaCaptcha] = useState('');
+  const [envioErp, setEnvioErp] = useState(false);
 
   useEffect(() => {
-    void fetch('/v1/publico/termo/atual')
+    if (modo !== 'autocadastro') return;
+    void fetch(urlDaApi('/v1/publico/captcha'))
+      .then((resposta) => resposta.json())
+      .then((json: { dados?: { id?: string; pergunta?: string } }) => {
+        if (json.dados?.id && json.dados.pergunta) {
+          setCaptchaId(json.dados.id);
+          setPergunta(json.dados.pergunta);
+        }
+      })
+      .catch(() => setMensagem('Não consegui carregar o desafio. Nada foi gravado.'));
+  }, [modo]);
+
+  useEffect(() => {
+    void fetch(urlDaApi('/v1/publico/termo/atual'))
       .then((resposta) => resposta.json())
       .then((json: { dados?: TextoTermo }) => {
         if (json.dados?.textoCurto) setTexto(json.dados);
@@ -56,9 +74,19 @@ export function TelaTermo({
         : `/v1/contatos/${idServidor}/consentimento`;
     const corpo =
       modo === 'autocadastro'
-        ? { token, nome, email, telefone, contatoComercial: true, emDispositivo }
+        ? {
+            token,
+            nome,
+            email,
+            telefone,
+            contatoComercial: true,
+            envioErp,
+            emDispositivo,
+            captchaId,
+            captchaResposta: respostaCaptcha,
+          }
         : { contatoComercial: true, emDispositivo };
-    const resposta = await fetch(caminho, {
+    const resposta = await fetch(urlDaApi(caminho), {
       method: 'POST',
       headers:
         modo === 'autocadastro' ? { 'content-type': 'application/json' } : cabecalhosDaSessao(),
@@ -99,6 +127,30 @@ export function TelaTermo({
         <span>{comercial || 'Contato comercial (necessário para concluir o cadastro).'}</span>
       </label>
       {modo === 'autocadastro' ? (
+        <label className="flex min-h-12 items-start gap-3 text-base">
+          <input
+            className="mt-1 h-6 w-6"
+            type="checkbox"
+            checked={envioErp}
+            onChange={(evento) => setEnvioErp(evento.target.checked)}
+          />
+          <span>
+            Envio a sistema externo, se o controlador configurar um. Esta caixa é opcional.
+          </span>
+        </label>
+      ) : null}
+      {modo === 'autocadastro' && pergunta ? (
+        <label className="flex flex-col gap-1 text-base">
+          Resposta do desafio
+          <span data-testid="pergunta-captcha">{pergunta}</span>
+          <input
+            className="min-h-12 rounded border border-stone-300 px-3"
+            value={respostaCaptcha}
+            onChange={(evento) => setRespostaCaptcha(evento.target.value)}
+          />
+        </label>
+      ) : null}
+      {modo === 'autocadastro' ? (
         <div className="flex flex-col gap-3">
           <Campo rotulo="Nome" valor={nome} aoMudar={setNome} />
           <Campo rotulo="E-mail" valor={email} aoMudar={setEmail} />
@@ -117,7 +169,9 @@ export function TelaTermo({
         <button
           type="button"
           className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white disabled:opacity-40"
-          disabled={!marcado}
+          disabled={
+            !marcado || (modo === 'autocadastro' && Boolean(captchaId) && !respostaCaptcha.trim())
+          }
           onClick={() => void concluir()}
         >
           Concluir cadastro
@@ -127,7 +181,7 @@ export function TelaTermo({
         <pre className="whitespace-pre-wrap font-sans text-base">{texto?.textoCompleto}</pre>
       ) : null}
       {mensagem ? <p className="text-base">{mensagem}</p> : null}
-      <p className="text-base">Versão do termo: {texto?.versao ?? '[A PREENCHER, D1]'}</p>
+      <p className="text-base">Versão do termo: {texto?.versao ?? '2026-09-26-uso-pessoal'}</p>
       {modo === 'vendedor' ? (
         <Link className="inline-flex min-h-12 items-center text-base underline" to="/capturar">
           Voltar para capturar

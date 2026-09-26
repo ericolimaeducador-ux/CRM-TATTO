@@ -28,8 +28,9 @@ describe('tela do termo', () => {
     expect(screen.getAllByText(/DECISÃO D5/).length).toBeGreaterThan(0);
     const botao = screen.getByRole('button', { name: 'Concluir cadastro' });
     expect((botao as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
-    fireEvent.click(screen.getByRole('checkbox'));
+    const caixa = screen.getByRole('checkbox', { name: /Contato comercial/ });
+    expect((caixa as HTMLInputElement).checked).toBe(false);
+    fireEvent.click(caixa);
     expect((botao as HTMLButtonElement).disabled).toBe(false);
     expect(screen.queryByText(/sincronizado/i)).toBeNull();
   });

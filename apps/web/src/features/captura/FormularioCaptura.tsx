@@ -1,42 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
 import { useForm, type UseFormRegisterReturn } from 'react-hook-form';
-import { Link, useLocation, useParams } from 'react-router-dom';
-import { garantirContato, lerUm, observarFila, salvarCampo } from '@/lib/offline/fila';
-import { cabecalhosDaSessao } from '@/lib/offline/sessao';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { urlDaApi } from '@/lib/api-url';
+import { apagarRascunhoLocal, lerUm, observarFila } from '@/lib/offline/fila';
+import { cabecalhosDaSessao, podeAuditar, podeGerir } from '@/lib/offline/sessao';
 import type { ContatoLocal } from '@/lib/offline/tipos';
 import { IndicadorSincronizacao } from './IndicadorSincronizacao';
 import { PainelEnriquecimento } from './PainelEnriquecimento';
-
-interface Campos {
-  nome: string;
-  telefone: string;
-  email: string;
-  cpf: string;
-  cnpj: string;
-  cep: string;
-  logradouro: string;
-  numero: string;
-  cidade: string;
-  uf: string;
-  observacoes: string;
-}
-
-const VAZIO: Campos = {
-  nome: '',
-  telefone: '',
-  email: '',
-  cpf: '',
-  cnpj: '',
-  cep: '',
-  logradouro: '',
-  numero: '',
-  cidade: '',
-  uf: '',
-  observacoes: '',
-};
+import {
+  Campo,
+  VAZIO,
+  type Campos,
+  esquecerPendente,
+  gravarCampos,
+  gravarPendente,
+  lerPendente,
+  textoConsentimento,
+} from './formulario-apoio';
 
 export function FormularioCaptura() {
   const { idLocal = '' } = useParams();
+  const navegar = useNavigate();
   const local = useLocation();
   const naoReconhecido = Boolean(
     (local.state as { naoReconhecido?: boolean } | null)?.naoReconhecido,
@@ -45,10 +29,12 @@ export function FormularioCaptura() {
   const [statusServidor, setStatusServidor] = useState('');
   const ultimo = useRef<Record<string, string>>({});
   const pronto = useRef(false);
+  const apagado = useRef(false);
   const { register, watch, reset, setValue } = useForm<Campos>({ defaultValues: VAZIO });
   const valores = watch();
   const valoresRef = useRef(valores);
   const filaGravacao = useRef<Promise<void>>(Promise.resolve());
+  const tipo = valores.tipoPessoa || 'INDEFINIDO';
 
   useEffect(() => {
     const aoDigitar = (evento: Event) => {
@@ -57,8 +43,13 @@ export function FormularioCaptura() {
       valoresRef.current = { ...valoresRef.current, [el.name]: el.value };
     };
     const aoSair = () => {
+      if (apagado.current) return;
       const agora = valoresRef.current;
-      const temAlgo = (Object.keys(VAZIO) as (keyof Campos)[]).some((campo) => agora[campo]);
+      const temAlgo = (Object.keys(VAZIO) as (keyof Campos)[]).some((campo) =>
+        campo === 'tipoPessoa'
+          ? agora[campo] === 'PF' || agora[campo] === 'PJ'
+          : agora[campo].trim(),
+      );
       if (temAlgo) gravarPendente(idLocal, agora);
     };
     window.addEventListener('input', aoDigitar, true);
@@ -72,16 +63,17 @@ export function FormularioCaptura() {
 
   useEffect(() => {
     pronto.current = false;
+    apagado.current = false;
     let vivo = true;
-    void garantirContato(idLocal).then(async (criado) => {
+    void lerUm(idLocal).then((atual) => {
       if (!vivo) return;
-      const atual = (await lerUm(idLocal)) ?? criado;
-      if (!vivo) return;
-      setContato(atual);
-      const base = { ...VAZIO, ...atual.campos };
+      setContato(atual ?? null);
+      const base = { ...VAZIO, ...atual?.campos };
       const campos: Campos = { ...base, ...lerPendente(idLocal) };
       for (const campo of Object.keys(VAZIO) as (keyof Campos)[]) {
-        if (valoresRef.current[campo]) campos[campo] = valoresRef.current[campo];
+        if (valoresRef.current[campo] && valoresRef.current[campo] !== VAZIO[campo]) {
+          campos[campo] = valoresRef.current[campo];
+        }
       }
       ultimo.current = base;
       valoresRef.current = campos;
@@ -100,7 +92,7 @@ export function FormularioCaptura() {
   }, [idLocal, reset]);
 
   useEffect(() => {
-    if (!pronto.current) return;
+    if (!pronto.current || apagado.current) return;
     const gravar = () => {
       filaGravacao.current = filaGravacao.current
         .then(() => gravarCampos(idLocal, valoresRef.current, ultimo, valoresRef, setContato))
@@ -119,7 +111,7 @@ export function FormularioCaptura() {
   useEffect(() => {
     const idServidor = contato?.idServidor;
     if (!idServidor) return;
-    void fetch(`/v1/contatos/${idServidor}`, { headers: cabecalhosDaSessao() })
+    void fetch(urlDaApi(`/v1/contatos/${idServidor}`), { headers: cabecalhosDaSessao() })
       .then((resposta) => resposta.json())
       .then((json: { dados?: { lgpd?: { contatoComercial?: string } } }) => {
         const comercial = json.dados?.lgpd?.contatoComercial;
@@ -129,6 +121,17 @@ export function FormularioCaptura() {
       })
       .catch(() => undefined);
   }, [contato?.idServidor]);
+
+  async function excluirRascunho() {
+    apagado.current = true;
+    esquecerPendente(idLocal);
+    const apagou = await apagarRascunhoLocal(idLocal);
+    if (!apagou) {
+      apagado.current = false;
+      return;
+    }
+    navegar('/contatos');
+  }
 
   return (
     <section className="flex flex-col gap-4">
@@ -146,6 +149,12 @@ export function FormularioCaptura() {
         Autorizações do titular
       </Link>
       {contato ? <IndicadorSincronizacao estado={contato.estado} /> : null}
+      {contato?.mensagem ? <p className="text-base text-amber-900">{contato.mensagem}</p> : null}
+      {contato?.avisos?.map((aviso) => (
+        <p key={`${aviso.codigo}-${aviso.campo}`} className="text-base text-amber-900">
+          {aviso.mensagem}
+        </p>
+      ))}
       {naoReconhecido ? (
         <p className="text-base text-amber-900">
           Não reconheci o QR. O texto ficou guardado e o formulário abre em branco.
@@ -159,16 +168,35 @@ export function FormularioCaptura() {
           {...register('nome')}
         />
       </label>
+      <fieldset className="flex flex-col gap-2 rounded border border-stone-300 p-3">
+        <legend className="text-base">Tipo de pessoa</legend>
+        <Opcao valor="INDEFINIDO" rotulo="Ainda não sei" registro={register('tipoPessoa')} />
+        <Opcao valor="PF" rotulo="Pessoa física" registro={register('tipoPessoa')} />
+        <Opcao valor="PJ" rotulo="Pessoa jurídica" registro={register('tipoPessoa')} />
+      </fieldset>
       <details className="rounded border border-stone-300 p-3">
         <summary className="min-h-12 cursor-pointer text-base">Contato</summary>
         <Campo rotulo="Telefone" registro={register('telefone')} />
         <Campo rotulo="E-mail" registro={register('email')} />
       </details>
-      <details className="rounded border border-stone-300 p-3">
-        <summary className="min-h-12 cursor-pointer text-base">Documento</summary>
-        <Campo rotulo="CPF" registro={register('cpf')} />
-        <Campo rotulo="CNPJ" registro={register('cnpj')} />
-      </details>
+      {tipo === 'PF' ? (
+        <details className="rounded border border-stone-300 p-3" open>
+          <summary className="min-h-12 cursor-pointer text-base">
+            Documento da pessoa física
+          </summary>
+          <Campo rotulo="CPF" registro={register('cpf')} />
+        </details>
+      ) : null}
+      {tipo === 'PJ' ? (
+        <details className="rounded border border-stone-300 p-3" open>
+          <summary className="min-h-12 cursor-pointer text-base">
+            Documento da pessoa jurídica
+          </summary>
+          <Campo rotulo="CNPJ" registro={register('cnpj')} />
+          <Campo rotulo="Razão social" registro={register('razaoSocial')} />
+          <Campo rotulo="Nome fantasia" registro={register('nomeFantasia')} />
+        </details>
+      ) : null}
       <details className="rounded border border-stone-300 p-3">
         <summary className="min-h-12 cursor-pointer text-base">Endereço</summary>
         <Campo rotulo="CEP" registro={register('cep')} />
@@ -192,79 +220,48 @@ export function FormularioCaptura() {
         <summary className="min-h-12 cursor-pointer text-base">Observações</summary>
         <Campo rotulo="Notas" registro={register('observacoes')} />
       </details>
+      {contato?.idServidor && podeGerir() ? (
+        <Link
+          className="inline-flex min-h-12 items-center text-base underline"
+          to={`/promover/${contato.idServidor}`}
+        >
+          Promover a cliente
+        </Link>
+      ) : null}
+      {contato?.idServidor && podeAuditar() ? (
+        <Link
+          className="inline-flex min-h-12 items-center text-base underline"
+          to={`/lead/${contato.idServidor}`}
+        >
+          Qualificar, descartar ou auditar
+        </Link>
+      ) : null}
+      {contato && !contato.idServidor ? (
+        <button
+          type="button"
+          className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+          onClick={() => void excluirRascunho()}
+        >
+          Excluir rascunho deste aparelho
+        </button>
+      ) : null}
     </section>
   );
 }
 
-async function gravarCampos(
-  idLocal: string,
-  atuais: Campos,
-  ultimo: { current: Record<string, string> },
-  valoresRef: { current: Campos },
-  definir: (contato: ContatoLocal) => void,
-): Promise<void> {
-  const alterados = (Object.keys(VAZIO) as (keyof Campos)[]).filter(
-    (campo) => atuais[campo] !== ultimo.current[campo],
-  );
-  if (alterados.length === 0) return;
-  for (const campo of alterados) ultimo.current[campo] = atuais[campo];
-  const foto = JSON.stringify(atuais);
-  for (const campo of alterados) definir(await salvarCampo(idLocal, campo, atuais[campo]));
-  if (JSON.stringify(valoresRef.current) === foto) limparPendenteSeIgual(idLocal, foto);
-}
-
-function chavePendente(idLocal: string): string {
-  return `captura7.rascunho.${idLocal}`;
-}
-
-function gravarPendente(idLocal: string, campos: Campos): void {
-  localStorage.setItem(chavePendente(idLocal), JSON.stringify(campos));
-}
-
-function limparPendenteSeIgual(idLocal: string, foto: string): void {
-  if (localStorage.getItem(chavePendente(idLocal)) === foto) {
-    localStorage.removeItem(chavePendente(idLocal));
-  }
-}
-
-function lerPendente(idLocal: string): Partial<Campos> {
-  const bruto = localStorage.getItem(chavePendente(idLocal));
-  if (!bruto) return {};
-  try {
-    const json: unknown = JSON.parse(bruto);
-    if (!json || typeof json !== 'object') return {};
-    const saida: Partial<Campos> = {};
-    for (const chave of Object.keys(VAZIO) as (keyof Campos)[]) {
-      const valor = (json as Record<string, unknown>)[chave];
-      if (typeof valor === 'string') saida[chave] = valor;
-    }
-    return saida;
-  } catch {
-    return {};
-  }
-}
-
-function textoConsentimento(contato: ContatoLocal | null, statusServidor: string): string {
-  const status =
-    statusServidor ||
-    (contato?.consentimento?.contatoComercial
-      ? 'escolha neste aparelho, ainda sem confirmação do servidor'
-      : 'pendente');
-  if (status === 'concedido') return 'Consentimento de contato comercial: concedido.';
-  if (status === 'revogado') {
-    return 'Consentimento de contato comercial: revogado. Contato comercial, envio ao ERP e exportação seguem bloqueados.';
-  }
-  if (status === 'pendente') {
-    return 'Consentimento de contato comercial: pendente. O lead pode ficar salvo assim. Contato comercial, envio ao ERP e exportação seguem bloqueados até o titular autorizar.';
-  }
-  return `Consentimento de contato comercial: ${status}.`;
-}
-
-function Campo({ rotulo, registro }: { rotulo: string; registro: UseFormRegisterReturn }) {
+function Opcao({
+  valor,
+  rotulo,
+  registro,
+}: {
+  valor: string;
+  rotulo: string;
+  registro: UseFormRegisterReturn;
+}) {
   return (
-    <label className="mt-3 flex flex-col gap-1 text-base">
+    <label className="flex min-h-12 items-center gap-2 text-base">
+      <input type="radio" value={valor} {...registro} />
       {rotulo}
-      <input className="min-h-12 rounded border border-stone-300 px-3" {...registro} />
     </label>
   );
 }

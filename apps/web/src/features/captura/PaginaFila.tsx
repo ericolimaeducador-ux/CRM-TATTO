@@ -26,8 +26,9 @@ export function PaginaFila() {
       {itens.length === 0 ? <p className="text-base">Nada pendente.</p> : null}
       {itens.map((item) => (
         <article key={item.idLocal} className="rounded border border-stone-300 p-3">
-          <p className="text-base">{item.campos.nome || 'Sem nome'}</p>
+          <p className="text-base">{item.campos.nome?.trim() || 'Rascunho local'}</p>
           <IndicadorSincronizacao estado={item.estado} />
+          {item.mensagem ? <p className="text-base text-amber-900">{item.mensagem}</p> : null}
           {item.estado === 'preso' ? (
             <>
               <p className="text-base text-amber-900">Este registro está preso na fila.</p>

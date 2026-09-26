@@ -177,6 +177,9 @@ describe('API de contatos', () => {
     const nomes = [um.body.dados?.nome, dois.body.dados?.nome, lido.body.dados.nome];
     expect(nomes.filter((nome) => nome === lido.body.dados.nome).length).toBeGreaterThan(0);
     expect([um.body.dados?.nome, dois.body.dados?.nome]).toContain(lido.body.dados.nome);
+    expect(lido.body.dados.conflito?.detectadoEm).toBeTruthy();
+    expect(lido.body.dados.conflito?.versaoLocal).toBeTruthy();
+    expect(lido.body.dados.conflito?.versaoServidor).toBeTruthy();
   });
 
   it('nega auditor escrevendo e vendedor na carteira alheia', async () => {

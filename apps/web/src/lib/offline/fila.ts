@@ -1,7 +1,6 @@
-import { patchCampo, postarConsentimento, postarContato, reportarProfundidade } from './api';
-import { atrasoMs } from './atraso';
+import { postarConsentimento, postarResolucao, reportarProfundidade } from './api';
 import {
-  apagarOperacao,
+  apagarContato,
   apagarOperacoesDoContato,
   gravarContato,
   gravarOperacao,
@@ -9,25 +8,13 @@ import {
   listarContatos,
   listarOperacoes,
 } from './db';
+import { emSerie } from './serie';
+import { sincronizarContato } from './sincronizar-contato';
 import type { ContatoLocal, EstadoSync, Operacao } from './tipos';
 
 const ouvintes = new Set<() => void>();
-const seriePorContato = new Map<string, Promise<void>>();
 let timer: ReturnType<typeof setTimeout> | undefined;
 let drenando = false;
-
-function emSerie(idLocal: string, trabalho: () => Promise<void>): Promise<void> {
-  const anterior = seriePorContato.get(idLocal) ?? Promise.resolve();
-  const execucao = anterior.then(trabalho, trabalho);
-  seriePorContato.set(
-    idLocal,
-    execucao.then(
-      () => undefined,
-      () => undefined,
-    ),
-  );
-  return execucao;
-}
 
 export function observarFila(ouvinte: () => void): () => void {
   ouvintes.add(ouvinte);
@@ -105,9 +92,40 @@ export async function lerUm(idLocal: string): Promise<ContatoLocal | undefined> 
   return lerContato(idLocal);
 }
 
+export async function apagarRascunhoLocal(idLocal: string): Promise<boolean> {
+  const contato = await lerContato(idLocal);
+  if (!contato || contato.idServidor) return false;
+  await apagarOperacoesDoContato(idLocal);
+  await apagarContato(idLocal);
+  avisar();
+  return true;
+}
+
 export async function resolverConflito(idLocal: string, ficarComLocal: boolean): Promise<void> {
   const contato = await lerContato(idLocal);
   if (!contato?.conflito) return;
+  if (contato.idServidor) {
+    const resposta = await postarResolucao(
+      contato.idServidor,
+      ficarComLocal ? 'local' : 'servidor',
+    );
+    if (resposta.http >= 400) {
+      contato.mensagem = resposta.erros?.[0]?.mensagem ?? 'A escolha não foi gravada no servidor.';
+      await gravarContato(contato);
+      avisar();
+      return;
+    }
+    if (!ficarComLocal) {
+      const valor = contato.conflito.valorServidor[contato.conflito.campo];
+      if (typeof valor === 'string') contato.campos[contato.conflito.campo] = valor;
+    }
+    contato.versaoServidor = Number(resposta.dados?.versao ?? contato.versaoServidor);
+    contato.conflito = undefined;
+    contato.mensagem = undefined;
+    await apagarOperacoesDoContato(idLocal);
+    await definirEstado(contato, 'sincronizado', 0);
+    return;
+  }
   const servidor = contato.conflito.valorServidor;
   if (!ficarComLocal) {
     const valor = servidor[contato.conflito.campo];
@@ -174,7 +192,7 @@ export async function drenar(): Promise<void> {
     }
     let proxima = 5 * 60 * 1000;
     for (const [idLocal, grupo] of porContato) {
-      const espera = await sincronizar(idLocal, grupo);
+      const espera = await sincronizarContato(idLocal, grupo, definirEstado);
       if (espera !== null) proxima = Math.min(proxima, espera);
     }
     if (navigator.onLine) await enviarConsentimentosLocais();
@@ -184,67 +202,6 @@ export async function drenar(): Promise<void> {
   } finally {
     drenando = false;
     avisar();
-  }
-}
-
-async function sincronizar(idLocal: string, grupo: Operacao[]): Promise<number | null> {
-  const contato = await lerContato(idLocal);
-  if (!contato) return null;
-  const prontas = grupo.filter((item) => item.proximaEm <= Date.now());
-  if (prontas.length === 0) return Math.min(...grupo.map((item) => item.proximaEm - Date.now()));
-  if (!navigator.onLine) return atrasoMs(1);
-  await definirEstado(contato, 'enviando');
-  try {
-    if (!contato.idServidor) {
-      const resposta = await postarContato(contato);
-      const id = resposta.dados?._id;
-      if (!id || typeof id !== 'string') throw new Error('sem id');
-      contato.idServidor = id;
-      contato.versaoServidor = Number(resposta.dados?.versao ?? 1);
-      await apagarOperacoesDoContato(idLocal);
-      await definirEstado(contato, 'sincronizado', 0);
-      return null;
-    }
-    for (const operacao of prontas) {
-      if (!operacao.campo) {
-        await apagarOperacao(operacao.id);
-        continue;
-      }
-      const resposta = await patchCampo(
-        contato.idServidor,
-        operacao.campo,
-        operacao.valor ?? contato.campos[operacao.campo] ?? '',
-        contato.versaoServidor,
-      );
-      if (
-        resposta.http === 422 &&
-        resposta.erros?.some((erro) => erro.codigo === 'CONFLITO_VERSAO')
-      ) {
-        contato.conflito = {
-          campo: operacao.campo,
-          valorLocal: operacao.valor ?? '',
-          valorServidor: (resposta.dados as Record<string, unknown>) ?? {},
-        };
-        await definirEstado(contato, 'conflito');
-        return null;
-      }
-      if (resposta.http >= 400) throw new Error(resposta.erros?.[0]?.codigo ?? 'falha');
-      contato.versaoServidor = Number(resposta.dados?.versao ?? contato.versaoServidor);
-      await apagarOperacao(operacao.id);
-    }
-    await definirEstado(contato, 'sincronizado', 0);
-    return null;
-  } catch {
-    const tentativas = contato.tentativas + 1;
-    const estado: EstadoSync = tentativas >= 10 ? 'preso' : 'local';
-    await definirEstado(contato, estado, tentativas);
-    const espera = atrasoMs(tentativas);
-    for (const operacao of prontas) {
-      operacao.proximaEm = Date.now() + espera;
-      operacao.tentativas = tentativas;
-      await gravarOperacao(operacao);
-    }
-    return espera;
   }
 }
 
@@ -260,6 +217,9 @@ async function definirEstado(
     fresco.atualizadoEm = Date.now();
     if (contato.idServidor) fresco.idServidor = contato.idServidor;
     if (contato.versaoServidor !== undefined) fresco.versaoServidor = contato.versaoServidor;
+    if (contato.avisos) fresco.avisos = contato.avisos;
+    if (contato.mensagem) fresco.mensagem = contato.mensagem;
+    else if (estado === 'sincronizado') fresco.mensagem = undefined;
     if (estado === 'sincronizado') fresco.conflito = undefined;
     else if (contato.conflito) fresco.conflito = contato.conflito;
     await gravarContato(fresco);

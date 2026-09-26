@@ -18,9 +18,11 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 
 Autorização escrita do dono (Professor Erico), 2026-09-26: "Autorizo implementar as mudanças do termo no captura7."
 
+Autorização escrita do dono (Professor Erico), 2026-09-26 às 17h26 BRT: "Autorizo o PR que libera tudo. Não tenho ERP por enquanto e vou rodar no meu computador."
+
 ### Fase 3 — Saída controlada
 
-- `[F3-02]` Exportação CSV/XLSX/JSON com log de exportação (quem levou qual base, quando) — **@INT-06** + **@SEC-07** — **BLOQUEADO** — D8 aberta; sem rota e sem arquivo neste ciclo
+_(vazio — F3-02 foi para FEITO com a autorização de 26/09/2026)_
 
 ---
 
@@ -65,6 +67,7 @@ _(vazio)_
 - `[T-04]` Mesma tela de autorizações na captura e no QR, com destaque e botão condicional — **@UI-04** — aceite: a captura salva com pendente visível; "Concluir cadastro" nasce desabilitado — dep: [T-02] — observação: Playwright do termo verde em 360px
 - `[T-05]` Bateria do termo e regressão das fases anteriores — **@QA-09** — aceite: lint, build, Jest, Vitest, Playwright e varredura de segredos executados neste host — dep: [T-03, T-04] — observação: Jest 18/93, Vitest 7/15, Playwright 7, varredura limpa, em 2026-09-26
 - `[T-06]` Portão do ciclo do termo — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_TERMO.md — dep: [T-05] — observação: APROVADO COM RESSALVAS. O portão prepara revisão e não substitui revisão humana. Parada deste ciclo.
+- `[F3-02]` Exportação CSV/XLSX com log de exportação (quem levou qual base, quando) — **@INT-06** + **@SEC-07** — aceite: administrador com passo extra baixa CSV e XLSX filtrados e a trilha guarda autor, formato e hora — dep: [F3-01] — observação: autorização de 26/09/2026 17h26 BRT; JSON ficou de fora; ADR-010
 
 **Critérios de aceite de `F0-02`:**
 1. Salvar `{ nome: "Ana" }` persiste sem erro de validação

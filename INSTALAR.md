@@ -1,5 +1,7 @@
 # Como instalar este banco de agentes
 
+Para instalar o captura7 no Windows e usar no computador e no celular, siga o [INSTALAR-WINDOWS.md](INSTALAR-WINDOWS.md). O restante deste arquivo é o banco de agentes do Cursor.
+
 1. Descompacte o conteúdo na **raiz** do repositório do `captura7` (pode ser uma pasta vazia).
 2. Abra a pasta no Cursor.
 3. Confirme que o Cursor carregou as rules: `.cursor/rules/000-projeto.mdc` e

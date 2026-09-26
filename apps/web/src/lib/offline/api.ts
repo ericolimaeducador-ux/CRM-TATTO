@@ -1,8 +1,9 @@
+import { urlDaApi } from '../api-url';
 import { cabecalhosDaSessao } from './sessao';
 import type { ContatoLocal, RespostaEscrita } from './tipos';
 
 async function enviar(caminho: string, metodo: string, corpo: unknown): Promise<RespostaEscrita> {
-  const resposta = await fetch(caminho, {
+  const resposta = await fetch(urlDaApi(caminho), {
     method: metodo,
     headers: cabecalhosDaSessao(),
     body: JSON.stringify(corpo),
@@ -48,6 +49,13 @@ export function postarConsentimento(
     contatoComercial: true,
     emDispositivo,
   });
+}
+
+export function postarResolucao(
+  idServidor: string,
+  escolha: 'local' | 'servidor',
+): Promise<RespostaEscrita> {
+  return enviar(`/v1/contatos/${idServidor}/resolucao`, 'POST', { escolha });
 }
 
 export function patchCampo(

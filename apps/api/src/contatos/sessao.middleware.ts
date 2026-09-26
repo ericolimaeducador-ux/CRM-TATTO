@@ -11,9 +11,26 @@ export interface UsuarioSessao {
 
 export type RequisicaoComUsuario = Request & { usuario?: UsuarioSessao };
 
+export type ValidadorDeSessao = (token: string) => Promise<UsuarioSessao | null>;
+
+let validadorDeSessao: ValidadorDeSessao | null = null;
+
+export function registrarValidadorDeSessao(validador: ValidadorDeSessao | null): void {
+  validadorDeSessao = validador;
+}
+
 @Injectable()
 export class SessaoMiddleware implements NestMiddleware {
-  use(req: RequisicaoComUsuario, _res: Response, next: NextFunction): void {
+  async use(req: RequisicaoComUsuario, _res: Response, next: NextFunction): Promise<void> {
+    const bruto = req.header('authorization') ?? '';
+    if (bruto.toLowerCase().startsWith('bearer ') && validadorDeSessao) {
+      const usuario = await validadorDeSessao(bruto.slice(7).trim());
+      if (usuario) {
+        req.usuario = usuario;
+        next();
+        return;
+      }
+    }
     if (!headersDeTesteAtivos()) {
       next();
       return;

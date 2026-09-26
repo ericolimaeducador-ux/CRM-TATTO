@@ -7,13 +7,16 @@ import {
   garantirIndicesSeExistirem,
 } from './composicao/carregar-registradores';
 import { LogJson } from './observabilidade/log-json';
+import { origemPermitida } from './lgpd/origem-cors';
 import { saltosDeProxyConfiavel } from './lgpd/proxy-confiavel';
 import { profundidadeFila } from './observabilidade/fila-sincronizacao';
 
 async function bootstrap(): Promise<void> {
   carregarRegistradores();
   const app = await NestFactory.create(AppModule, { logger: new LogJson() });
-  app.enableCors({ origin: [/^http:\/\/127\.0\.0\.1:\d+$/, /^http:\/\/localhost:\d+$/] });
+  app.enableCors({
+    origin: (origem, responder) => responder(null, origemPermitida(origem)),
+  });
   const expressApp = app.getHttpAdapter().getInstance() as Express;
   const saltos = saltosDeProxyConfiavel();
   if (saltos !== null) expressApp.set('trust proxy', saltos);

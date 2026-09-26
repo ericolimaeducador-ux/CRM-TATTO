@@ -3,6 +3,9 @@ import {
   CAMPOS_PURGADOS_NA_REVOGACAO,
   aplicarGuardaAuditoria,
   contatoComercialLiberado,
+  deveExpirarPorInatividade,
+  diasDePurgaRevogacao,
+  diasDeRascunho,
   devePurgarContato,
   deveSinalizarRascunho,
   envioErpLiberado,
@@ -42,6 +45,32 @@ describe('base legal e retenção', () => {
     expect(devePurgarContato(revogadoEm, new Date('2026-01-30T00:00:00.000Z'))).toBe(false);
     expect(devePurgarContato(revogadoEm, new Date('2026-01-31T00:00:00.000Z'))).toBe(true);
     expect(CAMPOS_PURGADOS_NA_REVOGACAO).toEqual(['emails', 'telefones', 'enderecos']);
+  });
+
+  it('expira o cadastro depois dos meses sem interação', () => {
+    const alteradoEm = new Date('2024-01-15T00:00:00.000Z');
+    expect(deveExpirarPorInatividade(alteradoEm, new Date('2025-12-31T00:00:00.000Z'), 24)).toBe(
+      false,
+    );
+    expect(deveExpirarPorInatividade(alteradoEm, new Date('2026-01-15T00:00:00.000Z'), 24)).toBe(
+      true,
+    );
+    expect(deveExpirarPorInatividade(undefined, new Date('2027-01-01T00:00:00.000Z'), 24)).toBe(
+      false,
+    );
+  });
+
+  it('lê os prazos de revogação e de rascunho do ambiente', () => {
+    delete process.env.PURGA_REVOGACAO_DIAS;
+    delete process.env.RASCUNHO_DIAS;
+    expect(diasDePurgaRevogacao()).toBe(30);
+    expect(diasDeRascunho()).toBe(180);
+    process.env.PURGA_REVOGACAO_DIAS = '45';
+    process.env.RASCUNHO_DIAS = '10';
+    expect(diasDePurgaRevogacao()).toBe(45);
+    expect(diasDeRascunho()).toBe(10);
+    delete process.env.PURGA_REVOGACAO_DIAS;
+    delete process.env.RASCUNHO_DIAS;
   });
 
   it('sinaliza rascunho parado há 180 dias', () => {

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { criarIdLocal } from '@/lib/offline/fila';
 
 export function TelaCaptura() {
@@ -28,15 +28,6 @@ export function TelaCaptura() {
       >
         Meu QR
       </button>
-      <Link className="inline-flex min-h-12 items-center text-base underline" to="/contatos">
-        Contatos deste aparelho
-      </Link>
-      <Link className="inline-flex min-h-12 items-center text-base underline" to="/fila">
-        Fila
-      </Link>
-      <Link className="inline-flex min-h-12 items-center text-base underline" to="/duplicatas">
-        Duplicatas
-      </Link>
     </section>
   );
 }

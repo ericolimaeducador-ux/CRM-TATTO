@@ -10,7 +10,14 @@ import {
 import { cifrar, hmacDocumento, mascararCnpj, mascararCpf } from '../seguranca/cifra';
 import type { CriarContatoDto } from './criar-contato.dto';
 
-const MODOS = new Set(['qr_lido', 'qr_proprio', 'manual', 'google_forms', 'importacao']);
+const MODOS = new Set([
+  'qr_lido',
+  'qr_proprio',
+  'manual',
+  'google_forms',
+  'importacao',
+  'importado',
+]);
 const TIPOS = new Set(['PF', 'PJ', 'INDEFINIDO']);
 
 export interface DocumentoMontado {

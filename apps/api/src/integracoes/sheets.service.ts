@@ -7,6 +7,7 @@ import type { UsuarioSessao } from '../contatos/sessao.middleware';
 import { aviso, type Aviso } from '../normalizacao/avisos';
 import { ClienteHttp } from './cliente-http';
 import { circuitoAberto, registrarResultado } from './circuito';
+import { duplicataDeCampos } from '../importacao/duplicata';
 import { contatoDaLinha, lerPlanilha } from './planilha-linha';
 
 const INTERVALO_MS = 5 * 60 * 1000;
@@ -39,6 +40,7 @@ export class SheetsService implements OnModuleInit, OnModuleDestroy {
     private readonly http: ClienteHttp,
     @InjectModel('PlanilhaLinha') private readonly linhas: Model<LinhaGravada>,
     @InjectModel('PlanilhaMarca') private readonly marcas: Model<Marca>,
+    @InjectModel('Contato') private readonly modeloContatos: Model<unknown>,
   ) {}
 
   onModuleInit(): void {
@@ -120,8 +122,24 @@ export class SheetsService implements OnModuleInit, OnModuleDestroy {
     for (const linha of lerPlanilha(values)) {
       const ja = await this.linhas.exists({ hash: linha.hash });
       if (ja) continue;
+      const contato = contatoDaLinha(linha);
+      if (await duplicataDeCampos(this.modeloContatos, contato)) {
+        await this.linhas.updateOne(
+          { hash: linha.hash },
+          { hash: linha.hash, linha: linha.linha, em: new Date() },
+          { upsert: true },
+        );
+        avisos.push(
+          aviso(
+            'planilha',
+            'DUPLICATA',
+            'Esta linha repete e-mail ou telefone já gravado. Não foi fundida.',
+          ),
+        );
+        continue;
+      }
       try {
-        await this.contatos.criar(contatoDaLinha(linha), usuario);
+        await this.contatos.criar(contato, usuario);
         await this.linhas.updateOne(
           { hash: linha.hash },
           { hash: linha.hash, linha: linha.linha, em: new Date() },

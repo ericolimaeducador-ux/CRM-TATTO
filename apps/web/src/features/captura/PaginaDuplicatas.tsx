@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { urlDaApi } from '@/lib/api-url';
 import { cabecalhosDaSessao } from '@/lib/offline/sessao';
 
 interface Suspeita {
@@ -19,7 +20,7 @@ export function PaginaDuplicatas() {
   const [mensagem, setMensagem] = useState('Procurando sugestões. Nada é fundido nesta tela.');
 
   useEffect(() => {
-    void fetch('/v1/duplicatas', { headers: cabecalhosDaSessao() })
+    void fetch(urlDaApi('/v1/duplicatas'), { headers: cabecalhosDaSessao() })
       .then(async (resposta) => {
         const json = (await resposta.json()) as {
           dados?: Item[];
@@ -58,8 +59,8 @@ export function PaginaDuplicatas() {
             className="inline-flex min-h-12 items-center text-base underline"
             to={`/merge/${item._id}/${suspeita.contatoId}`}
           >
-            {item.nome ?? 'Sem nome'} parece o contato {suspeita.contatoId} ({suspeita.motivo},{' '}
-            {suspeita.similaridade})
+            {item.nome ?? 'Contato sem nome informado'} parece o contato {suspeita.contatoId} (
+            {suspeita.motivo}, {suspeita.similaridade})
           </Link>
         )),
       )}

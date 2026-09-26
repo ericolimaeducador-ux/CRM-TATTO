@@ -20,6 +20,8 @@ export interface ContatoLocal {
     valorLocal: string;
     valorServidor: Record<string, unknown>;
   };
+  avisos?: { campo: string; codigo: string; mensagem: string }[];
+  mensagem?: string;
 }
 
 export interface Operacao {

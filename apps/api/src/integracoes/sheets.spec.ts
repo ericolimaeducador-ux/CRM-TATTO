@@ -99,8 +99,11 @@ describe('ingestão Google Sheets', () => {
     const nomes = lista.body.dados.map((item: { nome?: string }) => item.nome).sort();
     expect(nomes).toEqual(['Ana Planilha', 'Bia Planilha', 'Caio Planilha']);
     for (const item of lista.body.dados as {
-      lgpd?: { contatoComercial?: string; consentimentos?: unknown[] };
+      origem?: { modo?: string };
+      lgpd?: { contatoComercial?: string; baseLegal?: string; consentimentos?: unknown[] };
     }[]) {
+      expect(item.origem?.modo).toBe('importado');
+      expect(item.lgpd?.baseLegal).toBe('legitimo_interesse');
       expect(item.lgpd?.contatoComercial).toBe('pendente');
       expect(item.lgpd?.consentimentos ?? []).toEqual([]);
     }
