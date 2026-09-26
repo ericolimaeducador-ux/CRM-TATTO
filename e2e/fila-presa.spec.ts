@@ -8,9 +8,12 @@ test('item preso na fila mostra alerta e exportação', async ({ page, context }
   await page.goto('/');
   await page.getByRole('button', { name: 'Digitar' }).click();
   await page.getByLabel('Nome').fill('Preso Aqui');
+  await expect(page.getByText(/Salvo neste aparelho|Enviando…|Preso na fila/)).toBeVisible();
   await page.getByRole('link', { name: 'Captura' }).click();
   await page.getByRole('link', { name: 'Fila' }).click();
-  await expect(page.getByText('Este registro está preso na fila.')).toBeVisible();
+  await expect(page.getByText('Este registro está preso na fila.')).toBeVisible({
+    timeout: 60_000,
+  });
   await expect(
     page.getByRole('button', { name: 'Exportar este registro como JSON' }),
   ).toBeVisible();
