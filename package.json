@@ -9,7 +9,7 @@
     "build": "pnpm -r --if-present build",
     "lint": "pnpm -r --if-present lint",
     "test": "pnpm -r --if-present test",
-    "test:e2e": "pnpm --filter @captura7/api build && pnpm --filter @captura7/web build && playwright test -c e2e/playwright.config.ts",
+    "test:e2e": "pnpm --filter @captura7/api build && VITE_CAPTURA7_HEADERS_TESTE=1 pnpm --filter @captura7/web build && playwright test -c e2e/playwright.config.ts",
     "prepare": "husky"
   },
   "devDependencies": {

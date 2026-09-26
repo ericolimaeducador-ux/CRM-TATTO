@@ -47,6 +47,15 @@ describe('cifra de documento', () => {
     delete process.env.CIFRA_CHAVE_BASE64;
     expect(() => cifrar(CPF)).toThrow(/CIFRA_CHAVE_BASE64/);
   });
+
+  it('recusa pepper vazio, placeholder e curto', () => {
+    delete process.env.CIFRA_PEPPER;
+    expect(() => hmacDocumento(CPF)).toThrow(/CIFRA_PEPPER/);
+    process.env.CIFRA_PEPPER = 'preencha-com-pepper-aleatorio';
+    expect(() => hmacDocumento(CPF)).toThrow(/CIFRA_PEPPER/);
+    process.env.CIFRA_PEPPER = 'curto-demais';
+    expect(() => hmacDocumento(CPF)).toThrow(/CIFRA_PEPPER/);
+  });
 });
 
 describe('plugin de cifra no schema', () => {

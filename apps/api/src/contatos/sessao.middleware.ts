@@ -14,7 +14,7 @@ export type RequisicaoComUsuario = Request & { usuario?: UsuarioSessao };
 @Injectable()
 export class SessaoMiddleware implements NestMiddleware {
   use(req: RequisicaoComUsuario, _res: Response, next: NextFunction): void {
-    if (process.env.NODE_ENV === 'production') {
+    if (!headersDeTesteAtivos()) {
       next();
       return;
     }
@@ -32,4 +32,9 @@ export class SessaoMiddleware implements NestMiddleware {
     };
     next();
   }
+}
+
+function headersDeTesteAtivos(): boolean {
+  if (process.env.NODE_ENV === 'production') return false;
+  return process.env.NODE_ENV === 'test' || process.env.CAPTURA7_HEADERS_TESTE === '1';
 }

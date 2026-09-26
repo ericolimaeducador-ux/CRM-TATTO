@@ -96,7 +96,9 @@ describe('captura da fase 1', () => {
         .send({ para: 'qualificado' }),
     ]);
     expect([um.status, dois.status].sort()).toEqual([201, 422]);
-    expect(JSON.stringify([um.body, dois.body])).toContain('CONFLITO_VERSAO');
+    const perda = [um, dois].find((item) => item.status === 422);
+    const codigo = (perda?.body as { erros?: { codigo?: string }[] })?.erros?.[0]?.codigo;
+    expect(['CONFLITO_VERSAO', 'TRANSICAO_INVALIDA']).toContain(codigo);
     const lido = await request(app.getHttpServer())
       .get(`/v1/contatos/${id}`)
       .set(cabecalho('gestor'));

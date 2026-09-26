@@ -1,4 +1,4 @@
-import { Controller, Post, Req } from '@nestjs/common';
+import { Body, Controller, Post, Req } from '@nestjs/common';
 import { PERFIL_PERMISSOES } from './perfil-permissoes';
 import { Papel } from './papeis.decorator';
 import { RespostaComErro } from '../contatos/erros-http';
@@ -11,9 +11,12 @@ export class TotpController {
 
   @Post('inscrever')
   @Papel(...PERFIL_PERMISSOES.transicionar_cliente)
-  async inscrever(@Req() req: RequisicaoComUsuario) {
+  async inscrever(@Req() req: RequisicaoComUsuario, @Body() corpo: { codigoTotp?: string }) {
     const usuario = exigirUsuario(req);
-    const dados = await this.totp.inscrever(usuario.id);
+    const dados = await this.totp.inscrever(usuario.id, {
+      codigoAtual: corpo?.codigoTotp,
+      stepUp: usuario.stepUp === true,
+    });
     return { dados, avisos: [], erros: [] };
   }
 }

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
+import { RespostaComErro } from '../contatos/erros-http';
 import { cifrar, decifrar } from '../seguranca/cifra';
 import {
   codigosCoincidem,
@@ -12,6 +13,11 @@ import {
 export interface InscricaoTotp {
   segredoBase32: string;
   otpauth: string;
+}
+
+export interface OpcoesInscricao {
+  codigoAtual?: string;
+  stepUp?: boolean;
 }
 
 export interface VereditoTotp {
@@ -30,7 +36,18 @@ interface DocumentoTotp {
 export class TotpService {
   constructor(@InjectModel('UsuarioTotp') private readonly usuarios: Model<DocumentoTotp>) {}
 
-  async inscrever(usuarioId: string): Promise<InscricaoTotp> {
+  async inscrever(usuarioId: string, opcoes: OpcoesInscricao = {}): Promise<InscricaoTotp> {
+    const existente = await this.usuarios.findOne({ usuarioId }).lean<DocumentoTotp | null>();
+    if (existente?.segredoCifrado && opcoes.stepUp !== true) {
+      const veredito = await this.confirmar(usuarioId, opcoes.codigoAtual ?? '');
+      if (!veredito.aceito) {
+        const mensagem =
+          veredito.codigo === 'CODIGO_TOTP_REUSADO'
+            ? veredito.mensagem
+            : 'Para trocar o autenticador, informe o código atual de 6 dígitos. O segredo anterior continua valendo.';
+        throw new RespostaComErro(403, veredito.codigo, mensagem, null);
+      }
+    }
     const segredoBase32 = gerarSegredoBase32();
     await this.usuarios.findOneAndUpdate(
       { usuarioId },
