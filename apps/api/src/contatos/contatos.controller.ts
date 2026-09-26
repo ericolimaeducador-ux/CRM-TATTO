@@ -68,6 +68,7 @@ export class ContatosController {
       corpo.para,
       corpo.motivo,
       exigirUsuario(req),
+      corpo.codigoTotp,
     );
     return { dados: resultado.dados, avisos: resultado.avisos, erros: [] };
   }

@@ -53,3 +53,13 @@ seguem normalmente.
 ⚠️ O que já verifiquei: o PATCH condicional por `versao` não sobrescreve. A resposta 422 `CONFLITO_VERSAO` devolve o documento do servidor. A versão local permanece no IndexedDB, marcada para escolha humana. Não há fusão automática.
 ⚠️ Opções conhecidas (sem recomendar): (a) o ARQ-02 acrescenta `conflito` ao schema e a API passa a persistir as duas versões no servidor; (b) a escolha campo a campo continua só no aparelho até essa alteração.
 → Resposta do usuário (preencher quando houver):
+
+---
+
+## [ABERTO] 2026-09-26 — SEC-07 — Login para o step-up valer em produção
+
+⚠️ O que está em aberto: em produção a API não emite sessão. O middleware ignora `x-papel-teste`, `x-usuario-id`, `x-autor-nome` e `x-step-up-teste` quando `NODE_ENV=production`. Sem usuário autenticado, o segredo TOTP não tem a quem se vincular e a promoção a cliente responde 403.
+⚠️ Por que não posso decidir sozinho: nenhum card da fase 3 pede login, senha, JWT ou provedor de identidade. Criar um diretório de usuários seria escopo novo.
+⚠️ O que já verifiquei: o verificador segue a RFC 6238, o segredo fica cifrado por usuário e o mesmo passo não é aceito de novo. Fora de produção a sessão de teste inscreve e promove com código real. Com a API no ar em `NODE_ENV=production`, o cabeçalho de teste não autentica nem promove.
+⚠️ Opções conhecidas (sem recomendar): (a) o dono indica um provedor de identidade e o contrato da sessão; (b) um diretório local com senha, em card próprio; (c) o step-up continua utilizável só onde já existe sessão, e em produção fica inalcançável até essa sessão existir.
+→ Resposta do usuário (preencher quando houver):

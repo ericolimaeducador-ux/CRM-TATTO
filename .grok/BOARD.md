@@ -22,7 +22,6 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 
 ### Fase 3 — Saída controlada
 
-- `[F3-01]` Fluxo de promoção lead → cliente com validação estrita e step-up TOTP — **@API-03** + **@SEC-07**
 - `[F3-02]` Exportação CSV/XLSX/JSON com log de exportação (quem levou qual base, quando) — **@INT-06** + **@SEC-07**
 - `[F3-03]` Webhook de saída para o ERP (ver ADR-002) — **@INT-06**
 
@@ -56,6 +55,7 @@ _(vazio)_
 - `[F2-03]` Deduplicação fuzzy + tela de sugestão de merge — **@DQ-08** + **@UI-04** — aceite: matriz/filial não é duplicata; merge sem confirmação é impossível; absorvido recuperável por 90 dias — dep: [F2-01] — observação: sem fusão automática; o campo `conflito` continua escalonado e não foi necessário
 - `[F2-05]` Testes das categorias 1 a 7, com Playwright — **@QA-09** — aceite: suítes das fases anteriores seguem verdes e a categoria 7 cobre matriz/filial, merge sem confirmação e recuperação em 90 dias — dep: [F2-03] — observação: Playwright 5 testes verdes neste host, incluindo avião e a tela de fusão. GitHub Actions não rodou daqui
 - `[F2-06]` Portão de revisão da Fase 2 — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_2.md — dep: [F2-05] — observação: APROVADO COM RESSALVAS. O portão prepara revisão e não substitui revisão humana
+- `[F3-01]` Fluxo de promoção lead → cliente com validação estrita e step-up TOTP — **@API-03** + **@SEC-07** — aceite: código RFC 6238 promove; o mesmo passo não repete; com `NODE_ENV=production` o cabeçalho de teste não autentica — dep: [F2-06] — observação: segredo cifrado por usuário; janela ±1 passo de 30s; login de produção escalonado porque nenhum card pede emissão de sessão
 
 **Critérios de aceite de `F0-02`:**
 1. Salvar `{ nome: "Ana" }` persiste sem erro de validação

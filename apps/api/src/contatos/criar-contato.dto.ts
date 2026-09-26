@@ -109,6 +109,10 @@ export class TransicaoDto {
   @IsOptional()
   @IsString()
   motivo?: string;
+
+  @IsOptional()
+  @IsString()
+  codigoTotp?: string;
 }
 
 export class LoteDto {

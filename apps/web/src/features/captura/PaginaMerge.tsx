@@ -58,8 +58,8 @@ export function PaginaMerge() {
         </fieldset>
       ))}
       <label className="flex flex-col gap-1 text-base">
-        Código TOTP. Um código não vazio pede o passo extra. Em produção o servidor ignora esse
-        atalho e responde que o passo é necessário, porque o TOTP real ainda não está ligado.
+        Código TOTP. Fora de produção, um código não vazio pede o passo extra por um atalho de
+        teste. Em produção o servidor ignora esse atalho. A promoção a cliente confere o código.
         <input
           className="min-h-12 rounded border border-stone-300 px-3"
           value={codigo}
