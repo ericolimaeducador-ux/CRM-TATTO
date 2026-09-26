@@ -20,11 +20,17 @@ export function sessaoLocal(): SessaoLocal {
 }
 
 export function cabecalhosDaSessao(): Record<string, string> {
+  const base: Record<string, string> = { 'content-type': 'application/json' };
+  if (!headersDeTesteNoCliente()) return base;
   const sessao = sessaoLocal();
   return {
-    'content-type': 'application/json',
+    ...base,
     'x-papel-teste': sessao.papel,
     'x-usuario-id': sessao.id,
     'x-autor-nome': sessao.nome,
   };
+}
+
+function headersDeTesteNoCliente(): boolean {
+  return import.meta.env.MODE === 'test' || import.meta.env.VITE_CAPTURA7_HEADERS_TESTE === '1';
 }
