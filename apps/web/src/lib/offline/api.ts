@@ -40,6 +40,16 @@ export function reportarProfundidade(profundidade: number): Promise<RespostaEscr
   return postarLote([], profundidade);
 }
 
+export function postarConsentimento(
+  idServidor: string,
+  emDispositivo: string,
+): Promise<RespostaEscrita> {
+  return enviar(`/v1/contatos/${idServidor}/consentimento`, 'POST', {
+    contatoComercial: true,
+    emDispositivo,
+  });
+}
+
 export function patchCampo(
   idServidor: string,
   campo: string,

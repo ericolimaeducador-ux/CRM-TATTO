@@ -10,6 +10,11 @@ export interface ContatoLocal {
   estado: EstadoSync;
   tentativas: number;
   atualizadoEm: number;
+  consentimento?: {
+    contatoComercial: boolean;
+    emDispositivo: string;
+    estado: 'local' | 'enviado';
+  };
   conflito?: {
     campo: string;
     valorLocal: string;
