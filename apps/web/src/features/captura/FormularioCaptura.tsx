@@ -4,6 +4,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { garantirContato, lerUm, observarFila, salvarCampo } from '@/lib/offline/fila';
 import type { ContatoLocal } from '@/lib/offline/tipos';
 import { IndicadorSincronizacao } from './IndicadorSincronizacao';
+import { PainelEnriquecimento } from './PainelEnriquecimento';
 
 interface Campos {
   nome: string;
@@ -42,7 +43,7 @@ export function FormularioCaptura() {
   const [contato, setContato] = useState<ContatoLocal | null>(null);
   const ultimo = useRef<Record<string, string>>({});
   const pronto = useRef(false);
-  const { register, watch, reset } = useForm<Campos>({ defaultValues: VAZIO });
+  const { register, watch, reset, setValue } = useForm<Campos>({ defaultValues: VAZIO });
   const valores = watch();
   const valoresRef = useRef(valores);
   const filaGravacao = useRef<Promise<void>>(Promise.resolve());
@@ -151,6 +152,17 @@ export function FormularioCaptura() {
         <Campo rotulo="Cidade" registro={register('cidade')} />
         <Campo rotulo="UF" registro={register('uf')} />
       </details>
+      {contato ? (
+        <PainelEnriquecimento
+          idServidor={contato.idServidor}
+          versaoServidor={contato.versaoServidor}
+          cnpj={valores.cnpj}
+          cep={valores.cep}
+          aoUsarCampo={(campo, valor) => {
+            if (campo in VAZIO) setValue(campo as keyof Campos, valor);
+          }}
+        />
+      ) : null}
       <details className="rounded border border-stone-300 p-3">
         <summary className="min-h-12 cursor-pointer text-base">Observações</summary>
         <Campo rotulo="Notas" registro={register('observacoes')} />

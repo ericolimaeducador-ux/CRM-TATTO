@@ -210,4 +210,6 @@ O que esta sessão viu em 2026-09-25: `pnpm lint` verde; `pnpm test` com 64 Jest
 
 ### Autorização solicitada
 
-Abrir FASE 2? [aguardando]
+Abrir FASE 2? Autorizado.
+
+Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 2."

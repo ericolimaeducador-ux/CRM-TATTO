@@ -12,12 +12,11 @@ Formato do card:
 
 Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 1."
 
+Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 2."
+
 ### Fase 2 — Enriquecimento e ingestão
 
-- `[F2-01]` Enriquecimento CNPJ (BrasilAPI, fallback ReceitaWS) e CEP (ViaCEP) com cache e circuit breaker — **@INT-06**
-- `[F2-02]` Ingestão Google Sheets por polling (ver ADR-003) — **@INT-06**
-- `[F2-03]` Deduplicação fuzzy + tela de sugestão de merge — **@DQ-08** + **@UI-04**
-- `[F2-04]` QR próprio + formulário público de autocadastro com termo de consentimento versionado — **@UI-04** + **@SEC-07**
+- `[F2-04]` QR próprio + formulário público de autocadastro com termo de consentimento versionado — **@UI-04** + **@SEC-07** — **BLOQUEADO** — sem código neste ciclo; termo jurídico aberto em `.grok/ESCALONAMENTOS.md`
 
 ### Fase 3 — Saída controlada
 
@@ -50,6 +49,11 @@ _(vazio)_
 - `[F1-05]` Indicador de sincronização sempre visível (nunca "parece salvo") — **@UI-04** + **@SCAN-05** — aceite: só `Salvo neste aparelho`, `Enviando…` ou `Sincronizado` — dep: [F1-02, F1-04] — observação: barra, formulário, lista e fila; preso oferece exportar JSON; conflito pede escolha humana
 - `[F1-06]` Testes das categorias 1 a 6, com Playwright e rede simulada — **@QA-09** — aceite: lead capturado em avião chega sem duplicata depois de reabrir e reconectar — dep: [F1-05] — observação: Playwright verde neste host. Categoria 7 fica no F2-03. GitHub Actions não rodou daqui
 - `[F1-07]` Portão de revisão da Fase 1 — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_1.md — dep: [F1-06] — observação: APROVADO COM RESSALVAS. O portão prepara revisão e não substitui revisão humana
+- `[F2-01]` Enriquecimento CNPJ (BrasilAPI, fallback ReceitaWS) e CEP (ViaCEP) com cache e circuit breaker — **@INT-06** — aceite: fonte oficial sugere e não sobrescreve; falha não trava a captura — dep: [F1-07] — observação: contratos BrasilAPI, ReceitaWS e ViaCEP cobertos com mock; a rede externa não é chamada no teste
+- `[F2-02]` Ingestão Google Sheets por polling (ver ADR-003) — **@INT-06** — aceite: reprocessar a planilha inteira não duplica — dep: [F2-01] — observação: contrato ValueRange com mock; ponta a ponta no Google espera credencial do dono
+- `[F2-03]` Deduplicação fuzzy + tela de sugestão de merge — **@DQ-08** + **@UI-04** — aceite: matriz/filial não é duplicata; merge sem confirmação é impossível; absorvido recuperável por 90 dias — dep: [F2-01] — observação: sem fusão automática; o campo `conflito` continua escalonado e não foi necessário
+- `[F2-05]` Testes das categorias 1 a 7, com Playwright — **@QA-09** — aceite: suítes das fases anteriores seguem verdes e a categoria 7 cobre matriz/filial, merge sem confirmação e recuperação em 90 dias — dep: [F2-03] — observação: Playwright 5 testes verdes neste host, incluindo avião e a tela de fusão. GitHub Actions não rodou daqui
+- `[F2-06]` Portão de revisão da Fase 2 — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_2.md — dep: [F2-05] — observação: APROVADO COM RESSALVAS. O portão prepara revisão e não substitui revisão humana
 
 **Critérios de aceite de `F0-02`:**
 1. Salvar `{ nome: "Ana" }` persiste sem erro de validação

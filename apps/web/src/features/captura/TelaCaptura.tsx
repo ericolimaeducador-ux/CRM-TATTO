@@ -34,6 +34,9 @@ export function TelaCaptura() {
       <Link className="inline-flex min-h-12 items-center text-base underline" to="/fila">
         Fila
       </Link>
+      <Link className="inline-flex min-h-12 items-center text-base underline" to="/duplicatas">
+        Duplicatas
+      </Link>
     </section>
   );
 }
