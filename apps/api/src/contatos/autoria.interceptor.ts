@@ -75,8 +75,14 @@ export class AuditoriaInterceptor implements NestInterceptor {
   ) {
     if (!(erro instanceof RespostaComErro)) return;
     if (erro.codigo === 'CONFLITO_VERSAO') return;
+    if (documentoDeOutraEscrita(antes, erro.dados)) return;
     await this.auditar(antes, { dados: erro.dados }, req);
   }
+}
+
+function documentoDeOutraEscrita(antes: Record<string, unknown> | null, dados: unknown): boolean {
+  if (!antes || !dados || typeof dados !== 'object' || !('versao' in dados)) return false;
+  return Number(dados.versao) !== Number(antes.versao);
 }
 
 function descartarAutoriaDoCliente(corpo: unknown): void {
