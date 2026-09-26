@@ -22,7 +22,7 @@ Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a F
 
 ### Fase 3 — Saída controlada
 
-- `[F3-02]` Exportação CSV/XLSX/JSON com log de exportação (quem levou qual base, quando) — **@INT-06** + **@SEC-07**
+- `[F3-02]` Exportação CSV/XLSX/JSON com log de exportação (quem levou qual base, quando) — **@INT-06** + **@SEC-07** — **BLOQUEADO** — sem código neste ciclo; termo jurídico aberto em `.grok/ESCALONAMENTOS.md`
 - `[F3-03]` Webhook de saída para o ERP (ver ADR-002) — **@INT-06**
 
 ---

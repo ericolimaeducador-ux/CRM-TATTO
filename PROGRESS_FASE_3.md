@@ -40,3 +40,31 @@ Testado em 360px: sim — mesmas classes das telas já medidas (`min-h-12`, `tex
 Ação necessária antes de seguir: shadcn não foi instalado na fase 2; a tela segue o Tailwind já aceito. Login de produção continua escalonado.
 
 Exceção de glob neste card: um commit só, escopo SEC-07 (maioria em `apps/api/src/auth/**`). O corpo nomeia API-03 e UI-04. O teste HTTP mora em `apps/api/test/**`, glob do QA-09, porque o aceite é a prova com a API no ar.
+
+## F3-02 — Exportação com log
+
+Card bloqueado. O termo de consentimento segue aberto em `.grok/ESCALONAMENTOS.md`. Não há rota de exportação, não há arquivo CSV/XLSX/JSON e não há texto jurídico redigido neste ciclo. `GET /v1/exportacoes` continua inexistente.
+
+### Parecer SEC-07 — F3-02
+
+Dado/ação envolvida: exportação da base
+Sensibilidade: alta
+Papéis com acesso e justificativa (menor privilégio): gestor e admin, quando o card existir
+Criptografia em repouso aplicada: não se aplica — nada foi exportado
+Base legal registrada e não vazia: não — o texto do termo não foi escrito
+Log de acesso gerado: não se aplica
+Step-up exigido: sim — a exportação, quando existir, pede TOTP
+Nova superfície de ataque introduzida: nenhuma
+Veto exercido: sim — sem termo aprovado não se exporta base
+
+### Parecer INT-06 — F3-02
+
+Integração: exportação — saída
+Fonte e contrato: CSV, XLSX e JSON previstos na seção 8; não implementados
+Comportamento em indisponibilidade: não se aplica — a rota não existe
+Idempotência: não se aplica
+Payload cru preservado: não se aplica
+Credenciais fora do repositório: sim
+Log de exportação gerado: não — o card não fechou
+Sobrescreve dado digitado por humano: não
+Ação necessária antes de seguir: texto do termo aprovado pelo dono
