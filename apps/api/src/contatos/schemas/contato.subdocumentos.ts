@@ -106,6 +106,20 @@ export const pjSchema = new Schema(
   { _id: false },
 );
 
+const consentimentoSchema = new Schema(
+  {
+    finalidade: { type: String, enum: ['contato_comercial', 'envio_erp'] },
+    emDispositivo: { type: Date },
+    emServidor: { type: Date },
+    versaoTermo: { type: String },
+    hashTexto: { type: String },
+    canal: { type: String, enum: ['vendedor_evento', 'autocadastro'] },
+    responsavelId: { type: Schema.Types.ObjectId },
+    revogadoEm: { type: Date },
+  },
+  { _id: false },
+);
+
 export const lgpdSchema = new Schema(
   {
     baseLegal: {
@@ -121,6 +135,13 @@ export const lgpdSchema = new Schema(
     ipConsentimento: { type: String },
     revogadoEm: { type: Date },
     purgadoEm: { type: Date },
+    contatoComercial: {
+      type: String,
+      enum: ['pendente', 'concedido', 'revogado'],
+      default: 'pendente',
+    },
+    consentimentos: { type: [consentimentoSchema], default: () => [] },
+    eliminadoEm: { type: Date },
   },
   { _id: false },
 );

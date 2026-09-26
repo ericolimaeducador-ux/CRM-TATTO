@@ -6,6 +6,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Types, type Connection } from 'mongoose';
 import request from 'supertest';
 import { AuthModule } from '../auth/auth.module';
+import { hmacDocumento } from '../seguranca/cifra';
 import { garantirIndices } from './schemas/registrar-modelos';
 import { profundidadeFila } from '../observabilidade/fila-sincronizacao';
 import { ContatosModule } from './contatos.module';
@@ -147,8 +148,9 @@ describe('API de contatos', () => {
       .get(`/v1/contatos/${criado.body.dados._id}/auditoria`)
       .set(cabecalho('gestor'));
     const nome = trilha.body.dados.find((linha: { campo: string }) => linha.campo === 'nome');
-    expect(nome.valorAnterior).toBe('Gabi');
-    expect(nome.valorNovo).toBe('Gabriela Souza');
+    expect(nome.valorAnterior).toBe(hmacDocumento('Gabi'));
+    expect(nome.valorNovo).toBe(hmacDocumento('Gabriela Souza'));
+    expect(JSON.stringify(trilha.body)).not.toContain('Gabi');
     expect(nome.autor).toBe(USUARIO);
   });
 

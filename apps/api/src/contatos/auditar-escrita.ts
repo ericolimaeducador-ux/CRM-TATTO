@@ -1,5 +1,6 @@
 import { Types, type Model } from 'mongoose';
 import type { ContatoAuditoria } from './schemas/contato-auditoria.schema';
+import { pseudonimizarAutor, pseudonimizarCampo } from './schemas/pseudonimo';
 
 const CAMPOS = [
   'nome',
@@ -30,10 +31,10 @@ export async function gravarAuditoriaHttp(
     contatoId: depois._id,
     versao: depois.versao,
     campo,
-    valorAnterior: antes[campo] ?? null,
-    valorNovo: depois[campo] ?? null,
+    valorAnterior: pseudonimizarCampo(campo, antes[campo] ?? null),
+    valorNovo: pseudonimizarCampo(campo, depois[campo] ?? null),
     autor: new Types.ObjectId(autorId),
-    autorNome,
+    autorNome: pseudonimizarAutor(autorNome),
     timestampServidor: new Date(),
     origem: 'api' as const,
   }));

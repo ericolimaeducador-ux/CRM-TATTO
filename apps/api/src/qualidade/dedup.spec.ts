@@ -6,6 +6,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Types, type Connection } from 'mongoose';
 import request from 'supertest';
 import { AuthModule } from '../auth/auth.module';
+import { hmacDocumento } from '../seguranca/cifra';
 import { ContatosModule } from '../contatos/contatos.module';
 import { garantirIndices } from '../contatos/schemas/registrar-modelos';
 import type { UsuarioSessao } from '../contatos/sessao.middleware';
@@ -140,8 +141,9 @@ describe('dedup e merge', () => {
       .get(`/v1/contatos/${a}/auditoria`)
       .set(cabecalho());
     const linhaNome = nome.body.dados.find((linha: { campo: string }) => linha.campo === 'nome');
-    expect(linhaNome.valorAnterior).toBe('Casa A');
-    expect(linhaNome.valorNovo).toBe('Casa B');
+    expect(linhaNome.valorAnterior).toBe(hmacDocumento('Casa A'));
+    expect(linhaNome.valorNovo).toBe(hmacDocumento('Casa B'));
+    expect(JSON.stringify(nome.body)).not.toContain('Casa A');
     const volta = await request(app.getHttpServer())
       .post(`/v1/contatos/${b}/recuperar`)
       .set(cabecalho(true));
