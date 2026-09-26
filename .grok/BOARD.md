@@ -58,6 +58,7 @@ _(vazio)_
 - `[F3-03]` Webhook de saída genérico (ADR-002) — **@INT-06** — aceite: HMAC, idempotência por contato e versão, retentativa com backoff, fila de falhas e log; URL e segredo só por ambiente — dep: [F3-01] — observação: nenhum fornecedor foi nomeado; sem destino a promoção segue e a entrega fica `nao_configurado`
 - `[F3-04]` Backup 3-2-1 testado e cronometrado — **@OPS-10** — aceite: dump cifrado, restauração em base limpa, contagem e amostra da auditoria, RTO/RPO medidos — dep: [F3-03] — observação: ensaio neste host RPO 29 ms e RTO 19 ms em 1 contato e 1 linha de auditoria (anterior: 26 ms e 15 ms). 3-2-1 não atendida: falta o bucket do dono. `docker compose up` não rodou; o socket negou permissão
 - `[F3-05]` Testes completos — **@QA-09** — aceite: suítes das fases anteriores seguem verdes, com TOTP, webhook e a tela de promoção — dep: [F3-04] — observação: Jest 17/88, Vitest 6/14, Playwright 6. GitHub Actions não rodou daqui
+- `[F3-06]` Portão final — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_3.md — dep: [F3-05] — observação: APROVADO COM RESSALVAS. O portão prepara revisão e não substitui revisão humana. Parada 4.
 
 **Critérios de aceite de `F0-02`:**
 1. Salvar `{ nome: "Ana" }` persiste sem erro de validação

@@ -2,7 +2,7 @@
 
 Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 3."
 
-Fase em curso. O portão final fica neste arquivo quando o F3-06 fechar.
+Parada 4. O portão abaixo fecha a fase. O SUPERCOMANDO não define fase seguinte.
 
 ## F3-01 — Promoção com step-up
 
@@ -114,3 +114,101 @@ Falhas encontradas: a primeira execução de `e2e/promover.spec.ts` quebrou por 
 Falha silenciosa identificada (a mais perigosa): não nesta rodada. Promoção sem sessão em produção responde 403, não sucesso.
 Cenários críticos cobertos nominalmente: código RFC 6238 aceito; mesmo passo recusado; código fora da janela recusado; cabeçalho de teste ignorado com a API em produção; webhook sem destino não chama a rede e não desfaz a promoção; mesma versão não duplica o POST; falha 503 retenta; placeholder não sai da máquina; captura de um nome sem TOTP; Playwright das fases 1 e 2 sem regressão
 Pronto para o portão REV-11: sim
+
+## RELATÓRIO — FASE 3 — 2026-09-26
+
+Autorização escrita do dono (Professor Erico), 2026-09-25: "Autorizo abrir a FASE 3."
+
+### Executado
+
+| Card | Agente | Status | Arquivos |
+|---|---|---|---|
+| F3-01 | SEC-07 + API-03 + UI-04 | feito | `apps/api/src/auth/totp*`, `transicao.service.ts`, `PaginaPromover.tsx`, testes HTTP com a API em `NODE_ENV=production` |
+| F3-02 | SEC-07 + INT-06 | bloqueado | nenhum código; termo aberto |
+| F3-03 | INT-06 | feito | `webhook-saida.service.ts`, fila `webhooks_saida`, `.env.example` |
+| F3-04 | OPS-10 | feito com ressalva | `infra/backup/backup-321.mjs`; 3-2-1 não atendida |
+| F3-05 | QA-09 | feito | `e2e/promover.spec.ts` e a bateria já existente |
+| F3-06 | REV-11 | feito | este arquivo |
+
+### Pareceres dos agentes
+
+Os pareceres de API-03, SEC-07, UI-04, INT-06 e OPS-10 estão nas seções F3-01 a F3-04 acima, no formato de cada persona.
+
+### Parecer QA-09
+
+O parecer do F3-05 está na seção acima.
+
+### Portão REV-11
+
+### Parecer Dev 1 — Correção funcional
+- Aprovado com ressalvas
+- Achados: a promoção a cliente aceita código RFC 6238, recusa o mesmo passo e recusa código fora da janela de ±1. Sem destino, o webhook não chama a rede e a promoção permanece. O backup cifrado restaurou contagem e uma linha de auditoria, com RPO 29 ms e RTO 19 ms neste host (ensaio anterior 26 ms e 15 ms), em 1 contato e 1 linha. A exportação não existe porque o termo segue aberto.
+- Ação necessária antes de produção: sessão real, URL e segredo do webhook, bucket de backup, texto do termo.
+
+### Parecer Dev 2 — Integridade de dado e auditoria
+- Aprovado com ressalvas
+- Achados: a transição de não-rascunho continua na trilha pelo interceptor. A amostra restaurada conferiu campo, valor anterior e valor novo de `contatos_auditoria`. O campo `conflito` não foi criado. A captura de um único nome segue sem TOTP e sem campo obrigatório. A origem da auditoria no plugin continua `api`.
+- Ação necessária antes de produção: o dono decide o campo `conflito`. O ensaio de backup não mede o volume real.
+
+### Parecer Dev 3 — Segurança e escala
+- Aprovado com ressalvas
+- Achados: o segredo TOTP fica em AES-256-GCM. Com a API no ar em `NODE_ENV=production`, `x-step-up-teste` não autentica nem inscreve. Fora de produção o atalho de cabeçalho ainda existe, de propósito, para a suíte e para a fusão. Não há login, então em produção ninguém chega ao verificador. URL e segredo do webhook e a chave de backup não estão no repositório. A deduplicação ainda carrega os não descartados em memória.
+- Ação necessária antes de produção: decidir como a sessão nasce. Sem isso o step-up de produção não tem usuário.
+
+### Conselho de Design (auditoria de premissa)
+1. Trilha imutável? sim — escrita de não-rascunho segue para `contatos_auditoria`; o ensaio de backup conferiu uma linha dessa trilha.
+2. Captura sem campo obrigatório? sim — o único campo obrigatório está em `/promover/:id` e o texto diz por quê. Playwright em 360px achou o campo com altura de pelo menos 48px e a captura com Digitar e Ler QR habilitados.
+3. Responsável identificado em toda ação? sim — sem sessão a API responde 403 e não grava autor fictício. Em produção essa sessão ainda não é emitida; a ação não acontece anônima.
+4. Estado de sincronização honesto? sim — a barra continua `Salvo neste aparelho`, `Enviando…`, `Sincronizado`, `Preso na fila` e `Conflito: escolha o valor`. A promoção não diz "Salvo" genérico.
+5. Carga cognitiva reduzida? sim — a tela de promoção resume o efeito antes do botão.
+6. Quebra fluxo existente? não — avião, aba morta, fila presa, fusão e o caminho de 360px passaram juntos com a tela nova.
+
+VEREDITO DO PORTÃO: APROVADO COM RESSALVAS
+Pareceres: Dev1 [Aprovado com ressalvas] Dev2 [Aprovado com ressalvas] Dev3 [Aprovado com ressalvas] Conselho de Design [aprovado]
+Pendências antes de produção: termo de consentimento, campo `conflito`, login para o step-up, credenciais de Sheets, URL e segredo do webhook, bucket e chave permanente de backup, `CIFRA_CHAVE_BASE64` e `CIFRA_PEPPER` de produção.
+Observação: este portão prepara o material de revisão e não substitui revisão humana quando exigida pelo processo da empresa.
+
+### Estado
+
+BOARD: BACKLOG 2 · EM CURSO 0 · EM REVISÃO 0 · FEITO 23
+ADRs abertos neste ciclo: nenhum. ADR-002 continua o contrato de saída, sem consumidor nomeado. ADR-004, ADR-005, ADR-006 e ADR-007 seguem como estavam.
+Escalonamentos abertos: termo de consentimento (SEC-07, 2026-09-25); campo `conflito` (API-03, 2026-09-25); login para o step-up valer em produção (SEC-07, 2026-09-26).
+Dívida técnica assumida conscientemente: atalho `x-step-up-teste` fora de produção; 3-2-1 incompleta; deduplicação em memória; um `WARN tentativa_autoria_cliente` em `alteradoEm` no enriquecimento; shadcn não instalado, Tailwind da fase 2 mantido; origem da auditoria no plugin continua `api`.
+
+### Como verificar você mesmo
+
+```bash
+pnpm lint
+pnpm build
+pnpm test
+pnpm test:e2e
+bash infra/ci/varrer-segredos.sh
+node infra/backup/backup-321.mjs
+```
+
+Neste host, em 2026-09-26: `pnpm lint` passou; `pnpm build` passou; `pnpm test` ficou em 17 suítes Jest / 88 testes e 6 arquivos Vitest / 14 testes; `pnpm test:e2e` ficou em 6 testes Playwright, entre eles avião, aba morta, fila presa, fusão, promoção e 360px; a varredura de segredos saiu limpa. O script de backup, no segundo ensaio, imprimiu RPO 29 ms e RTO 19 ms, com contagens iguais e amostra da auditoria conferida. O ensaio anterior, no mesmo volume, foi 26 ms e 15 ms.
+
+### O que ficou sem verificação
+
+- GitHub Actions e proteção de branch. O workflow existe e não foi disparado daqui.
+- `docker compose up` em máquina limpa. Aqui o socket do Docker negou permissão. O arquivo Compose não mostra a causa da fase 0; aquela ressalva era o `iptables-legacy` do host, fora do repositório, e não foi reexecutada.
+- Login real de produção. Está escalonado. O teste que existe sobe a API com `NODE_ENV=production` e mostra que o cabeçalho de teste não autentica.
+- Câmera física.
+- Volume do índice único e paginação da fila de duplicatas.
+- Chamada real à BrasilAPI, à ReceitaWS, ao ViaCEP e à Google Sheets API.
+- Upload do backup para object storage e cron diário. O RTO/RPO medidos são do ensaio de 1 contato e 1 linha, não do volume de produção.
+- Receptor real do webhook. O teste usa `fetch` simulado.
+
+### O que ainda depende do dono, em ordem de prioridade
+
+1. Texto do termo de consentimento, e quem o aprova. Bloqueia F2-04 e F3-02. Não foi redigido aqui.
+2. Decisão do campo `conflito`: o ARQ-02 acrescenta o campo ao schema, ou a escolha das duas versões continua só no aparelho. O schema não foi alterado.
+3. Como nasce a sessão em produção, para o step-up ter usuário. Opções registradas, sem recomendação: provedor de identidade, diretório local em card próprio, ou o step-up ficar inalcançável até existir sessão. Nenhum card desta fase pedia login.
+4. Se a ingestão de planilha for ligada: `SHEETS_PLANILHA_ID`, `SHEETS_TOKEN` (OAuth `spreadsheets.readonly`; chave de API não lê planilha privada) e `SHEETS_RESPONSAVEL_ID`. `SHEETS_ABA` opcional, padrão `Respostas`.
+5. Para o webhook genérico: a URL que aceita `POST` JSON, o segredo HMAC-SHA256 compartilhado, e a confirmação de que o receptor valida `X-Captura7-Assinatura` sobre o corpo cru e usa `X-Captura7-Idempotencia` (`contatoId:versao`) para não aplicar duas vezes. Nenhum fornecedor foi escolhido.
+6. Conta de object storage para a terceira cópia do backup (`s3://` ou `b2://` em `BACKUP_REMOTO_DESTINO`) e a credencial fora do repositório. Também `BACKUP_CHAVE` permanente, 32 bytes em base64, e quem chama `node infra/backup/backup-321.mjs` todo dia. Sem isso a regra 3-2-1 não fecha.
+7. `CIFRA_CHAVE_BASE64` e `CIFRA_PEPPER` de produção. A API recusa subir sem os dois. Não vão no repositório.
+
+### Autorização solicitada
+
+Parada 4. O SUPERCOMANDO não define fase seguinte.
