@@ -13,6 +13,7 @@ async function main() {
     env: {
       ...process.env,
       NODE_ENV: 'development',
+      CAPTURA7_HEADERS_TESTE: '1',
       PORT: '3000',
       MONGO_URI: memoria.getUri(),
       CIFRA_CHAVE_BASE64: randomBytes(32).toString('base64'),
