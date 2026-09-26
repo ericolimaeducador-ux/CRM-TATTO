@@ -58,8 +58,8 @@ export function PaginaMerge() {
         </fieldset>
       ))}
       <label className="flex flex-col gap-1 text-base">
-        Código TOTP. Um código não vazio pede o passo extra. Em produção o servidor ignora esse
-        atalho e responde que o passo é necessário, porque o TOTP real ainda não está ligado.
+        Código TOTP. Com a API em modo de teste, um código não vazio pede o passo extra. Sem a flag
+        de teste, e em produção, o servidor ignora esse atalho.
         <input
           className="min-h-12 rounded border border-stone-300 px-3"
           value={codigo}
@@ -160,7 +160,7 @@ async function recuperar(
 
 function cabecalhos(codigo: string): Record<string, string> {
   const headers = cabecalhosDaSessao();
-  if (codigo.trim()) headers['x-step-up-teste'] = '1';
+  if (codigo.trim() && headers['x-usuario-id']) headers['x-step-up-teste'] = '1';
   return headers;
 }
 
