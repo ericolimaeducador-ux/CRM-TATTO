@@ -113,6 +113,37 @@ describe('captura da fase 1', () => {
     expect(status[0].autor).toBe(GESTOR);
   });
 
+  it('não audita a promoção que chega depois e lê o status já qualificado', async () => {
+    const criado = await request(app.getHttpServer())
+      .post('/v1/contatos')
+      .set(cabecalho('gestor'))
+      .send({
+        nome: 'Promo Tardia',
+        telefone: '11977775555',
+        email: 'tardia@exemplo.com',
+        cpf: '11144477735',
+      });
+    const id = criado.body.dados._id as string;
+    const primeira = await request(app.getHttpServer())
+      .post(`/v1/contatos/${id}/transicao`)
+      .set(cabecalho('gestor'))
+      .send({ para: 'qualificado' });
+    expect(primeira.status).toBe(201);
+    const segunda = await request(app.getHttpServer())
+      .post(`/v1/contatos/${id}/transicao`)
+      .set(cabecalho('gestor'))
+      .send({ para: 'qualificado' });
+    expect(segunda.status).toBe(422);
+    expect(segunda.body.erros[0].codigo).toBe('TRANSICAO_INVALIDA');
+    const trilha = await request(app.getHttpServer())
+      .get(`/v1/contatos/${id}/auditoria`)
+      .set(cabecalho('gestor'));
+    const status = trilha.body.dados.filter((linha: { campo: string }) => linha.campo === 'status');
+    expect(status).toHaveLength(1);
+    expect(status[0].valorAnterior).toBe('capturado');
+    expect(status[0].valorNovo).toBe('qualificado');
+  });
+
   it('nega cliente sem step-up e não abre rota de exportação', async () => {
     const criado = await request(app.getHttpServer())
       .post('/v1/contatos')
