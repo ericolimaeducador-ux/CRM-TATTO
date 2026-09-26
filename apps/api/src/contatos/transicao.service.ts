@@ -6,6 +6,7 @@ import { enderecoCompleto, type EnderecoMinimo } from '../qualidade/completude';
 import type { Contato } from './schemas/contato.schema';
 import { ContatosService } from './contatos.service';
 import { RespostaComErro } from './erros-http';
+import { publicarPromocaoCliente } from './promocao-publicada';
 import type { UsuarioSessao } from './sessao.middleware';
 
 const SEQUENCIA = ['rascunho', 'capturado', 'qualificado', 'cliente'] as const;
@@ -62,6 +63,14 @@ export class TransicaoService {
       string,
       unknown
     >;
+    if (para === 'cliente') {
+      publicarPromocaoCliente({
+        contatoId: id,
+        versao: Number(dados.versao ?? 0),
+        autorId: usuario.id,
+        em: new Date().toISOString(),
+      });
+    }
     return { http: 200, dados, avisos: [], antes };
   }
 
