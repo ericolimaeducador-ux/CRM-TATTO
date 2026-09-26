@@ -43,3 +43,13 @@ bloqueando exportação até substituição.
 
 **Impacto do bloqueio:** os cards F2-04 e F3-02 não fecham sem isso. A Fase 0 e a Fase 1
 seguem normalmente.
+
+---
+
+## [ABERTO] 2026-09-25 — API-03 — Campo `conflito` ausente no schema
+
+⚠️ O que está em aberto: a seção 6 manda gravar as duas versões no campo `conflito` do contato. O schema publicado pelo ARQ-02 não tem esse campo, e o glob do API-03 não inclui `schemas/**`.
+⚠️ Por que não posso decidir sozinho: criar o campo é decisão de modelo e pertence ao ARQ-02. Seguir sem o campo muda onde a segunda versão mora.
+⚠️ O que já verifiquei: o PATCH condicional por `versao` não sobrescreve. A resposta 422 `CONFLITO_VERSAO` devolve o documento do servidor. A versão local permanece no IndexedDB, marcada para escolha humana. Não há fusão automática.
+⚠️ Opções conhecidas (sem recomendar): (a) o ARQ-02 acrescenta `conflito` ao schema e a API passa a persistir as duas versões no servidor; (b) a escolha campo a campo continua só no aparelho até essa alteração.
+→ Resposta do usuário (preencher quando houver):

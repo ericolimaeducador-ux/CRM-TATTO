@@ -12,6 +12,7 @@ import { profundidadeFila } from './observabilidade/fila-sincronizacao';
 async function bootstrap(): Promise<void> {
   carregarRegistradores();
   const app = await NestFactory.create(AppModule, { logger: new LogJson() });
+  app.enableCors({ origin: [/^http:\/\/127\.0\.0\.1:\d+$/, /^http:\/\/localhost:\d+$/] });
   const expressApp = app.getHttpAdapter().getInstance() as Express;
   expressApp.get('/v1/saude', (_req: Request, res: Response) => {
     res.status(200).json({
