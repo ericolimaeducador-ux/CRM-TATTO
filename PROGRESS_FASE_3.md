@@ -101,3 +101,16 @@ Restauração testada: sim — RTO 19 ms · RPO 29 ms, medidos neste host no vol
 Segredo fora do repositório: sim
 Alertas ativos: profundidade da fila já existia em `GET /v1/saude`; backup sem destino não dispara alerta externo
 Ação necessária antes de seguir: conta de object storage do dono e agendamento fora desta máquina
+
+## F3-05 — Testes completos
+
+Rodada neste host em 2026-09-26, depois dos cards anteriores: `pnpm lint` passou; `pnpm build` passou; Jest 17 suítes / 88 testes; Vitest 6 arquivos / 14 testes; Playwright 6 testes (avião, aba morta, fila presa, fusão, promoção em 360px, caminho de digitar); `bash infra/ci/varrer-segredos.sh` saiu limpa.
+
+### Parecer QA-09 — F3-05
+
+Categorias aplicadas: 1 funcional (código TOTP promove, webhook assina e retenta, backup restaura). 2 captura sem trava (salvar só o nome segue na suíte da fase 3 e nas anteriores; a tela de promoção não foi para a captura). 3 integridade (a transição de não-rascunho continua auditada na suíte da fase 1; não há rota de delete). 4 offline (Playwright de avião, aba morta e fila presa seguem verdes). 5 concorrência (promoção dupla da fase 1 segue verde). 6 acesso (cliente sem código continua 403; com `NODE_ENV=production` o cabeçalho de teste não autentica). 7 dedup (matriz/filial, merge sem confirmação e recuperação seguem na suíte da fase 2). Exportação da categoria 6 não tem rota: o card está bloqueado e `GET /v1/exportacoes` segue 404.
+Testes escritos: `apps/api/test/f3-step-up.spec.ts`, `apps/api/test/f3-producao-step-up.spec.ts`, `apps/api/src/auth/totp-rfc6238.spec.ts`, `apps/api/src/integracoes/webhook-saida.spec.ts`, `apps/web/src/features/captura/PaginaPromover.test.tsx`, `e2e/promover.spec.ts`, mais as suítes das fases 0 a 2
+Falhas encontradas: a primeira execução de `e2e/promover.spec.ts` quebrou por locator ambíguo (`Ana Promo` em dois nós). O teste foi ajustado para o botão com o nome e passou na sequência. Não foi falha de produto.
+Falha silenciosa identificada (a mais perigosa): não nesta rodada. Promoção sem sessão em produção responde 403, não sucesso.
+Cenários críticos cobertos nominalmente: código RFC 6238 aceito; mesmo passo recusado; código fora da janela recusado; cabeçalho de teste ignorado com a API em produção; webhook sem destino não chama a rede e não desfaz a promoção; mesma versão não duplica o POST; falha 503 retenta; placeholder não sai da máquina; captura de um nome sem TOTP; Playwright das fases 1 e 2 sem regressão
+Pronto para o portão REV-11: sim
