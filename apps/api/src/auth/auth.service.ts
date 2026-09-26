@@ -13,6 +13,7 @@ interface UsuarioDoc {
   senhaHash: string;
   nome: string;
   papel: string;
+  ativo?: boolean;
 }
 
 interface SessaoDoc {
@@ -53,7 +54,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       );
     }
     const usuario = await this.usuarios.findOne({ login }).lean<UsuarioDoc | null>();
-    if (!usuario || !(await senhaConfere(senha, usuario.senhaHash))) {
+    if (!usuario || usuario.ativo === false || !(await senhaConfere(senha, usuario.senhaHash))) {
       this.registrarFalha(login);
       throw new RespostaComErro(
         401,
@@ -130,6 +131,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       senhaHash: await hashSenha(senha),
       nome: nome.trim(),
       papel,
+      ativo: true,
       criadoEm: new Date(),
     });
     return { criado: true, id: String(doc._id) };

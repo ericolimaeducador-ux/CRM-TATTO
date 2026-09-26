@@ -9,7 +9,9 @@ describe('entrada do administrador', () => {
       if (url.endsWith('/v1/auth/entrar')) {
         return {
           ok: true,
-          json: async () => ({ dados: { token: 'tok-admin', usuario: { nome: 'Erico' } } }),
+          json: async () => ({
+            dados: { token: 'tok-admin', usuario: { id: 'abc', papel: 'admin', nome: 'Erico' } },
+          }),
         };
       }
       return {
@@ -29,6 +31,7 @@ describe('entrada do administrador', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
     expect(await screen.findByText('Entrou como Erico.')).toBeTruthy();
     expect(localStorage.getItem('captura7.token')).toBe('tok-admin');
+    expect(JSON.parse(localStorage.getItem('captura7.perfil') ?? '{}').papel).toBe('admin');
     fireEvent.click(screen.getByRole('button', { name: 'Baixar CSV' }));
     await screen.findByText('Arquivo CSV baixado.');
     const chamada = fetchMock.mock.calls.find((item) =>

@@ -56,6 +56,52 @@ export class ContatosController {
     return { dados: resultado.dados, avisos: resultado.avisos, erros: [] };
   }
 
+  @Post(':id/resolucao')
+  @Papel(...PERFIL_PERMISSOES.editar_contato)
+  async resolver(
+    @Param('id') id: string,
+    @Body() corpo: { escolha?: string },
+    @Req() req: RequisicaoComUsuario,
+  ) {
+    const usuario = exigirUsuario(req);
+    if (corpo.escolha === 'servidor') {
+      return { dados: await this.contatos.limparConflito(id, usuario), avisos: [], erros: [] };
+    }
+    if (corpo.escolha === 'local') {
+      const atual = await this.contatos.obter(id, usuario);
+      const conflito = atual.conflito as
+        | {
+            campo?: string;
+            versaoLocal?: { valor?: unknown };
+            versaoServidor?: { versao?: number };
+          }
+        | undefined;
+      const valor = conflito?.versaoLocal?.valor;
+      if (!conflito?.campo || typeof valor !== 'string') {
+        throw new RespostaComErro(
+          422,
+          'CONFLITO_AUSENTE',
+          'Não há escolha pendente neste contato. Nada foi alterado.',
+          atual,
+        );
+      }
+      const resultado = await this.contatos.patch(
+        id,
+        conflito.campo,
+        valor,
+        conflito.versaoServidor?.versao,
+        usuario,
+      );
+      return { dados: resultado.dados, avisos: resultado.avisos, erros: [] };
+    }
+    throw new RespostaComErro(
+      422,
+      'ESCOLHA_INVALIDA',
+      'Escolha local ou servidor. Nada foi alterado.',
+      null,
+    );
+  }
+
   @Post(':id/transicao')
   @Papel(...PERFIL_PERMISSOES.editar_contato)
   async transicao(
@@ -78,9 +124,10 @@ export class ContatosController {
   listar(
     @Query('cursor') cursor: string | undefined,
     @Query('limite') limite: string | undefined,
+    @Query('q') q: string | undefined,
     @Req() req: RequisicaoComUsuario,
   ) {
-    return this.contatos.listar(exigirUsuario(req), cursor, limite);
+    return this.contatos.listar(exigirUsuario(req), cursor, limite, q);
   }
 
   @Get(':id/auditoria')

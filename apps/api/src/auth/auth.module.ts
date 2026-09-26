@@ -4,6 +4,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { SessaoMiddleware } from '../contatos/sessao.middleware';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { UsuariosController } from './usuarios.controller';
+import { UsuariosService } from './usuarios.service';
 import { PapelGuard } from './papel.guard';
 import { sessaoTokenSchema } from './sessao-token.schema';
 import { TotpModule } from './totp.module';
@@ -17,12 +19,17 @@ import { usuarioSchema } from './usuario.schema';
       { name: 'SessaoToken', schema: sessaoTokenSchema },
     ]),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, PapelGuard, { provide: APP_GUARD, useClass: PapelGuard }],
+  controllers: [AuthController, UsuariosController],
+  providers: [
+    AuthService,
+    UsuariosService,
+    PapelGuard,
+    { provide: APP_GUARD, useClass: PapelGuard },
+  ],
   exports: [AuthService],
 })
 export class AuthModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(SessaoMiddleware).forRoutes(AuthController);
+    consumer.apply(SessaoMiddleware).forRoutes(AuthController, UsuariosController);
   }
 }

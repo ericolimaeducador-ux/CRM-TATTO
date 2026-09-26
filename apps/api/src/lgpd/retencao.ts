@@ -72,9 +72,17 @@ export function aplicarGuardaAuditoria(): { apagadas: 0; motivo: string } {
   return { apagadas: 0, motivo: 'trilha_imutavel' };
 }
 
+export function diasDePurgaRevogacao(): number {
+  return inteiroDeAmbiente('PURGA_REVOGACAO_DIAS', PRAZO_PURGA_REVOGACAO_DIAS);
+}
+
+export function diasDeRascunho(): number {
+  return inteiroDeAmbiente('RASCUNHO_DIAS', PRAZO_SINALIZAR_RASCUNHO_DIAS);
+}
+
 export function devePurgarContato(revogadoEm: Date | undefined, agora: Date): boolean {
   if (!revogadoEm) return false;
-  return agora.getTime() >= revogadoEm.getTime() + PRAZO_PURGA_REVOGACAO_DIAS * DIA_MS;
+  return agora.getTime() >= revogadoEm.getTime() + diasDePurgaRevogacao() * DIA_MS;
 }
 
 export function deveSinalizarRascunho(
@@ -83,5 +91,13 @@ export function deveSinalizarRascunho(
   agora: Date,
 ): boolean {
   if (status !== 'rascunho' || !alteradoEm) return false;
-  return agora.getTime() >= alteradoEm.getTime() + PRAZO_SINALIZAR_RASCUNHO_DIAS * DIA_MS;
+  return agora.getTime() >= alteradoEm.getTime() + diasDeRascunho() * DIA_MS;
+}
+
+function inteiroDeAmbiente(nome: string, padrao: number): number {
+  const bruto = process.env[nome];
+  if (bruto == null || bruto.trim() === '') return padrao;
+  const numero = Number(bruto);
+  if (!Number.isInteger(numero) || numero < 1 || numero > 3650) return padrao;
+  return numero;
 }

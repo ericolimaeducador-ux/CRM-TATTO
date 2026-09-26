@@ -24,6 +24,9 @@ services:
       SEGREDOS_ARQUIVO: /segredos/captura7.env
       CAPTCHA_PROVEDOR: ${CAPTCHA_PROVEDOR:-local}
       RETENCAO_MESES: ${RETENCAO_MESES:-24}
+      PURGA_REVOGACAO_DIAS: ${PURGA_REVOGACAO_DIAS:-30}
+      RASCUNHO_DIAS: ${RASCUNHO_DIAS:-180}
+      CORS_ORIGENS: ${CORS_ORIGENS:-}
       CONTROLADOR_EMAIL: ${CONTROLADOR_EMAIL:-}
       ERP_WEBHOOK_URL: ${ERP_WEBHOOK_URL:-}
       ERP_WEBHOOK_SEGREDO: ${ERP_WEBHOOK_SEGREDO:-}
@@ -53,6 +56,8 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
     environment:
       CERT_DIR: /certs
     volumes:

@@ -5,6 +5,7 @@ import { contatoSchema } from '../contatos/schemas/contato.schema';
 import { contadorSchema } from '../contatos/schemas/contador.schema';
 import { SessaoMiddleware } from '../contatos/sessao.middleware';
 import { aplicarSegurancaNoSchema } from '../seguranca/aplicar-no-schema';
+import { TotpModule } from '../auth/totp.module';
 import { DedupService } from './dedup.service';
 import { MergeService } from './merge.service';
 import { QualidadeController } from './qualidade.controller';
@@ -13,6 +14,7 @@ aplicarSegurancaNoSchema(contatoSchema);
 
 @Module({
   imports: [
+    TotpModule,
     MongooseModule.forFeature([
       { name: 'Contato', schema: contatoSchema },
       { name: 'ContatoAuditoria', schema: contatoAuditoriaSchema },

@@ -4,6 +4,8 @@ import {
   aplicarGuardaAuditoria,
   contatoComercialLiberado,
   deveExpirarPorInatividade,
+  diasDePurgaRevogacao,
+  diasDeRascunho,
   devePurgarContato,
   deveSinalizarRascunho,
   envioErpLiberado,
@@ -56,6 +58,19 @@ describe('base legal e retenção', () => {
     expect(deveExpirarPorInatividade(undefined, new Date('2027-01-01T00:00:00.000Z'), 24)).toBe(
       false,
     );
+  });
+
+  it('lê os prazos de revogação e de rascunho do ambiente', () => {
+    delete process.env.PURGA_REVOGACAO_DIAS;
+    delete process.env.RASCUNHO_DIAS;
+    expect(diasDePurgaRevogacao()).toBe(30);
+    expect(diasDeRascunho()).toBe(180);
+    process.env.PURGA_REVOGACAO_DIAS = '45';
+    process.env.RASCUNHO_DIAS = '10';
+    expect(diasDePurgaRevogacao()).toBe(45);
+    expect(diasDeRascunho()).toBe(10);
+    delete process.env.PURGA_REVOGACAO_DIAS;
+    delete process.env.RASCUNHO_DIAS;
   });
 
   it('sinaliza rascunho parado há 180 dias', () => {

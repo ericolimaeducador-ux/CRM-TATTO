@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { patchCampo } from '@/lib/offline/api';
+import { urlDaApi } from '@/lib/api-url';
 import { cabecalhosDaSessao } from '@/lib/offline/sessao';
 
 interface Sugestao {
@@ -42,7 +43,7 @@ export function PainelEnriquecimento({
 
   async function consultar(caminho: string, metodo: string, corpo?: unknown) {
     if (!idServidor) return;
-    const resposta = await fetch(caminho, {
+    const resposta = await fetch(urlDaApi(caminho), {
       method: metodo,
       headers: cabecalhosDaSessao(),
       body: corpo ? JSON.stringify(corpo) : undefined,

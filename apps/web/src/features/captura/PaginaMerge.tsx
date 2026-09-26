@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { cabecalhosDaSessao } from '@/lib/offline/sessao';
+import { urlDaApi } from '@/lib/api-url';
+import { cabecalhosDaSessao, codigoTotpDoCorpo } from '@/lib/offline/sessao';
 
 const CAMPOS = [
   ['nome', 'Nome'],
@@ -58,9 +59,9 @@ export function PaginaMerge() {
         </fieldset>
       ))}
       <label className="flex flex-col gap-1 text-base">
-        Código TOTP. Com a API em modo de teste, um código não vazio pede o passo extra. Sem a flag
-        de teste, e em produção, o servidor ignora esse atalho. A promoção a cliente confere o
-        código.
+        Código TOTP. O servidor confere os 6 dígitos. No modo de teste do aplicativo o código não
+        vai no corpo: a sessão de teste libera o passo. Fora dele, sem código válido, nada é
+        fundido.
         <input
           className="min-h-12 rounded border border-stone-300 px-3"
           value={codigo}
@@ -111,7 +112,7 @@ function Escolha({
 
 async function ler(id: string): Promise<Record<string, unknown> | null> {
   if (!id) return null;
-  const resposta = await fetch(`/v1/contatos/${id}`, { headers: cabecalhosDaSessao() });
+  const resposta = await fetch(urlDaApi(`/v1/contatos/${id}`), { headers: cabecalhosDaSessao() });
   if (!resposta.ok) return null;
   const json = (await resposta.json()) as { dados?: Record<string, unknown> };
   return json.dados ?? null;
@@ -125,10 +126,16 @@ async function fundir(
   definirMensagem: (texto: string) => void,
   definirFeito: (feito: boolean) => void,
 ): Promise<void> {
-  const resposta = await fetch(`/v1/contatos/${a}/merge`, {
+  const codigoTotp = codigoTotpDoCorpo(codigo);
+  const resposta = await fetch(urlDaApi(`/v1/contatos/${a}/merge`), {
     method: 'POST',
     headers: cabecalhos(codigo),
-    body: JSON.stringify({ absorvidoId: b, confirmacao: true, valoresEscolhidos: escolha }),
+    body: JSON.stringify({
+      absorvidoId: b,
+      confirmacao: true,
+      valoresEscolhidos: escolha,
+      ...(codigoTotp ? { codigoTotp } : {}),
+    }),
   });
   const json = (await resposta.json()) as { erros?: { mensagem: string }[] };
   if (!resposta.ok) {
@@ -147,9 +154,11 @@ async function recuperar(
   codigo: string,
   definirMensagem: (texto: string) => void,
 ): Promise<void> {
-  const resposta = await fetch(`/v1/contatos/${id}/recuperar`, {
+  const codigoTotp = codigoTotpDoCorpo(codigo);
+  const resposta = await fetch(urlDaApi(`/v1/contatos/${id}/recuperar`), {
     method: 'POST',
     headers: cabecalhos(codigo),
+    body: JSON.stringify(codigoTotp ? { codigoTotp } : {}),
   });
   const json = (await resposta.json()) as { erros?: { mensagem: string }[] };
   definirMensagem(

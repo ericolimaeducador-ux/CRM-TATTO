@@ -41,6 +41,12 @@ export function duplicidadeNomeada(erro: unknown): ErroNomeado | undefined {
   return undefined;
 }
 
+export function textoDeBusca(q: string | undefined): RegExp | undefined {
+  const limpo = q?.trim().slice(0, 80) ?? '';
+  if (!limpo) return undefined;
+  return new RegExp(limpo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+}
+
 function codigoMongo(erro: unknown): number | undefined {
   if (!erro || typeof erro !== 'object' || !('code' in erro)) return undefined;
   return typeof erro.code === 'number' ? erro.code : undefined;

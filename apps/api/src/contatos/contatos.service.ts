@@ -10,6 +10,7 @@ import {
   idDoVendedor,
   plano,
   semCaminhosPontilhados,
+  textoDeBusca,
 } from './contato-escrita';
 import { ErroNomeado } from './schemas/erro-nomeado';
 import type { Contato } from './schemas/contato.schema';
@@ -114,11 +115,20 @@ export class ContatosService {
     return { http: 200, dados: gravado, avisos: patch.avisos, antes };
   }
 
-  async listar(usuario: UsuarioSessao, cursor?: string, limiteBruto?: string) {
+  async listar(usuario: UsuarioSessao, cursor?: string, limiteBruto?: string, q?: string) {
     const limite = Math.min(Math.max(Number(limiteBruto) || 20, 1), 100);
     const filtro: Record<string, unknown> = {};
     if (usuario.papel === 'vendedor')
       filtro['origem.vendedorAtribuido'] = new Types.ObjectId(usuario.id);
+    const busca = textoDeBusca(q);
+    if (busca) {
+      filtro.$or = [
+        { nome: busca },
+        { 'emails.valor': busca },
+        { 'telefones.e164': busca },
+        { 'telefones.bruto': busca },
+      ];
+    }
     if (cursor && Types.ObjectId.isValid(cursor)) filtro._id = { $lt: new Types.ObjectId(cursor) };
     const itens = await this.contatos
       .find(filtro)
@@ -138,6 +148,12 @@ export class ContatosService {
       dados: pagina,
       proximoCursor: itens.length > limite && ultimo ? String(ultimo._id) : null,
     };
+  }
+
+  async limparConflito(id: string, usuario: UsuarioSessao) {
+    await this.exigir(id, usuario, 'editar_contato');
+    await this.contatos.updateOne({ _id: id }, { $unset: { conflito: '' } });
+    return this.obter(id, usuario);
   }
 
   async obter(id: string, usuario: UsuarioSessao) {
@@ -213,23 +229,13 @@ export class ContatosService {
       if (resultado.matchedCount === 0) return null;
     } catch (erro) {
       if (!(erro instanceof ErroNomeado) && !ehDuplicidadeDocumento(erro)) throw erro;
-      const semPromocao = { ...set, status: antes.status };
-      const segunda = await this.contatos.updateOne(
-        { _id: id, versao: antes.versao },
-        {
-          ...atualizacao,
-          $set: { ...(atualizacao.$set as object), ...semPromocao, status: antes.status },
-        },
-      );
-      if (segunda.matchedCount === 0) return null;
-      const gravado = plano(await this.contatos.findById(id).lean());
       const nomeado = erro instanceof ErroNomeado ? erro : duplicidadeNomeada(erro);
+      const documento = nomeado?.codigo === 'CNPJ_DUPLICADO' ? 'CNPJ' : 'CPF';
       throw new RespostaComErro(
         422,
         nomeado?.codigo ?? 'CPF_DUPLICADO',
-        nomeado?.message ??
-          'Já existe um contato fora de rascunho com este documento. O seu continua salvo no status anterior.',
-        gravado,
+        `Já existe um contato fora de rascunho com este ${documento}. A edição não foi gravada.`,
+        antes,
         (set.avisos as Aviso[] | undefined) ?? [],
       );
     }

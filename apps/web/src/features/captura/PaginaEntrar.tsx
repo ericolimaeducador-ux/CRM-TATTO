@@ -1,12 +1,18 @@
 import { FormEvent, useState } from 'react';
-import { cabecalhosDaSessao, guardarToken, tokenDaSessao } from '@/lib/offline/sessao';
+import { urlDaApi } from '@/lib/api-url';
+import {
+  cabecalhosDaSessao,
+  guardarPerfil,
+  guardarToken,
+  tokenDaSessao,
+} from '@/lib/offline/sessao';
 
 interface RespostaJson {
   mensagem?: string;
   erros?: { mensagem?: string }[];
   dados?: {
     token?: string;
-    usuario?: { nome?: string };
+    usuario?: { id?: string; papel?: string; nome?: string };
     segredoBase32?: string;
     stepUpAte?: string;
     importados?: number;
@@ -25,7 +31,7 @@ export function PaginaEntrar() {
 
   async function entrar(evento: FormEvent) {
     evento.preventDefault();
-    const resposta = await fetch('/v1/auth/entrar', {
+    const resposta = await fetch(urlDaApi('/v1/auth/entrar'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ login, senha, codigoTotp: codigo || undefined }),
@@ -36,12 +42,16 @@ export function PaginaEntrar() {
       return;
     }
     guardarToken(json.dados.token);
+    const usuario = json.dados.usuario;
+    if (usuario?.id && usuario.papel && usuario.nome) {
+      guardarPerfil({ id: usuario.id, papel: usuario.papel, nome: usuario.nome });
+    }
     setToken(json.dados.token);
-    setMensagem(`Entrou como ${json.dados.usuario?.nome ?? login}.`);
+    setMensagem(`Entrou como ${usuario?.nome ?? login}.`);
   }
 
   async function inscrever() {
-    const resposta = await fetch('/v1/auth/totp/inscrever', {
+    const resposta = await fetch(urlDaApi('/v1/auth/totp/inscrever'), {
       method: 'POST',
       headers: cabecalhosDaSessao(),
       body: JSON.stringify({ codigoTotp: codigo || undefined }),
@@ -56,7 +66,7 @@ export function PaginaEntrar() {
   }
 
   async function confirmarPasso() {
-    const resposta = await fetch('/v1/auth/step-up', {
+    const resposta = await fetch(urlDaApi('/v1/auth/step-up'), {
       method: 'POST',
       headers: cabecalhosDaSessao(),
       body: JSON.stringify({ codigoTotp: codigo }),
@@ -70,7 +80,7 @@ export function PaginaEntrar() {
   }
 
   async function baixar(formato: 'csv' | 'xlsx') {
-    const resposta = await fetch(`/v1/exportacoes?formato=${formato}`, {
+    const resposta = await fetch(urlDaApi(`/v1/exportacoes?formato=${formato}`), {
       headers: cabecalhosDaSessao(),
     });
     if (!resposta.ok) {
@@ -90,7 +100,7 @@ export function PaginaEntrar() {
 
   async function importar(evento: FormEvent) {
     evento.preventDefault();
-    const resposta = await fetch('/v1/importacoes', {
+    const resposta = await fetch(urlDaApi('/v1/importacoes'), {
       method: 'POST',
       headers: cabecalhosDaSessao(),
       body: JSON.stringify({ texto: planilha }),

@@ -40,6 +40,10 @@ export function gravarContato(contato: ContatoLocal): Promise<void> {
   return transacao('contatos', 'readwrite', (store) => store.put(contato)).then(() => undefined);
 }
 
+export function apagarContato(idLocal: string): Promise<void> {
+  return transacao('contatos', 'readwrite', (store) => store.delete(idLocal)).then(() => undefined);
+}
+
 export function lerContato(idLocal: string): Promise<ContatoLocal | undefined> {
   return transacao('contatos', 'readonly', (store) => store.get(idLocal));
 }

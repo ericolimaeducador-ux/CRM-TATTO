@@ -1,3 +1,13 @@
+export function origemPermitida(origem: string | undefined): boolean {
+  if (origemDeRedeLocal(origem)) return true;
+  if (!origem) return false;
+  const extras = (process.env.CORS_ORIGENS ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  return extras.includes(origem);
+}
+
 export function origemDeRedeLocal(origem: string | undefined): boolean {
   if (!origem) return true;
   let url: URL;

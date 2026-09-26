@@ -128,6 +128,26 @@ No Google Planilhas: Arquivo, Fazer download, Valores separados por vírgula (.c
 
 Entre, inscreva o autenticador, confirme o código e toque em **Baixar CSV** ou **Baixar XLSX**. O sistema registra quem exportou e quando.
 
+## Cópia do banco
+
+De vez em quando, copie os dados para fora deste computador. No PowerShell, com o Docker no ar:
+
+```
+docker compose exec mongo mongodump --db captura7 --archive=/tmp/captura7.archive.gz --gzip
+docker compose cp mongo:/tmp/captura7.archive.gz .\captura7.archive.gz
+```
+
+Copie `captura7.archive.gz` para um pen drive ou para outro computador. Se o arquivo ficar só neste PC, ele some junto com a máquina.
+
+Sem Docker, com o `mongodump` instalado:
+
+```
+$env:MONGO_URI="mongodb://127.0.0.1:27017/captura7"
+sh infra/backup/backup-mongo.sh
+```
+
+O prazo de 24 meses, os 30 dias depois da revogação e os 180 dias do rascunho podem ser alterados no `.env` com `RETENCAO_MESES`, `PURGA_REVOGACAO_DIAS` e `RASCUNHO_DIAS`.
+
 ## Se algo não abrir
 
 - `https://localhost` avisa do certificado: avance o aviso. Não instale outro certificado da internet.

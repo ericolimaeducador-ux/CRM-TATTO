@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { urlDaApi } from '@/lib/api-url';
 import { cabecalhosDaSessao } from '@/lib/offline/sessao';
 
 interface TextoTermo {
@@ -33,7 +34,7 @@ export function TelaTermo({
 
   useEffect(() => {
     if (modo !== 'autocadastro') return;
-    void fetch('/v1/publico/captcha')
+    void fetch(urlDaApi('/v1/publico/captcha'))
       .then((resposta) => resposta.json())
       .then((json: { dados?: { id?: string; pergunta?: string } }) => {
         if (json.dados?.id && json.dados.pergunta) {
@@ -45,7 +46,7 @@ export function TelaTermo({
   }, [modo]);
 
   useEffect(() => {
-    void fetch('/v1/publico/termo/atual')
+    void fetch(urlDaApi('/v1/publico/termo/atual'))
       .then((resposta) => resposta.json())
       .then((json: { dados?: TextoTermo }) => {
         if (json.dados?.textoCurto) setTexto(json.dados);
@@ -85,7 +86,7 @@ export function TelaTermo({
             captchaResposta: respostaCaptcha,
           }
         : { contatoComercial: true, emDispositivo };
-    const resposta = await fetch(caminho, {
+    const resposta = await fetch(urlDaApi(caminho), {
       method: 'POST',
       headers:
         modo === 'autocadastro' ? { 'content-type': 'application/json' } : cabecalhosDaSessao(),

@@ -27,6 +27,49 @@ export function tokenDaSessao(): string {
   return localStorage.getItem('captura7.token') ?? '';
 }
 
+const PERFIL = 'captura7.perfil';
+
+export interface PerfilLogado {
+  id: string;
+  papel: string;
+  nome: string;
+}
+
+export function guardarPerfil(perfil: PerfilLogado): void {
+  localStorage.setItem(PERFIL, JSON.stringify(perfil));
+}
+
+export function perfilLogado(): PerfilLogado | null {
+  const bruto = localStorage.getItem(PERFIL);
+  if (!bruto) return null;
+  try {
+    const json = JSON.parse(bruto) as PerfilLogado;
+    if (!json.papel || !json.nome) return null;
+    return json;
+  } catch {
+    return null;
+  }
+}
+
+export function podeGerir(): boolean {
+  const papel = perfilLogado()?.papel;
+  return papel === 'gestor' || papel === 'admin';
+}
+
+export function podeAuditar(): boolean {
+  const papel = perfilLogado()?.papel;
+  return papel === 'gestor' || papel === 'admin' || papel === 'auditor';
+}
+
+export function codigoTotpDoCorpo(
+  codigo: string,
+  teste = headersDeTesteNoCliente(),
+): string | undefined {
+  if (teste) return undefined;
+  const limpo = codigo.trim();
+  return limpo || undefined;
+}
+
 export function cabecalhosDaSessao(): Record<string, string> {
   const base: Record<string, string> = { 'content-type': 'application/json' };
   const token = tokenDaSessao();
@@ -41,6 +84,6 @@ export function cabecalhosDaSessao(): Record<string, string> {
   };
 }
 
-function headersDeTesteNoCliente(): boolean {
+export function headersDeTesteNoCliente(): boolean {
   return import.meta.env.MODE === 'test' || import.meta.env.VITE_CAPTURA7_HEADERS_TESTE === '1';
 }

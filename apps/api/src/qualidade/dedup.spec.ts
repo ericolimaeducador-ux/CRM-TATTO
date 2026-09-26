@@ -6,6 +6,8 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Types, type Connection } from 'mongoose';
 import request from 'supertest';
 import { AuthModule } from '../auth/auth.module';
+import { TotpService } from '../auth/totp.service';
+import { codigoNoPasso, passoAtual } from '../auth/totp-rfc6238';
 import { hmacDocumento } from '../seguranca/cifra';
 import { ContatosModule } from '../contatos/contatos.module';
 import { garantirIndices } from '../contatos/schemas/registrar-modelos';
@@ -168,6 +170,32 @@ describe('dedup e merge', () => {
     const quando = new Date('2026-01-01T00:00:00.000Z');
     expect(prazoExpirado(quando, new Date(quando.getTime() + PRAZO_RECUPERACAO_MS))).toBe(false);
     expect(prazoExpirado(quando, new Date(quando.getTime() + PRAZO_RECUPERACAO_MS + 1))).toBe(true);
+  });
+
+  it('confere o TOTP da fusão e não descarta com código errado', async () => {
+    const a = await criar({ nome: 'Totp A', email: 'totp-a@exemplo.com', telefone: '11955556666' });
+    const b = await criar({ nome: 'Totp B', email: 'totp-b@exemplo.com', telefone: '11955557777' });
+    const inscricao = await app.get(TotpService).inscrever(GESTOR);
+    const ruim = await request(app.getHttpServer())
+      .post(`/v1/contatos/${a}/merge`)
+      .set(cabecalho())
+      .send({ absorvidoId: b, confirmacao: true, codigoTotp: '000000', valoresEscolhidos: {} });
+    expect(ruim.status).toBe(403);
+    expect(JSON.stringify(ruim.body)).toContain('STEP_UP_NECESSARIO');
+    const parado = await request(app.getHttpServer()).get(`/v1/contatos/${b}`).set(cabecalho());
+    expect(parado.body.dados.status).not.toBe('descartado');
+    const codigo = codigoNoPasso(inscricao.segredoBase32, passoAtual());
+    const bom = await request(app.getHttpServer())
+      .post(`/v1/contatos/${a}/merge`)
+      .set(cabecalho())
+      .send({
+        absorvidoId: b,
+        confirmacao: true,
+        codigoTotp: codigo,
+        valoresEscolhidos: { nome: 'absorvido' },
+      });
+    expect(bom.status).toBe(200);
+    expect(bom.body.dados.nome).toBe('Totp B');
   });
 
   it('nega a fila ao vendedor', async () => {

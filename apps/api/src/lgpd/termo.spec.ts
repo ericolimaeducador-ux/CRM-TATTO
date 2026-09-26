@@ -98,7 +98,7 @@ describe('termo de consentimento', () => {
     });
     expect(aceito.status).toBe(201);
     expect(aceito.body.dados.lgpd.contatoComercial).toBe('concedido');
-    expect(aceito.body.dados.lgpd.baseLegal).toBe('legitimo_interesse');
+    expect(aceito.body.dados.lgpd.baseLegal).toBe('consentimento');
     const prova = aceito.body.dados.lgpd.consentimentos[0];
     expect(prova.finalidade).toBe('contato_comercial');
     expect(prova.canal).toBe('autocadastro');

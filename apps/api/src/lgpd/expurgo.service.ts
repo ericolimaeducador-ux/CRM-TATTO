@@ -3,7 +3,12 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import type { UsuarioSessao } from '../contatos/sessao.middleware';
 import { ConsentimentoService } from './consentimento.service';
-import { deveExpirarPorInatividade } from './retencao';
+import {
+  deveExpirarPorInatividade,
+  devePurgarContato,
+  deveSinalizarRascunho,
+  diasDePurgaRevogacao,
+} from './retencao';
 
 const SISTEMA: UsuarioSessao = {
   id: '000000000000000000000001',
@@ -12,17 +17,28 @@ const SISTEMA: UsuarioSessao = {
   stepUp: true,
 };
 
+const DIA_MS = 24 * 60 * 60 * 1000;
+
+interface ContatoJob {
+  _id: unknown;
+  status?: string;
+  alteradoEm?: Date;
+  lgpd?: { revogadoEm?: Date; eliminadoEm?: Date | null };
+}
+
+export interface ResultadoExpurgo {
+  inatividade: number;
+  revogacao: number;
+  rascunhos: number;
+  removidos: number;
+}
+
 @Injectable()
 export class ExpurgoService implements OnModuleInit, OnModuleDestroy {
   private timer: ReturnType<typeof setInterval> | undefined;
 
   constructor(
-    @InjectModel('Contato')
-    private readonly contatos: Model<{
-      _id: unknown;
-      alteradoEm?: Date;
-      lgpd?: { eliminadoEm?: Date };
-    }>,
+    @InjectModel('Contato') private readonly contatos: Model<ContatoJob>,
     private readonly consentimento: ConsentimentoService,
   ) {}
 
@@ -35,18 +51,45 @@ export class ExpurgoService implements OnModuleInit, OnModuleDestroy {
     if (this.timer) clearInterval(this.timer);
   }
 
-  async rodar(agora = new Date()): Promise<number> {
-    const candidatos = await this.contatos
+  async rodar(agora = new Date()): Promise<ResultadoExpurgo> {
+    const resultado: ResultadoExpurgo = {
+      inatividade: 0,
+      revogacao: 0,
+      rascunhos: 0,
+      removidos: 0,
+    };
+    const vivos = await this.contatos
       .find({ 'lgpd.eliminadoEm': null })
-      .select('_id alteradoEm')
+      .select('_id status alteradoEm lgpd')
       .limit(500)
       .lean();
-    let apagados = 0;
-    for (const item of candidatos) {
-      if (!deveExpirarPorInatividade(item.alteradoEm, agora)) continue;
-      await this.consentimento.eliminar(String(item._id), SISTEMA);
-      apagados += 1;
+    for (const item of vivos) {
+      if (deveExpirarPorInatividade(item.alteradoEm, agora)) {
+        await this.consentimento.eliminar(String(item._id), SISTEMA);
+        resultado.inatividade += 1;
+        continue;
+      }
+      const revogadoEm = item.lgpd?.revogadoEm ? new Date(item.lgpd.revogadoEm) : undefined;
+      if (devePurgarContato(revogadoEm, agora)) {
+        await this.consentimento.eliminar(String(item._id), SISTEMA);
+        resultado.revogacao += 1;
+        continue;
+      }
+      if (deveSinalizarRascunho(item.status ?? '', item.alteradoEm, agora)) {
+        await this.consentimento.eliminar(String(item._id), SISTEMA);
+        resultado.rascunhos += 1;
+      }
     }
-    return apagados;
+    const limite = new Date(agora.getTime() - diasDePurgaRevogacao() * DIA_MS);
+    const velhos = await this.contatos
+      .find({ 'lgpd.eliminadoEm': { $ne: null, $lte: limite } })
+      .select('_id')
+      .limit(500)
+      .lean();
+    if (velhos.length > 0) {
+      await this.contatos.deleteMany({ _id: { $in: velhos.map((item) => item._id) } });
+      resultado.removidos = velhos.length;
+    }
+    return resultado;
   }
 }

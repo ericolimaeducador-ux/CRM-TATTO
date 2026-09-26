@@ -6,6 +6,8 @@ COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 RUN pnpm install --frozen-lockfile
 COPY . .
+ARG VITE_API_URL=
+ENV VITE_API_URL=$VITE_API_URL
 RUN pnpm --filter @captura7/web build
 
 FROM nginx:1.27-alpine

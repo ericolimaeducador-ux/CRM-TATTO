@@ -32,6 +32,7 @@ await usuarios.insertOne({
   senhaHash,
   nome,
   papel: 'admin',
+  ativo: true,
   criadoEm: new Date(),
 });
 console.log(`Administrador ${login} criado. Entre em /entrar e inscreva o TOTP antes de exportar.`);

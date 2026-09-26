@@ -22,6 +22,8 @@ O site do Compose escuta HTTPS com certificado autoassinado, gerado no volume `c
 
 ## Backup
 
+Cópia simples, para pen drive ou outro computador: [README.md](../README.md), seção "Backup do Mongo". O script é `infra/backup/backup-mongo.sh` (`mongodump --gzip`). No Compose: `docker compose exec mongo mongodump` e `docker compose cp`, como no guia do Windows.
+
 `node infra/backup/backup-321.mjs` cifra um dump lógico (AES-256-GCM), restaura numa base Mongo limpa e confere contagem e uma linha de `contatos_auditoria`. Sem `MONGO_URI` o ensaio sobe dois `mongod` em memória. `BACKUP_CHAVE` (32 bytes em base64) e `BACKUP_DIR` vêm do ambiente. Sem chave, a execução gera uma chave que morre com o processo e não é impressa.
 
 Ensaio neste host em 2026-09-26, com 1 contato e 1 linha de auditoria, chave efêmera, relógio de `Date.now()`:

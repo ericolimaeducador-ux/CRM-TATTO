@@ -178,9 +178,14 @@ export function gravarConcessao(
   doc.set('lgpd.contatoComercial', 'concedido');
   doc.set('lgpd.consentimentoEm', agora);
   doc.set('lgpd.versaoTermo', texto.versao);
-  doc.set('lgpd.baseLegal', 'legitimo_interesse');
-  doc.set('lgpd.finalidade', ['prospecção comercial B2B']);
+  doc.set('lgpd.baseLegal', 'consentimento');
+  doc.set(
+    'lgpd.finalidade',
+    envioErp ? ['contato comercial', 'envio ao erp'] : ['contato comercial'],
+  );
   doc.set('lgpd.canalColeta', canal);
+  const locais = (doc as { $locals?: { baseLegalExplicita?: boolean } }).$locals;
+  if (locais) locais.baseLegalExplicita = true;
   doc.markModified('lgpd.consentimentos');
 }
 

@@ -1,6 +1,10 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { BarraSincronizacao } from './features/captura/BarraSincronizacao';
+import { Menu } from './features/captura/Menu';
+import { PaginaBusca } from './features/captura/PaginaBusca';
+import { PaginaLead } from './features/captura/PaginaLead';
+import { PaginaUsuarios } from './features/captura/PaginaUsuarios';
 import { FormularioCaptura } from './features/captura/FormularioCaptura';
 import { ListaContatos } from './features/captura/ListaContatos';
 import { MeuQr } from './features/captura/MeuQr';
@@ -23,6 +27,7 @@ export function App() {
     <BrowserRouter>
       <main className="mx-auto min-h-screen w-full max-w-xl p-4">
         <BarraSincronizacao />
+        <Menu />
         <Routes>
           <Route path="/" element={<TelaCaptura />} />
           <Route path="/entrar" element={<PaginaEntrar />} />
@@ -32,6 +37,9 @@ export function App() {
           <Route path="/contatos/:idLocal" element={<FormularioCaptura />} />
           <Route path="/fila" element={<PaginaFila />} />
           <Route path="/duplicatas" element={<PaginaDuplicatas />} />
+          <Route path="/busca" element={<PaginaBusca />} />
+          <Route path="/lead/:id" element={<PaginaLead />} />
+          <Route path="/usuarios" element={<PaginaUsuarios />} />
           <Route path="/merge/:a/:b" element={<PaginaMerge />} />
           <Route path="/promover/:id" element={<PaginaPromover />} />
           <Route path="/meu-qr" element={<MeuQr />} />

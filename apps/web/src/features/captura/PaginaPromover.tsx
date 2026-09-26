@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { urlDaApi } from '@/lib/api-url';
 import { cabecalhosDaSessao } from '@/lib/offline/sessao';
 
 interface ContatoLido {
@@ -33,8 +34,8 @@ export function PaginaPromover() {
         cadastro trava o vendedor.
       </p>
       <p className="text-base">
-        Sem sessão de produção o servidor não sabe quem promove. Fora de produção esta tela usa a
-        sessão de teste do aparelho.
+        Quem promove é a pessoa que entrou. O perfil vem dessa sessão. Confirme o código do
+        autenticador dela.
       </p>
       <button
         type="button"
@@ -82,7 +83,7 @@ export function PaginaPromover() {
 
 async function ler(id: string): Promise<ContatoLido | null> {
   if (!id) return null;
-  const resposta = await fetch(`/v1/contatos/${id}`, { headers: cabecalhosDaSessao() });
+  const resposta = await fetch(urlDaApi(`/v1/contatos/${id}`), { headers: cabecalhosDaSessao() });
   if (!resposta.ok) return null;
   const json = (await resposta.json()) as { dados?: ContatoLido };
   return json.dados ?? null;
@@ -92,7 +93,7 @@ async function inscrever(
   definirSegredo: (valor: string) => void,
   definirMensagem: (valor: string) => void,
 ): Promise<void> {
-  const resposta = await fetch('/v1/auth/totp/inscrever', {
+  const resposta = await fetch(urlDaApi('/v1/auth/totp/inscrever'), {
     method: 'POST',
     headers: cabecalhosDaSessao(),
   });
@@ -114,7 +115,7 @@ async function promover(
   codigo: string,
   definirMensagem: (valor: string) => void,
 ): Promise<void> {
-  const resposta = await fetch(`/v1/contatos/${id}/transicao`, {
+  const resposta = await fetch(urlDaApi(`/v1/contatos/${id}/transicao`), {
     method: 'POST',
     headers: cabecalhosDaSessao(),
     body: JSON.stringify({ para: 'cliente', codigoTotp: codigo }),
