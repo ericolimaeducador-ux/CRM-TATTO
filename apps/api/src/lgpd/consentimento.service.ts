@@ -5,6 +5,7 @@ import { podeAcessarCarteira } from '../auth/perfil-permissoes';
 import { RespostaComErro } from '../contatos/erros-http';
 import type { Contato } from '../contatos/schemas/contato.schema';
 import type { UsuarioSessao } from '../contatos/sessao.middleware';
+import { confirmacaoConfere } from './confirmacao-nome';
 import { contatoComercialLiberado, importadoLiberado } from './retencao';
 import { textoDoTermo } from './texto-termo';
 
@@ -199,9 +200,7 @@ function listaDe(valor: unknown): Record<string, unknown>[] {
 }
 
 function conferirEliminacao(confirmacao: string, nome: unknown): void {
-  const texto = confirmacao.trim();
-  const atual = typeof nome === 'string' ? nome.trim() : '';
-  if (texto === 'ELIMINAR' || (atual !== '' && texto === atual)) return;
+  if (confirmacaoConfere(confirmacao, nome)) return;
   throw new RespostaComErro(
     422,
     'CONFIRMACAO_INVALIDA',

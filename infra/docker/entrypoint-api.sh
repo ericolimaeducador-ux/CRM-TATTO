@@ -13,7 +13,7 @@ fi
 if [ -z "${CIFRA_CHAVE_BASE64:-}" ] || [ -z "${CIFRA_PEPPER:-}" ]; then
   if [ "${NODE_ENV:-development}" = "production" ]; then
     if [ ! -d "$DIR" ]; then
-      echo '{"nivel":"ERROR","evento":"volume_ausente","mensagem":"O volume de segredos não está montado. Nada foi gerado."}' >&2
+      echo '{"nivel":"ERROR","evento":"volume_ausente","mensagem":"Em produção a API não gera chave nova a cada reinício. No Render, defina CIFRA_CHAVE_BASE64 e CIFRA_PEPPER nas variáveis e suba com node dist/main.js, sem SEGREDOS_ARQUIVO. No computador, monte o volume de segredos. Nada foi gerado."}' >&2
       exit 1
     fi
     CIFRA_CHAVE_BASE64="$(node -e "process.stdout.write(require('crypto').randomBytes(32).toString('base64'))")"

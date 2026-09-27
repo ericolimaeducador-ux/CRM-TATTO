@@ -1,4 +1,5 @@
 import { FormEvent, useState } from 'react';
+import { fetchComAcordar, FRASE_ACORDANDO } from '@/lib/acordar';
 import { urlDaApi } from '@/lib/api-url';
 import {
   guardarPerfil,
@@ -30,11 +31,21 @@ export function PaginaEntrar() {
 
   async function entrar(evento: FormEvent) {
     evento.preventDefault();
-    const resposta = await fetch(urlDaApi('/v1/auth/entrar'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ login, senha, codigoTotp: codigo || undefined }),
-    });
+    let resposta: Response;
+    try {
+      resposta = await fetchComAcordar(
+        urlDaApi('/v1/auth/entrar'),
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ login, senha, codigoTotp: codigo || undefined }),
+        },
+        setMensagem,
+      );
+    } catch {
+      setMensagem(`${FRASE_ACORDANDO} Não consegui entrar. Tente de novo.`);
+      return;
+    }
     const json = (await resposta.json()) as RespostaJson;
     if (!resposta.ok || !json.dados?.token) {
       setMensagem(textoDe(json, 'Usuário ou senha não conferem.'));

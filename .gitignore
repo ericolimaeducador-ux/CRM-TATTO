@@ -13,3 +13,5 @@ apps/web/dev-dist/
 test-results/
 playwright-report/
 infra/backup/saida/
+.firebase/
+*-firebase-adminsdk-*.json

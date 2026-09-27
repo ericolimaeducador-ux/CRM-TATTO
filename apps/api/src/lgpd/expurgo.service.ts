@@ -19,6 +19,15 @@ const SISTEMA: UsuarioSessao = {
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 
+export function retencaoNaSubida(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.NODE_ENV !== 'test';
+}
+
+export function relogioDeRetencaoAtivo(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (env.NODE_ENV === 'test') return false;
+  return env.RETENCAO_TIMER !== '0';
+}
+
 interface ContatoJob {
   _id: unknown;
   status?: string;
@@ -43,7 +52,8 @@ export class ExpurgoService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit(): void {
-    if (process.env.NODE_ENV === 'test') return;
+    if (retencaoNaSubida()) void this.rodar().catch(() => undefined);
+    if (!relogioDeRetencaoAtivo()) return;
     this.timer = setInterval(() => void this.rodar().catch(() => undefined), 60 * 60 * 1000);
   }
 

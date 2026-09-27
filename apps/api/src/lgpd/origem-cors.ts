@@ -1,3 +1,20 @@
+export function opcoesDeCors(): {
+  credentials: false;
+  methods: string[];
+  allowedHeaders: string[];
+  origin: (
+    origem: string | undefined,
+    responder: (erro: Error | null, permitido: boolean) => void,
+  ) => void;
+} {
+  return {
+    credentials: false,
+    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    origin: (origem, responder) => responder(null, origemPermitida(origem)),
+  };
+}
+
 export function origemPermitida(origem: string | undefined): boolean {
   if (origemDeRedeLocal(origem)) return true;
   if (!origem) return false;

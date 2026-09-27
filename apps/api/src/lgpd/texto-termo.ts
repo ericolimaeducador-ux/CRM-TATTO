@@ -7,7 +7,7 @@ export const VERSAO_TERMO = '2026-09-26-uso-pessoal';
 
 export function emailDoControlador(): string {
   const email = process.env.CONTROLADOR_EMAIL?.trim() ?? '';
-  if (!email || /preencha/i.test(email)) return 'defina CONTROLADOR_EMAIL';
+  if (!email || /preencha/i.test(email)) return 'o e-mail do controlador';
   return email;
 }
 

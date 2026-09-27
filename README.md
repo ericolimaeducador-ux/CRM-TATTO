@@ -27,10 +27,8 @@ Para abrir a cópia numa base vazia:
 mongorestore --uri="mongodb://127.0.0.1:27017" --archive=captura7.archive.gz --gzip --nsInclude="captura7.*"
 ```
 
-## Site no GitHub Pages
+## Publicar na nuvem
 
-O workflow `.github/workflows/pages.yml` publica só o site estático em `https://ericolimaeducador-ux.github.io/CRM-TATTO/`. A API e o MongoDB não rodam no Pages: continuam no computador do controlador.
+O passo a passo está em [PUBLICAR-NUVEM.md](PUBLICAR-NUVEM.md). As telas vão para o Google Firebase Hosting, no plano Spark, em `https://captura7-5e1da.web.app` (o ID do projeto é `captura7-5e1da`). A API vai para o Render gratuito e o banco para o MongoDB Atlas. O CORS da API aceita `https://captura7-5e1da.web.app` e `https://captura7-5e1da.firebaseapp.com`. A URI do banco não entra no Git. O caminho neste computador continua em [INSTALAR-WINDOWS.md](INSTALAR-WINDOWS.md).
 
-O build usa `PAGES_BASE=/CRM-TATTO/`. A variável de repositório `VITE_API_URL`, se existir, entra no JavaScript. Vazia, o site chama `/v1` no próprio Pages e a API não responde. Quando a API tiver endereço público, grave `VITE_API_URL` sem barra no fim e `CORS_ORIGENS` na API com a origem exata `https://ericolimaeducador-ux.github.io`.
-
-O Compose local continua com `VITE_API_URL` vazio, então neste computador o site chama `/v1` no mesmo endereço. O termo continua descrevendo o computador local. O Pages entrega o aplicativo; não guarda a base de contatos.
+O termo cita o Google Firebase Hosting, o Render (servidor nos Estados Unidos) e o MongoDB Atlas (banco em São Paulo, no Brasil, AWS `sa-east-1`). A transferência internacional do art. 33 da LGPD fica no Render e, eventualmente, no Firebase Hosting. O texto final ainda precisa da revisão do Jurídico LGPD Dados, só do captura7. A ADR-011 registra isso.

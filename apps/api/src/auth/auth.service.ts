@@ -83,7 +83,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
           null,
         );
       }
-      const veredito = await this.totp.confirmar(usuarioId, codigoTotp);
+      const veredito = await this.totp.confirmar(usuarioId, codigoTotp, Date.now(), 'login');
       if (!veredito.aceito) {
         throw new RespostaComErro(403, veredito.codigo, veredito.mensagem, null);
       }
@@ -118,7 +118,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
         null,
       );
     }
-    const veredito = await this.totp.confirmar(sessao.usuarioId, codigoTotp);
+    const veredito = await this.totp.confirmar(sessao.usuarioId, codigoTotp, Date.now(), 'passo');
     if (!veredito.aceito) {
       throw new RespostaComErro(403, veredito.codigo, veredito.mensagem, null);
     }
@@ -143,7 +143,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     await this.sessoes.deleteOne({ tokenHash: hashToken(token) });
   }
 
-  async trocarSenha(usuarioId: string, senhaAtual: string, senhaNova: string) {
+  async trocarSenha(usuarioId: string, senhaAtual: string, senhaNova: string, tokenAtual = '') {
     const usuario = await this.usuarios.findById(usuarioId).lean<UsuarioDoc | null>();
     if (!usuario || !(await senhaConfere(senhaAtual, usuario.senhaHash))) {
       throw new RespostaComErro(
@@ -165,8 +165,12 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       );
     }
     await this.usuarios.updateOne({ _id: usuario._id }, { $set: { senhaHash } });
+    const apagadas = await this.sessoes.deleteMany({
+      usuarioId,
+      tokenHash: { $ne: hashToken(tokenAtual) },
+    });
     await this.auditoria.create({ evento: 'troca_senha', usuarioId, em: new Date() });
-    return { trocada: true };
+    return { trocada: true, outrasSessoesEncerradas: apagadas.deletedCount };
   }
 
   async criarUsuario(loginBruto: string, senha: string, nome: string, papel: string) {

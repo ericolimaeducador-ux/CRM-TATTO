@@ -54,7 +54,8 @@ describe('termo de consentimento', () => {
     expect(curto).toContain('erico@exemplo.com');
     expect(curto).toMatch(/24 meses[\s\S]*180 dias[\s\S]*30 dias/);
     expect(String(resposta.body.dados.textoCompleto)).not.toContain('quando você pede');
-    expect(resposta.body.dados.textoCompleto).toContain('computador local do controlador');
+    expect(resposta.body.dados.textoCompleto).toContain('MongoDB Atlas');
+    expect(resposta.body.dados.textoCompleto).toContain('art. 33');
     expect(curto).not.toContain('[A PREENCHER');
     expect(resposta.body.dados.hash).toBe(textoDoTermo().hash);
     expect(resposta.body.dados.textoCompleto).toContain('Art. 18, VI');

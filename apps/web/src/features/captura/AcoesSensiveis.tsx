@@ -21,9 +21,7 @@ export function AcoesSensiveis({
   const [revogar, setRevogar] = useState(false);
   const [eliminar, setEliminar] = useState(false);
   const [confirmacao, setConfirmacao] = useState('');
-  const nomeLimpo = nome.trim();
-  const aceita =
-    confirmacao.trim() === 'ELIMINAR' || (nomeLimpo !== '' && confirmacao.trim() === nomeLimpo);
+  const aceita = confirmacaoConfere(confirmacao, nome);
 
   return (
     <>
@@ -35,13 +33,22 @@ export function AcoesSensiveis({
         Revogar consentimento
       </button>
       {revogar ? (
-        <button
-          type="button"
-          className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
-          onClick={() => void enviar(id, 'revogacao', { confirmar: true }, aoAtualizar)}
-        >
-          Confirmar revogação
-        </button>
+        <>
+          <button
+            type="button"
+            className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+            onClick={() => void enviar(id, 'revogacao', { confirmar: true }, aoAtualizar)}
+          >
+            Confirmar revogação
+          </button>
+          <button
+            type="button"
+            className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+            onClick={() => setRevogar(false)}
+          >
+            Cancelar revogação
+          </button>
+        </>
       ) : null}
       <button
         type="button"
@@ -70,10 +77,35 @@ export function AcoesSensiveis({
           >
             Confirmar eliminação
           </button>
+          <button
+            type="button"
+            className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+            onClick={() => {
+              setEliminar(false);
+              setConfirmacao('');
+            }}
+          >
+            Cancelar eliminação
+          </button>
         </>
       ) : null}
     </>
   );
+}
+
+export function confirmacaoConfere(confirmacao: string, nome: string): boolean {
+  const texto = dobrar(confirmacao);
+  if (texto === 'eliminar') return true;
+  const atual = dobrar(nome);
+  return atual !== '' && texto === atual;
+}
+
+function dobrar(valor: string): string {
+  return valor
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 }
 
 async function enviar(

@@ -1,4 +1,4 @@
-import { origemDeRedeLocal, origemPermitida } from './origem-cors';
+import { opcoesDeCors, origemDeRedeLocal, origemPermitida } from './origem-cors';
 
 describe('origem de rede local', () => {
   it('aceita o computador e a rede da casa', () => {
@@ -10,10 +10,30 @@ describe('origem de rede local', () => {
   });
 
   it('aceita origem extra configurada e recusa o resto', () => {
-    process.env.CORS_ORIGENS = 'https://erico.github.io';
-    expect(origemPermitida('https://erico.github.io')).toBe(true);
+    process.env.CORS_ORIGENS = 'https://captura7-5e1da.web.app';
+    expect(origemPermitida('https://captura7-5e1da.web.app')).toBe(true);
     expect(origemPermitida('https://outro.example')).toBe(false);
     delete process.env.CORS_ORIGENS;
+  });
+
+  it('libera o Firebase só quando cada origem está na lista', () => {
+    process.env.CORS_ORIGENS =
+      'https://captura7-5e1da.web.app,https://captura7-5e1da.firebaseapp.com';
+    expect(origemPermitida('https://captura7-5e1da.web.app')).toBe(true);
+    expect(origemPermitida('https://captura7-5e1da.firebaseapp.com')).toBe(true);
+    expect(origemPermitida('https://outro.web.app')).toBe(false);
+    expect(origemPermitida('https://captura7-api.onrender.com')).toBe(false);
+    expect(origemPermitida('https://captura7-5e1da.web.app.evil.example')).toBe(false);
+    delete process.env.CORS_ORIGENS;
+    expect(origemPermitida('https://captura7-5e1da.web.app')).toBe(false);
+    expect(origemPermitida('https://captura7-5e1da.firebaseapp.com')).toBe(false);
+  });
+
+  it('manda o token no Authorization e não pede cookie entre sites', () => {
+    const opcoes = opcoesDeCors();
+    expect(opcoes.credentials).toBe(false);
+    expect(opcoes.allowedHeaders).toContain('Authorization');
+    expect(opcoes.allowedHeaders).toEqual(['Content-Type', 'Authorization']);
   });
 
   it('recusa endereço público', () => {
