@@ -13,8 +13,6 @@ self.addEventListener('activate', (evento) => {
   evento.waitUntil(self.clients.claim());
 });
 
-const base = import.meta.env.BASE_URL || '/';
-
 precacheAndRoute(self.__WB_MANIFEST);
 
 registerRoute(
@@ -22,7 +20,7 @@ registerRoute(
   new NetworkOnly(),
 );
 
-registerRoute(new NavigationRoute(createHandlerBoundToURL(`${base}index.html`)));
+registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html')));
 
 self.addEventListener('message', (evento) => {
   if (evento.data === 'VERSAO') evento.ports[0]?.postMessage(VERSAO);

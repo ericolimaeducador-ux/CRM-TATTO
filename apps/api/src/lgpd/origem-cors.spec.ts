@@ -10,20 +10,22 @@ describe('origem de rede local', () => {
   });
 
   it('aceita origem extra configurada e recusa o resto', () => {
-    process.env.CORS_ORIGENS = 'https://erico.github.io';
-    expect(origemPermitida('https://erico.github.io')).toBe(true);
+    process.env.CORS_ORIGENS = 'https://captura7.web.app';
+    expect(origemPermitida('https://captura7.web.app')).toBe(true);
     expect(origemPermitida('https://outro.example')).toBe(false);
     delete process.env.CORS_ORIGENS;
   });
 
-  it('libera o Pages só quando a origem está na lista', () => {
-    process.env.CORS_ORIGENS = 'https://ericolimaeducador-ux.github.io';
-    expect(origemPermitida('https://ericolimaeducador-ux.github.io')).toBe(true);
-    expect(origemPermitida('https://outro.github.io')).toBe(false);
+  it('libera o Firebase só quando cada origem está na lista', () => {
+    process.env.CORS_ORIGENS = 'https://captura7.web.app,https://captura7.firebaseapp.com';
+    expect(origemPermitida('https://captura7.web.app')).toBe(true);
+    expect(origemPermitida('https://captura7.firebaseapp.com')).toBe(true);
+    expect(origemPermitida('https://outro.web.app')).toBe(false);
     expect(origemPermitida('https://captura7.onrender.com')).toBe(false);
-    expect(origemPermitida('https://ericolimaeducador-ux.github.io.evil.example')).toBe(false);
+    expect(origemPermitida('https://captura7.web.app.evil.example')).toBe(false);
     delete process.env.CORS_ORIGENS;
-    expect(origemPermitida('https://ericolimaeducador-ux.github.io')).toBe(false);
+    expect(origemPermitida('https://captura7.web.app')).toBe(false);
+    expect(origemPermitida('https://captura7.firebaseapp.com')).toBe(false);
   });
 
   it('recusa endereço público', () => {

@@ -23,7 +23,7 @@ Você pode **revogar** sua autorização quando quiser, de graça, pelo e-mail {
 
 **Erico Henrique de Lima Araujo**, pessoa física, sem CNPJ, é o controlador dos dados tratados no aplicativo captura7, nos termos do Art. 5, VI, da LGPD. O contato é {{CONTROLADOR_EMAIL}}. O encarregado, neste uso pessoal, é o próprio controlador, no mesmo e-mail.
 
-Os dados ficam em serviços de nuvem contratados pelo controlador: o GitHub guarda as telas, o Render guarda o servidor e o MongoDB Atlas guarda o banco. Esses serviços podem usar servidores fora do Brasil. Isso é transferência internacional (art. 33 da LGPD). O caminho no computador do controlador continua disponível para quem não publicar.
+Os dados ficam em serviços de nuvem contratados pelo controlador: o Google Firebase Hosting guarda as telas, o Render guarda o servidor e o MongoDB Atlas guarda o banco. Esses serviços podem usar servidores fora do Brasil. Isso é transferência internacional (art. 33 da LGPD). O caminho no computador do controlador continua disponível para quem não publicar.
 
 | Código | Finalidade | O que acontece | Base legal | Como você controla |
 |---|---|---|---|---|
@@ -34,7 +34,7 @@ Os dados ficam em serviços de nuvem contratados pelo controlador: o GitHub guar
 
 | Quem recebe | Para quê | Papel |
 |---|---|---|
-| GitHub | Guardar as telas do aplicativo | Operador contratado pelo controlador |
+| Google Firebase Hosting | Guardar as telas do aplicativo | Operador contratado pelo controlador |
 | Render | Guardar o servidor | Operador contratado pelo controlador |
 | MongoDB Atlas | Guardar o banco | Operador contratado pelo controlador |
 | Sistema externo que o controlador configurar | Enviar contato de cliente, se você autorizar | Destino opcional. Desligado enquanto o controlador não configurar esse destino |
@@ -60,4 +60,4 @@ Se este termo mudar de forma relevante e a mudança afetar uma finalidade autori
 
 ## PARTE 3 — Notas de operação
 
-Decisões fechadas na ADR-010: D1 pessoa física sem CNPJ; D2 o controlador é o canal; D5 canais informados pelo titular; D7 webhook opcional e desligado; D8 exportação de uso pessoal; D9 {{RETENCAO_MESES}} meses sem interação; D11 planilha com legítimo interesse e origem importado. A ADR-011 descreve GitHub, Render e MongoDB Atlas, com possível transferência internacional. O texto final do termo precisa da revisão do Jurídico LGPD Dados, só do captura7. O campo `conflito` grava as duas versões no servidor para escolha humana. O caminho no computador local continua em INSTALAR-WINDOWS.md.
+Decisões fechadas na ADR-010: D1 pessoa física sem CNPJ; D2 o controlador é o canal; D5 canais informados pelo titular; D7 webhook opcional e desligado; D8 exportação de uso pessoal; D9 {{RETENCAO_MESES}} meses sem interação; D11 planilha com legítimo interesse e origem importado. A ADR-011 descreve o Google Firebase Hosting, o Render e o MongoDB Atlas, com possível transferência internacional. O texto final do termo precisa da revisão do Jurídico LGPD Dados, só do captura7. O campo `conflito` grava as duas versões no servidor para escolha humana. O caminho no computador local continua em INSTALAR-WINDOWS.md.
