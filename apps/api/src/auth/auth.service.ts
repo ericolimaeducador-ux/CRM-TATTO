@@ -14,6 +14,7 @@ interface UsuarioDoc {
   nome: string;
   papel: string;
   ativo?: boolean;
+  trocarSenhaObrigatoria?: boolean;
 }
 
 interface SessaoDoc {
@@ -23,11 +24,13 @@ interface SessaoDoc {
   nome: string;
   expiraEm: Date;
   stepUpAte?: Date | null;
+  trocarSenhaObrigatoria?: boolean;
 }
 
 interface AuditoriaAuth {
   evento: string;
   usuarioId: string;
+  porUsuarioId?: string;
   em: Date;
 }
 
@@ -89,6 +92,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       }
       stepUpAte = new Date(Date.now() + 5 * 60_000);
     }
+    const trocarSenhaObrigatoria = usuario.trocarSenhaObrigatoria === true;
     const token = randomBytes(32).toString('base64url');
     const expiraEm = new Date(Date.now() + 12 * 60 * 60 * 1000);
     await this.sessoes.create({
@@ -98,6 +102,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       nome: usuario.nome,
       expiraEm,
       stepUpAte,
+      trocarSenhaObrigatoria,
     });
     return {
       token,
@@ -105,6 +110,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       usuario: { id: usuarioId, papel: usuario.papel, nome: usuario.nome },
       stepUp: stepUpAte != null,
       precisaInscreverTotp: usuario.papel === 'admin' && !inscrito,
+      trocarSenhaObrigatoria,
     };
   }
 
@@ -135,7 +141,14 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     if (!sessao || new Date(sessao.expiraEm).getTime() <= Date.now()) return null;
     const stepUp = sessao.stepUpAte != null && new Date(sessao.stepUpAte).getTime() > Date.now();
     const totpPendente = sessao.papel === 'admin' && !(await this.totp.inscrito(sessao.usuarioId));
-    return { id: sessao.usuarioId, papel: sessao.papel, nome: sessao.nome, stepUp, totpPendente };
+    return {
+      id: sessao.usuarioId,
+      papel: sessao.papel,
+      nome: sessao.nome,
+      stepUp,
+      totpPendente,
+      trocarSenhaObrigatoria: sessao.trocarSenhaObrigatoria === true,
+    };
   }
 
   async sair(token: string): Promise<void> {
@@ -153,6 +166,14 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
         null,
       );
     }
+    if (senhaNova.trim() === senhaAtual.trim()) {
+      throw new RespostaComErro(
+        422,
+        'SENHA_REPETIDA',
+        'A senha nova precisa ser diferente da atual. A senha não mudou.',
+        null,
+      );
+    }
     let senhaHash: string;
     try {
       senhaHash = await hashSenha(senhaNova);
@@ -164,7 +185,14 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
         null,
       );
     }
-    await this.usuarios.updateOne({ _id: usuario._id }, { $set: { senhaHash } });
+    await this.usuarios.updateOne(
+      { _id: usuario._id },
+      { $set: { senhaHash, trocarSenhaObrigatoria: false } },
+    );
+    await this.sessoes.updateOne(
+      { usuarioId, tokenHash: hashToken(tokenAtual) },
+      { $set: { trocarSenhaObrigatoria: false } },
+    );
     const apagadas = await this.sessoes.deleteMany({
       usuarioId,
       tokenHash: { $ne: hashToken(tokenAtual) },

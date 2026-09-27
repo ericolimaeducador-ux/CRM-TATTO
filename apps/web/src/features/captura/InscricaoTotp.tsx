@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import QRCode from 'qrcode';
 
 export interface DadosInscricao {
@@ -11,7 +11,7 @@ export function agruparChave(segredo: string): string {
   return (segredo.replace(/\s+/g, '').match(/.{1,4}/g) ?? []).join(' ');
 }
 
-async function copiarTexto(texto: string): Promise<boolean> {
+export async function copiarTexto(texto: string): Promise<boolean> {
   try {
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(texto);
@@ -36,24 +36,50 @@ async function copiarTexto(texto: string): Promise<boolean> {
   }
 }
 
-export function InscricaoTotp({
+/** Botão Copiar com fallback; mostra "Copiado" ou pede a cópia manual. */
+export function BotaoCopiar({ texto, rotulo = 'Copiar' }: { texto: string; rotulo?: string }) {
+  const [estado, setEstado] = useState<'' | 'ok' | 'falhou'>('');
+  useEffect(() => setEstado(''), [texto]);
+  return (
+    <>
+      <button
+        type="button"
+        className="btn-secundario"
+        onClick={() => void copiarTexto(texto).then((ok) => setEstado(ok ? 'ok' : 'falhou'))}
+      >
+        {estado === 'ok' ? 'Copiado' : rotulo}
+      </button>
+      {estado === 'falhou' ? (
+        <p className="text-sm" role="status">
+          Não consegui copiar. Selecione o texto e copie à mão.
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * Passos para cadastrar a conta no autenticador: link otpauth, QR gerado no
+ * aparelho, chave em blocos de 4 com Copiar e instruções do Google Authenticator.
+ */
+export function ConfiguracaoTotp({
   dados,
-  codigoInicial,
-  aoAtivar,
+  titulo,
+  paraOutraPessoa = false,
+  children,
 }: {
   dados: DadosInscricao;
-  codigoInicial: string;
-  aoAtivar: (codigo: string) => void;
+  titulo: string;
+  paraOutraPessoa?: boolean;
+  children?: ReactNode;
 }) {
   const [qr, setQr] = useState('');
-  const [codigo, setCodigo] = useState(codigoInicial);
-  const [copia, setCopia] = useState<'' | 'ok' | 'falhou'>('');
   const bloco = useRef<HTMLElement>(null);
+  const idTitulo = useId();
 
   useEffect(() => {
     let vivo = true;
     setQr('');
-    setCopia('');
     if (dados.otpauth) {
       QRCode.toString(dados.otpauth, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' })
         .then((svg) => {
@@ -67,18 +93,16 @@ export function InscricaoTotp({
     };
   }, [dados.otpauth, dados.segredo]);
 
-  async function copiar() {
-    setCopia((await copiarTexto(dados.segredo)) ? 'ok' : 'falhou');
-  }
-
   return (
-    <section ref={bloco} className="inscricao-totp" aria-labelledby="titulo-inscricao-totp">
-      <h2 id="titulo-inscricao-totp" className="text-xl font-semibold">
-        Cadastre o TattooArt no seu autenticador
+    <section ref={bloco} className="inscricao-totp" aria-labelledby={idTitulo}>
+      <h2 id={idTitulo} className="text-xl font-semibold">
+        {titulo}
       </h2>
 
       <div className="passo-totp">
-        <p className="passo-rotulo">1. Neste celular</p>
+        <p className="passo-rotulo">
+          {paraOutraPessoa ? 'No celular da pessoa' : '1. Neste celular'}
+        </p>
         {dados.otpauth ? (
           <a className="btn" href={dados.otpauth}>
             Abrir no Google Authenticator
@@ -89,7 +113,9 @@ export function InscricaoTotp({
 
       {qr ? (
         <div className="passo-totp">
-          <p className="passo-rotulo">Abriu esta tela no computador?</p>
+          <p className="passo-rotulo">
+            {paraOutraPessoa ? 'Ou mostre este QR code' : 'Abriu esta tela no computador?'}
+          </p>
           <p className="text-sm">
             No Google Authenticator do celular, toque em + e em Ler QR code.
           </p>
@@ -115,14 +141,7 @@ export function InscricaoTotp({
               </Fragment>
             ))}
         </p>
-        <button type="button" className="btn-secundario" onClick={() => void copiar()}>
-          {copia === 'ok' ? 'Chave copiada' : 'Copiar'}
-        </button>
-        {copia === 'falhou' ? (
-          <p className="text-sm" role="status">
-            Não consegui copiar. Selecione a chave e copie à mão.
-          </p>
-        ) : null}
+        <BotaoCopiar texto={dados.segredo} />
         <ol className="lista-passos text-sm">
           <li>Abra o Google Authenticator e toque em +.</li>
           <li>Toque em Inserir chave de configuração.</li>
@@ -131,7 +150,23 @@ export function InscricaoTotp({
           <li>Em Tipo de chave, escolha Baseado em tempo e toque em Adicionar.</li>
         </ol>
       </div>
+      {children}
+    </section>
+  );
+}
 
+export function InscricaoTotp({
+  dados,
+  codigoInicial,
+  aoAtivar,
+}: {
+  dados: DadosInscricao;
+  codigoInicial: string;
+  aoAtivar: (codigo: string) => void;
+}) {
+  const [codigo, setCodigo] = useState(codigoInicial);
+  return (
+    <ConfiguracaoTotp dados={dados} titulo="Cadastre o TattooArt no seu autenticador">
       <div className="passo-totp">
         <p className="passo-rotulo">2. Confirme o código</p>
         <label className="flex flex-col gap-1 text-base">
@@ -153,6 +188,6 @@ export function InscricaoTotp({
           acontecer, apague a conta antiga do autenticador e cadastre a nova.
         </p>
       </div>
-    </section>
+    </ConfiguracaoTotp>
   );
 }

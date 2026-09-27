@@ -1,8 +1,9 @@
 import { randomBytes } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { getModelToken, MongooseModule } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import type { Model } from 'mongoose';
 import request from 'supertest';
 import { ContatosModule } from '../contatos/contatos.module';
 import { AuthModule } from './auth.module';
@@ -13,6 +14,7 @@ describe('gestão de usuários', () => {
   let app: INestApplication;
   let memoria: MongoMemoryServer;
   let token = '';
+  let segredoAdmin = '';
 
   beforeAll(async () => {
     process.env.NODE_ENV = 'test';
@@ -50,6 +52,7 @@ describe('gestão de usuários', () => {
     expect(inscricao.status).toBe(201);
     expect(inscricao.body.dados.pendente).toBe(true);
     const segredo = inscricao.body.dados.segredoBase32 as string;
+    segredoAdmin = segredo;
     const ainda = await request(app.getHttpServer())
       .post('/v1/usuarios')
       .set(auth())
@@ -120,6 +123,152 @@ describe('gestão de usuários', () => {
       .post('/v1/auth/entrar')
       .send({ login: 'ana', senha: 'senha-bem-longa' });
     expect(login.status).toBe(401);
+  });
+
+  it('gera senha provisória, entrega o autenticador de admin e obriga a troca', async () => {
+    const servidor = app.getHttpServer();
+    // Garante o passo extra do admin desta suíte com um código ainda não usado.
+    await request(servidor)
+      .post('/v1/auth/step-up')
+      .set(auth())
+      .send({ codigoTotp: codigoNoPasso(segredoAdmin, passoAtual() + 1) });
+
+    const vendedor = await request(servidor)
+      .post('/v1/usuarios')
+      .set(auth())
+      .send({ login: 'caio', nome: 'Caio', papel: 'vendedor' });
+    expect(vendedor.status).toBe(201);
+    expect(vendedor.body.dados.senhaGerada).toBe(true);
+    expect(vendedor.body.dados.senhaProvisoria).toMatch(/^[A-Za-z2-9]{4}(-[A-Za-z2-9]{4}){3}$/);
+    expect(vendedor.body.dados.totp).toBeNull();
+    expect(vendedor.body.dados.trocarSenhaObrigatoria).toBe(true);
+    const idCaio = vendedor.body.dados.id as string;
+    const senhaCaio = vendedor.body.dados.senhaProvisoria as string;
+
+    const curta = await request(servidor)
+      .post('/v1/usuarios')
+      .set(auth())
+      .send({ login: 'curta', senha: 'curta', nome: 'Curta', papel: 'vendedor' });
+    expect(curta.status).toBe(422);
+
+    const admin = await request(servidor)
+      .post('/v1/usuarios')
+      .set(auth())
+      .send({ login: 'bia', nome: 'Bia', papel: 'admin' });
+    expect(admin.status).toBe(201);
+    const segredoBia = admin.body.dados.totp.segredoBase32 as string;
+    expect(admin.body.dados.totp.otpauth).toBe(
+      `otpauth://totp/TattooArt:bia?secret=${segredoBia}&issuer=TattooArt&digits=6&period=30`,
+    );
+    const idBia = admin.body.dados.id as string;
+    const senhaBia = admin.body.dados.senhaProvisoria as string;
+    const lista = await request(servidor).get('/v1/usuarios').set(auth());
+    expect(JSON.stringify(lista.body)).not.toContain(segredoBia);
+    expect(JSON.stringify(lista.body)).not.toContain(senhaBia);
+
+    const semCodigo = await request(servidor)
+      .post('/v1/auth/entrar')
+      .send({ login: 'bia', senha: senhaBia });
+    expect(semCodigo.status).toBe(403);
+    expect(JSON.stringify(semCodigo.body)).toContain('TOTP_OBRIGATORIO');
+    const entradaBia = await request(servidor)
+      .post('/v1/auth/entrar')
+      .send({ login: 'bia', senha: senhaBia, codigoTotp: codigoNoPasso(segredoBia, passoAtual()) });
+    expect(entradaBia.status).toBe(201);
+    expect(entradaBia.body.dados.trocarSenhaObrigatoria).toBe(true);
+    expect(entradaBia.body.dados.precisaInscreverTotp).toBe(false);
+    const tokenBia = { authorization: `Bearer ${entradaBia.body.dados.token as string}` };
+    const presa = await request(servidor).get('/v1/usuarios').set(tokenBia);
+    expect(presa.status).toBe(403);
+    expect(JSON.stringify(presa.body)).toContain('SENHA_PROVISORIA');
+    expect((await request(servidor).get('/v1/auth/eu').set(tokenBia)).status).toBe(200);
+    const repetida = await request(servidor)
+      .post('/v1/auth/senha')
+      .set(tokenBia)
+      .send({ senhaAtual: senhaBia, senhaNova: senhaBia });
+    expect(repetida.status).toBe(422);
+    expect(JSON.stringify(repetida.body)).toContain('SENHA_REPETIDA');
+    const trocada = await request(servidor)
+      .post('/v1/auth/senha')
+      .set(tokenBia)
+      .send({ senhaAtual: senhaBia, senhaNova: 'nova-senha-da-bia' });
+    expect(trocada.status).toBe(200);
+    expect((await request(servidor).get('/v1/usuarios').set(tokenBia)).status).toBe(200);
+
+    const entradaCaio = await request(servidor)
+      .post('/v1/auth/entrar')
+      .send({ login: 'caio', senha: senhaCaio });
+    expect(entradaCaio.body.dados.trocarSenhaObrigatoria).toBe(true);
+    const tokenCaio = { authorization: `Bearer ${entradaCaio.body.dados.token as string}` };
+    const nova = await request(servidor).post(`/v1/usuarios/${idCaio}/senha/gerar`).set(auth());
+    expect(nova.status).toBe(201);
+    const senhaNovaCaio = nova.body.dados.senhaProvisoria as string;
+    expect(senhaNovaCaio).not.toBe(senhaCaio);
+    expect(nova.body.dados.sessoesEncerradas).toBe(1);
+    expect((await request(servidor).get('/v1/auth/eu').set(tokenCaio)).status).not.toBe(200);
+    const antiga = await request(servidor)
+      .post('/v1/auth/entrar')
+      .send({ login: 'caio', senha: senhaCaio });
+    expect(antiga.status).toBe(401);
+    const denovo = await request(servidor)
+      .post('/v1/auth/entrar')
+      .send({ login: 'caio', senha: senhaNovaCaio });
+    expect(denovo.body.dados.trocarSenhaObrigatoria).toBe(true);
+
+    const soAdmin = await request(servidor)
+      .post(`/v1/usuarios/${idCaio}/totp/regenerar`)
+      .set(auth());
+    expect(soAdmin.status).toBe(422);
+    expect(JSON.stringify(soAdmin.body)).toContain('TOTP_SO_ADMIN');
+    const regenerado = await request(servidor)
+      .post(`/v1/usuarios/${idBia}/totp/regenerar`)
+      .set(auth());
+    expect(regenerado.status).toBe(201);
+    const segredoNovo = regenerado.body.dados.totp.segredoBase32 as string;
+    expect(segredoNovo).not.toBe(segredoBia);
+    expect((await request(servidor).get('/v1/auth/eu').set(tokenBia)).status).not.toBe(200);
+    const codigoVelho = await request(servidor)
+      .post('/v1/auth/entrar')
+      .send({
+        login: 'bia',
+        senha: 'nova-senha-da-bia',
+        codigoTotp: codigoNoPasso(segredoBia, passoAtual() + 1),
+      });
+    expect(codigoVelho.status).toBe(403);
+    const codigoNovo = await request(servidor)
+      .post('/v1/auth/entrar')
+      .send({
+        login: 'bia',
+        senha: 'nova-senha-da-bia',
+        codigoTotp: codigoNoPasso(segredoNovo, passoAtual()),
+      });
+    expect(codigoNovo.status).toBe(201);
+
+    const eu = await request(servidor).get('/v1/auth/eu').set(auth());
+    const propria = await request(servidor)
+      .post(`/v1/usuarios/${eu.body.dados.id as string}/senha/gerar`)
+      .set(auth());
+    expect(propria.status).toBe(422);
+    expect(JSON.stringify(propria.body)).toContain('CONTA_PROPRIA');
+
+    const entradaVendedor = await request(servidor)
+      .post('/v1/auth/entrar')
+      .send({ login: 'caio', senha: senhaNovaCaio });
+    const semPapel = await request(servidor)
+      .post(`/v1/usuarios/${idBia}/senha/gerar`)
+      .set({ authorization: `Bearer ${entradaVendedor.body.dados.token as string}` });
+    expect(semPapel.status).toBe(403);
+
+    const eventos = await app
+      .get<Model<{ evento: string; usuarioId: string; porUsuarioId?: string }>>(
+        getModelToken('AuthAuditoria'),
+      )
+      .find({ evento: { $in: ['usuario_criado', 'senha_gerada_admin', 'totp_regenerado_admin'] } })
+      .lean();
+    expect(eventos.map((item) => item.evento)).toEqual(
+      expect.arrayContaining(['usuario_criado', 'senha_gerada_admin', 'totp_regenerado_admin']),
+    );
+    expect(eventos.every((item) => item.porUsuarioId === eu.body.dados.id)).toBe(true);
   });
 
   function auth(): Record<string, string> {

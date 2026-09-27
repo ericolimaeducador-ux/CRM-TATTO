@@ -6,6 +6,7 @@ import {
   guardarPerfil,
   guardarToken,
   marcarTotpPendente,
+  marcarTrocaSenha,
   tokenDaSessao,
   totpPendenteLocal,
 } from '@/lib/offline/sessao';
@@ -19,6 +20,7 @@ interface RespostaJson {
   dados?: {
     token?: string;
     precisaInscreverTotp?: boolean;
+    trocarSenhaObrigatoria?: boolean;
     usuario?: { id?: string; papel?: string; nome?: string };
   };
 }
@@ -55,12 +57,18 @@ export function PaginaEntrar() {
     }
     guardarToken(json.dados.token);
     marcarTotpPendente(json.dados.precisaInscreverTotp === true);
+    marcarTrocaSenha(json.dados.trocarSenhaObrigatoria === true);
     const usuario = json.dados.usuario;
     if (usuario?.id && usuario.papel && usuario.nome) {
       guardarPerfil({ id: usuario.id, papel: usuario.papel, nome: usuario.nome });
     }
     setToken(json.dados.token);
     setMensagem(`Entrou como ${usuario?.nome ?? login}.`);
+    if (json.dados.trocarSenhaObrigatoria === true) {
+      // Senha provisória: a moldura do app mostra só "Crie sua nova senha".
+      navegar('/entrar', { replace: true });
+      return;
+    }
     // No primeiro acesso do administrador a inscrição do autenticador vem antes de tudo:
     // fica nesta tela, onde está o botão Inscrever autenticador.
     const gerente = usuario?.papel === 'admin' || usuario?.papel === 'gestor';

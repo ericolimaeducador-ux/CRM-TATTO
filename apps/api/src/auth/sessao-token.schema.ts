@@ -8,6 +8,7 @@ export const sessaoTokenSchema = new Schema(
     nome: { type: String, required: true },
     expiraEm: { type: Date, required: true },
     stepUpAte: { type: Date, default: null },
+    trocarSenhaObrigatoria: { type: Boolean, default: false },
   },
   { collection: 'sessoes', strict: true, versionKey: false },
 );

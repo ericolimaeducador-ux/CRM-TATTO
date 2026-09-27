@@ -79,10 +79,23 @@ export function totpPendenteLocal(): boolean {
   return localStorage.getItem('captura7.totpPendente') === '1';
 }
 
+const TROCA_SENHA = 'captura7.trocarSenha';
+
+/** A conta entrou com senha provisória e precisa criar a própria antes de qualquer outra tela. */
+export function marcarTrocaSenha(obrigatoria: boolean): void {
+  if (obrigatoria) localStorage.setItem(TROCA_SENHA, '1');
+  else localStorage.removeItem(TROCA_SENHA);
+}
+
+export function trocaSenhaLocal(): boolean {
+  return localStorage.getItem(TROCA_SENHA) === '1' && tokenDaSessao() !== '';
+}
+
 export function limparSessao(): void {
   localStorage.removeItem('captura7.token');
   localStorage.removeItem(PERFIL);
   localStorage.removeItem('captura7.totpPendente');
+  localStorage.removeItem(TROCA_SENHA);
 }
 
 export function codigoTotpDoCorpo(

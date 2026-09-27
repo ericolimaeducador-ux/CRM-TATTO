@@ -8,6 +8,7 @@ export interface UsuarioSessao {
   nome: string;
   stepUp: boolean;
   totpPendente?: boolean;
+  trocarSenhaObrigatoria?: boolean;
 }
 
 export type RequisicaoComUsuario = Request & { usuario?: UsuarioSessao };

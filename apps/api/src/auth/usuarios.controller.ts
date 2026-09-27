@@ -21,12 +21,13 @@ export class UsuariosController {
     @Body() corpo: { login?: string; senha?: string; nome?: string; papel?: string },
     @Req() req: RequisicaoComUsuario,
   ) {
-    exigir(req);
+    const autor = exigir(req);
     const dados = await this.usuarios.criar(
       corpo.login ?? '',
       corpo.senha ?? '',
       corpo.nome ?? '',
       corpo.papel ?? '',
+      autor.id,
     );
     return { dados, avisos: [], erros: [] };
   }
@@ -50,6 +51,22 @@ export class UsuariosController {
   async zerar(@Param('id') id: string, @Req() req: RequisicaoComUsuario) {
     exigir(req);
     return { dados: await this.usuarios.zerarTotp(id), avisos: [], erros: [] };
+  }
+
+  @Post(':id/senha/gerar')
+  @Papel('admin')
+  @ExigeStepUp()
+  async gerarSenha(@Param('id') id: string, @Req() req: RequisicaoComUsuario) {
+    const autor = exigir(req);
+    return { dados: await this.usuarios.gerarNovaSenha(id, autor.id), avisos: [], erros: [] };
+  }
+
+  @Post(':id/totp/regenerar')
+  @Papel('admin')
+  @ExigeStepUp()
+  async regenerarTotp(@Param('id') id: string, @Req() req: RequisicaoComUsuario) {
+    const autor = exigir(req);
+    return { dados: await this.usuarios.regenerarTotp(id, autor.id), avisos: [], erros: [] };
   }
 }
 
