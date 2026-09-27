@@ -4,12 +4,14 @@ services:
     runtime: node
     plan: free
     region: oregon
-    buildCommand: corepack enable && corepack prepare pnpm@10.33.3 --activate && pnpm install --frozen-lockfile && pnpm --filter @captura7/api build
-    startCommand: pnpm --filter @captura7/api start
+    buildCommand: npx -y pnpm@10.33.3 install --frozen-lockfile && npx -y pnpm@10.33.3 --filter @captura7/api build
+    startCommand: cd apps/api && node dist/main.js
     healthCheckPath: /v1/saude
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: '22'
       - key: CAPTURA7_TRUST_PROXY_SALTOS
         value: '1'
       - key: RETENCAO_MESES
@@ -27,7 +29,7 @@ services:
       - key: CONTROLADOR_EMAIL
         sync: false
       # Duas origens do Firebase, separadas por vírgula, sem barra no fim:
-      # https://captura7-5e1da.web.app,https://captura7-5e1da.firebaseapp.com
+      # https://captura7-5e1da.web.app,https://captura7-5e1da.firebaseapp.com,https://tattooart.web.app,https://tattooart.firebaseapp.com
       - key: CORS_ORIGENS
         sync: false
       # Token do POST /v1/interno/retencao. O workflow retencao usa o mesmo valor.
