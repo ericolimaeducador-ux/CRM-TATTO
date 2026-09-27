@@ -1,16 +1,35 @@
-import { FormEvent, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { FormEvent, useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { KeyRound, LogIn, LogOut } from 'lucide-react';
 import { fetchComAcordar } from '@/lib/acordar';
 import { urlDaApi } from '@/lib/api-url';
 import { cabecalhosDaSessao, limparSessao, perfilLogado } from '@/lib/offline/sessao';
 
-export function MenuConta() {
+export function MenuConta({ painelAberto }: { painelAberto?: boolean }) {
   const perfil = perfilLogado();
+  const local = useLocation();
   const [aberto, setAberto] = useState(false);
   const [mensagem, setMensagem] = useState('');
   const [senhaAtual, setSenhaAtual] = useState('');
   const [senhaNova, setSenhaNova] = useState('');
+
+  // Fecha junto com o painel "Mais" e a cada troca de rota.
+  useEffect(() => {
+    if (!painelAberto) setAberto(false);
+  }, [painelAberto]);
+
+  useEffect(() => {
+    setAberto(false);
+  }, [local.key]);
+
+  useEffect(() => {
+    if (!aberto) return undefined;
+    function aoTeclar(evento: KeyboardEvent) {
+      if (evento.key === 'Escape') setAberto(false);
+    }
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, [aberto]);
 
   if (!perfil) {
     return (

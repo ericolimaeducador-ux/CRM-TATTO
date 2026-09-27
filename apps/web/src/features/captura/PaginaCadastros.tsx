@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { SlidersHorizontal } from 'lucide-react';
 import { brDeIso, dataBr, isoDeBr } from '@/lib/datas';
 import { perfilLogado } from '@/lib/offline/sessao';
+import { useSobreposicao } from '@/lib/sobreposicao';
 import {
   CampoData,
   carregar,
@@ -28,7 +29,7 @@ import {
 export function PaginaCadastros() {
   const [rascunho, setRascunho] = useState<Filtros>(VAZIO);
   const [filtros, setFiltros] = useState<Filtros>(VAZIO);
-  const [gaveta, setGaveta] = useState(false);
+  const gaveta = useSobreposicao();
   const [itens, setItens] = useState<Cadastro[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -55,7 +56,7 @@ export function PaginaCadastros() {
     setPilha([]);
     setCursor(null);
     setFiltros({ ...rascunho, desde, ate });
-    setGaveta(false);
+    gaveta.fechar();
   }
 
   function limparChip(chave: keyof Filtros) {
@@ -103,18 +104,18 @@ export function PaginaCadastros() {
             <button
               type="button"
               className="btn-secundario"
-              aria-expanded={gaveta}
-              onClick={() => setGaveta((valor) => !valor)}
+              aria-expanded={gaveta.aberto}
+              onClick={gaveta.alternar}
             >
               <SlidersHorizontal aria-hidden="true" />
               Filtros
             </button>
           </div>
         </div>
-        <div className={gaveta ? 'gaveta aberta' : 'gaveta'}>
+        <div className={gaveta.aberto ? 'gaveta aberta' : 'gaveta'}>
           <div className="mb-2 flex items-center justify-between">
             <p className="font-marca text-xl">Filtros</p>
-            <button type="button" className="btn-secundario" onClick={() => setGaveta(false)}>
+            <button type="button" className="btn-secundario" onClick={gaveta.fechar}>
               Fechar
             </button>
           </div>
