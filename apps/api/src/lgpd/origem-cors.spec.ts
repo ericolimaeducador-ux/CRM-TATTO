@@ -21,7 +21,7 @@ describe('origem de rede local', () => {
     expect(origemPermitida('https://captura7.web.app')).toBe(true);
     expect(origemPermitida('https://captura7.firebaseapp.com')).toBe(true);
     expect(origemPermitida('https://outro.web.app')).toBe(false);
-    expect(origemPermitida('https://captura7.onrender.com')).toBe(false);
+    expect(origemPermitida('https://captura7-api-xxxx.a.run.app')).toBe(false);
     expect(origemPermitida('https://captura7.web.app.evil.example')).toBe(false);
     delete process.env.CORS_ORIGENS;
     expect(origemPermitida('https://captura7.web.app')).toBe(false);
