@@ -144,7 +144,7 @@ export function TelaTermo({
 
   return (
     <section className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">Seus dados no captura7</h1>
+      <h1 className="text-3xl font-semibold">Seus dados no TattooArt</h1>
       <p
         className="border-2 border-amber-800 bg-amber-50 p-3 text-base font-semibold"
         data-testid="destaque-consentimento"
@@ -193,14 +193,14 @@ export function TelaTermo({
       <div className="flex flex-col gap-3">
         <button
           type="button"
-          className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+          className="btn-secundario"
           onClick={() => setCompleto((atual) => !atual)}
         >
           Ler o termo completo
         </button>
         <button
           type="button"
-          className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white disabled:opacity-40"
+          className="btn disabled:opacity-40"
           disabled={!marcado || captchaLocalPendente || captchaExternoPendente}
           onClick={() => void concluir()}
         >
@@ -211,7 +211,7 @@ export function TelaTermo({
       {mensagem ? <p className="text-base">{mensagem}</p> : null}
       <p className="text-base">Versão do termo: {texto?.versao ?? '2026-09-26-uso-pessoal'}</p>
       {modo === 'vendedor' ? (
-        <Link className="inline-flex min-h-12 items-center text-base underline" to="/capturar">
+        <Link className="atalho" to="/capturar">
           Voltar para capturar
         </Link>
       ) : null}
@@ -241,7 +241,10 @@ function Campo({
     <label className="flex flex-col gap-1 text-base">
       {rotulo}
       <input
-        className="min-h-12 rounded border border-stone-300 px-3"
+        className="campo"
+        type={rotulo === 'E-mail' ? 'email' : 'text'}
+        inputMode={rotulo === 'Telefone' ? 'tel' : rotulo === 'E-mail' ? 'email' : undefined}
+        autoComplete={rotulo === 'E-mail' ? 'email' : rotulo === 'Telefone' ? 'tel' : undefined}
         value={valor}
         onChange={(evento) => aoMudar(evento.target.value)}
       />

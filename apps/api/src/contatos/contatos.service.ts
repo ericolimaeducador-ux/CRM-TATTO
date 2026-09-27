@@ -10,7 +10,6 @@ import {
   idDoVendedor,
   plano,
   semCaminhosPontilhados,
-  textoDeBusca,
 } from './contato-escrita';
 import { ErroNomeado } from './schemas/erro-nomeado';
 import type { Contato } from './schemas/contato.schema';
@@ -18,6 +17,7 @@ import { montarCriacao, montarPatch } from './aplicar-campo';
 import { aplicarCompletude, vistaComSet } from './completude-contato';
 import type { CriarContatoDto } from './criar-contato.dto';
 import { RespostaComErro } from './erros-http';
+import { executarListagem, executarResumo, type ConsultaListagem } from './listagem';
 import type { UsuarioSessao } from './sessao.middleware';
 
 export interface Escrita {
@@ -115,39 +115,12 @@ export class ContatosService {
     return { http: 200, dados: gravado, avisos: patch.avisos, antes };
   }
 
-  async listar(usuario: UsuarioSessao, cursor?: string, limiteBruto?: string, q?: string) {
-    const limite = Math.min(Math.max(Number(limiteBruto) || 20, 1), 100);
-    const filtro: Record<string, unknown> = {};
-    if (usuario.papel === 'vendedor')
-      filtro['origem.vendedorAtribuido'] = new Types.ObjectId(usuario.id);
-    const busca = textoDeBusca(q);
-    if (busca) {
-      filtro.$or = [
-        { nome: busca },
-        { 'emails.valor': busca },
-        { 'telefones.e164': busca },
-        { 'telefones.bruto': busca },
-      ];
-    }
-    if (cursor && Types.ObjectId.isValid(cursor)) filtro._id = { $lt: new Types.ObjectId(cursor) };
-    const itens = await this.contatos
-      .find(filtro)
-      .sort({ _id: -1 })
-      .limit(limite + 1)
-      .lean();
-    const pagina = itens.slice(0, limite).map((item) => plano(item));
-    await this.conexao.collection('acessos_dados').insertOne({
-      usuario: new Types.ObjectId(usuario.id),
-      acao: 'listagem',
-      filtro,
-      quantidadeRetornada: pagina.length,
-      em: new Date(),
-    });
-    const ultimo = pagina.at(-1);
-    return {
-      dados: pagina,
-      proximoCursor: itens.length > limite && ultimo ? String(ultimo._id) : null,
-    };
+  listar(usuario: UsuarioSessao, consulta: ConsultaListagem) {
+    return executarListagem(this.contatos, this.conexao, usuario, consulta);
+  }
+
+  resumo(usuario: UsuarioSessao) {
+    return executarResumo(this.contatos, usuario);
   }
 
   async limparConflito(id: string, usuario: UsuarioSessao) {

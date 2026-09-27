@@ -1,4 +1,5 @@
 import { FormEvent, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { fetchComAcordar, FRASE_ACORDANDO } from '@/lib/acordar';
 import { urlDaApi } from '@/lib/api-url';
 import {
@@ -8,6 +9,7 @@ import {
   tokenDaSessao,
   totpPendenteLocal,
 } from '@/lib/offline/sessao';
+import { Marca } from '../marca/Marca';
 import { PainelConta } from './PainelConta';
 import { PainelPlanilha } from './PainelPlanilha';
 
@@ -22,6 +24,7 @@ interface RespostaJson {
 }
 
 export function PaginaEntrar() {
+  const navegar = useNavigate();
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
   const [codigo, setCodigo] = useState('');
@@ -59,16 +62,18 @@ export function PaginaEntrar() {
     }
     setToken(json.dados.token);
     setMensagem(`Entrou como ${usuario?.nome ?? login}.`);
+    if (usuario?.papel === 'admin' || usuario?.papel === 'gestor') navegar('/cadastros');
   }
 
   return (
-    <section className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">Entrar</h1>
+    <section className="mx-auto flex w-full max-w-md flex-col gap-4">
+      <Marca grande />
+      <h1 className="text-3xl font-semibold">Entrar</h1>
       <form className="flex flex-col gap-3" onSubmit={(evento) => void entrar(evento)}>
         <label className="flex flex-col gap-1 text-base">
           Usuário
           <input
-            className="min-h-12 rounded border border-stone-400 px-3"
+            className="campo"
             autoComplete="username"
             value={login}
             onChange={(evento) => setLogin(evento.target.value)}
@@ -77,7 +82,7 @@ export function PaginaEntrar() {
         <label className="flex flex-col gap-1 text-base">
           Senha
           <input
-            className="min-h-12 rounded border border-stone-400 px-3"
+            className="campo"
             type="password"
             autoComplete="current-password"
             value={senha}
@@ -87,17 +92,14 @@ export function PaginaEntrar() {
         <label className="flex flex-col gap-1 text-base">
           Código do autenticador, obrigatório se você já inscreveu
           <input
-            className="min-h-12 rounded border border-stone-400 px-3"
+            className="campo"
             inputMode="numeric"
             autoComplete="one-time-code"
             value={codigo}
             onChange={(evento) => setCodigo(evento.target.value)}
           />
         </label>
-        <button
-          type="submit"
-          className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white"
-        >
+        <button type="submit" className="btn">
           Entrar
         </button>
       </form>

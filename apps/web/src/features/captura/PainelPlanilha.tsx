@@ -28,7 +28,7 @@ export function PainelPlanilha({ aoMensagem }: { aoMensagem: (texto: string) => 
     const url = URL.createObjectURL(blob);
     const ancora = document.createElement('a');
     ancora.href = url;
-    ancora.download = `captura7-leads.${formato}`;
+    ancora.download = `tattooart-leads.${formato}`;
     ancora.click();
     URL.revokeObjectURL(url);
     aoMensagem(`Arquivo ${formato.toUpperCase()} baixado.`);
@@ -56,18 +56,10 @@ export function PainelPlanilha({ aoMensagem }: { aoMensagem: (texto: string) => 
     <div className="flex flex-col gap-3">
       {exportar ? (
         <>
-          <button
-            type="button"
-            className="min-h-12 rounded-lg border border-stone-900 px-4"
-            onClick={() => void baixar('csv')}
-          >
+          <button type="button" className="btn-secundario" onClick={() => void baixar('csv')}>
             Baixar CSV
           </button>
-          <button
-            type="button"
-            className="min-h-12 rounded-lg border border-stone-900 px-4"
-            onClick={() => void baixar('xlsx')}
-          >
+          <button type="button" className="btn-secundario" onClick={() => void baixar('xlsx')}>
             Baixar XLSX
           </button>
         </>
@@ -77,7 +69,7 @@ export function PainelPlanilha({ aoMensagem }: { aoMensagem: (texto: string) => 
           <label className="flex flex-col gap-1 text-base">
             Planilha CSV do Google
             <textarea
-              className="min-h-24 rounded border border-stone-400 px-3 py-2"
+              className="campo min-h-24 py-2"
               value={planilha}
               onChange={(evento) => setPlanilha(evento.target.value)}
             />
@@ -91,7 +83,7 @@ export function PainelPlanilha({ aoMensagem }: { aoMensagem: (texto: string) => 
               onChange={(evento) => setArquivo(evento.target.files?.[0] ?? null)}
             />
           </label>
-          <button type="submit" className="min-h-12 rounded-lg border border-stone-900 px-4">
+          <button type="submit" className="btn-secundario">
             Importar planilha
           </button>
         </form>

@@ -98,7 +98,7 @@ export class TotpService {
     return {
       segredoBase32,
       pendente: true,
-      otpauth: `otpauth://totp/captura7:${usuarioId}?secret=${segredoBase32}&issuer=captura7&digits=6&period=30`,
+      otpauth: `otpauth://totp/TattooArt:${usuarioId}?secret=${segredoBase32}&issuer=TattooArt&digits=6&period=30`,
     };
   }
 

@@ -2,13 +2,160 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Josefin Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/marca/josefin-sans-600.woff2') format('woff2');
+}
+
+:root {
+  --fundo: #f6f1ea;
+  --superficie: #fffdfb;
+  --tinta: #1c2b2e;
+  --petrol: #1a5c64;
+  --petrol-escuro: #0f3d43;
+  --lilas: #6d4e7c;
+  --bronze: #a68448;
+  --linha: #e4d8c8;
+  --aviso: #fff6e8;
+  --aviso-tinta: #6a4b12;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fundo: #12181a;
+    --superficie: #1c2628;
+    --tinta: #f3eee6;
+    --petrol: #3d9aa3;
+    --petrol-escuro: #8fd0d4;
+    --lilas: #d4b4e4;
+    --bronze: #e0c08a;
+    --linha: #314044;
+    --aviso: #2a2418;
+    --aviso-tinta: #f0d7a2;
+    color-scheme: dark;
+  }
+}
+
 html {
   font-size: 16px;
 }
 
 body {
   margin: 0;
-  font-family: 'Segoe UI', sans-serif;
-  color: #1c1917;
-  background: #fafaf9;
+  font-family: 'Segoe UI', 'Trebuchet MS', sans-serif;
+  color: var(--tinta);
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(166, 132, 72, 0.18), transparent 55%),
+    radial-gradient(800px 380px at 100% 0%, rgba(109, 78, 124, 0.14), transparent 50%), var(--fundo);
+}
+
+h1,
+h2,
+.font-marca {
+  font-family: 'Josefin Sans', 'Century Gothic', 'Trebuchet MS', sans-serif;
+  letter-spacing: 0.03em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--bronze);
+  outline-offset: 2px;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex min-h-12 items-center justify-center rounded-2xl px-4 text-base font-semibold text-white;
+    background: var(--petrol);
+  }
+
+  .btn-secundario {
+    @apply inline-flex min-h-12 items-center justify-center rounded-2xl border px-4 text-base font-semibold;
+    border-color: var(--petrol);
+    color: var(--petrol-escuro);
+    background: transparent;
+  }
+
+  .campo {
+    @apply min-h-12 rounded-xl border px-3 text-base;
+    border-color: var(--linha);
+    background: var(--superficie);
+    color: var(--tinta);
+  }
+
+  .cartao {
+    @apply rounded-2xl border p-3;
+    border-color: var(--linha);
+    background: var(--superficie);
+    box-shadow: 0 8px 24px rgba(20, 62, 68, 0.06);
+  }
+
+  .atalho {
+    @apply inline-flex min-h-12 items-center text-base font-semibold underline;
+    color: var(--lilas);
+  }
+
+  .chip {
+    @apply inline-flex min-h-8 items-center rounded-full px-3 text-sm font-semibold;
+    background: rgba(109, 78, 124, 0.12);
+    color: var(--lilas);
+  }
+
+  .conteudo {
+    @apply mx-auto w-full max-w-5xl px-4 pb-28 pt-4;
+  }
+
+  .nav-app {
+    @apply z-20 flex gap-1;
+  }
+
+  .nav-app a {
+    @apply inline-flex min-h-11 items-center rounded-full px-3 text-sm font-semibold;
+    color: var(--tinta);
+  }
+
+  .nav-app a[aria-current='page'] {
+    background: var(--petrol);
+    color: #fffdfb;
+  }
+}
+
+@media (max-width: 1023px) {
+  .nav-app {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    overflow-x: auto;
+    border-top: 1px solid var(--linha);
+    background: color-mix(in srgb, var(--superficie) 92%, transparent);
+    padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom));
+    backdrop-filter: blur(10px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .nav-app {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 16rem;
+    flex-direction: column;
+    align-items: stretch;
+    border-right: 1px solid var(--linha);
+    background: var(--superficie);
+    padding: 1.25rem 1rem;
+  }
+
+  .nav-app a {
+    font-size: 1rem;
+  }
+
+  .conteudo {
+    margin-left: 16rem;
+    padding-bottom: 2rem;
+  }
 }

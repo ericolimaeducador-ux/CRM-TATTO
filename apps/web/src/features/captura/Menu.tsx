@@ -1,31 +1,46 @@
 import { Link, useLocation } from 'react-router-dom';
+import { Marca } from '../marca/Marca';
 import { perfilLogado, podeGerir } from '@/lib/offline/sessao';
+
+interface AtalhoItem {
+  to: string;
+  nome: string;
+}
 
 export function Menu() {
   const local = useLocation();
   const perfil = perfilLogado();
   const gerir = podeGerir();
   const admin = perfil?.papel === 'admin';
-  void local.pathname;
+  const veCadastros = Boolean(perfil);
+  const itens: AtalhoItem[] = [
+    { to: '/capturar', nome: 'Início' },
+    { to: '/contatos', nome: 'Contatos' },
+    { to: '/fila', nome: 'Fila' },
+    { to: '/meu-qr', nome: 'Meu QR' },
+    { to: '/entrar', nome: 'Entrar' },
+  ];
+  if (veCadastros) itens.unshift({ to: '/cadastros', nome: 'Cadastros' });
+  if (perfil) itens.push({ to: '/busca', nome: 'Busca' });
+  if (gerir) itens.push({ to: '/duplicatas', nome: 'Duplicatas' });
+  if (admin) itens.push({ to: '/usuarios', nome: 'Usuários' });
 
   return (
-    <nav className="mb-4 flex flex-wrap gap-x-4 gap-y-1" aria-label="Seções">
-      <Atalho to="/capturar">Início</Atalho>
-      <Atalho to="/contatos">Contatos</Atalho>
-      <Atalho to="/fila">Fila</Atalho>
-      <Atalho to="/meu-qr">Meu QR</Atalho>
-      <Atalho to="/entrar">Entrar</Atalho>
-      {perfil ? <Atalho to="/busca">Busca</Atalho> : null}
-      {gerir ? <Atalho to="/duplicatas">Duplicatas</Atalho> : null}
-      {admin ? <Atalho to="/usuarios">Usuários</Atalho> : null}
+    <nav className="nav-app" aria-label="Seções">
+      <div className="mb-6 hidden lg:block">
+        <Marca />
+      </div>
+      {itens.map((item) => {
+        const ativo =
+          local.pathname === item.to ||
+          local.pathname.startsWith(`${item.to}/`) ||
+          (item.to === '/capturar' && local.pathname === '/');
+        return (
+          <Link key={item.to} to={item.to} aria-current={ativo ? 'page' : undefined}>
+            {item.nome}
+          </Link>
+        );
+      })}
     </nav>
-  );
-}
-
-function Atalho({ to, children }: { to: string; children: string }) {
-  return (
-    <Link className="inline-flex min-h-12 items-center text-base underline" to={to}>
-      {children}
-    </Link>
   );
 }

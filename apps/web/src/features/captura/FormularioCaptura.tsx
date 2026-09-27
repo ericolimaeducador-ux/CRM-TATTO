@@ -135,17 +135,14 @@ export function FormularioCaptura() {
 
   return (
     <section className="flex flex-col gap-4">
-      <Link className="inline-flex min-h-12 items-center text-base underline" to="/capturar">
+      <Link className="atalho" to="/capturar">
         Captura
       </Link>
       <h1 className="text-2xl font-semibold">Contato</h1>
       <p className="border border-amber-800 bg-amber-50 p-3 text-base">
         {textoConsentimento(contato, statusServidor)}
       </p>
-      <Link
-        className="inline-flex min-h-12 items-center text-base underline"
-        to={`/contatos/${idLocal}/termo`}
-      >
+      <Link className="atalho" to={`/contatos/${idLocal}/termo`}>
         Autorizações do titular
       </Link>
       {contato ? <IndicadorSincronizacao estado={contato.estado} /> : null}
@@ -162,25 +159,21 @@ export function FormularioCaptura() {
       ) : null}
       <label className="flex flex-col gap-1 text-base">
         Nome
-        <input
-          className="min-h-12 rounded border border-stone-300 px-3"
-          autoFocus
-          {...register('nome')}
-        />
+        <input className="campo" autoFocus {...register('nome')} />
       </label>
-      <fieldset className="flex flex-col gap-2 rounded border border-stone-300 p-3">
+      <fieldset className="cartao flex flex-col gap-2">
         <legend className="text-base">Tipo de pessoa</legend>
         <Opcao valor="INDEFINIDO" rotulo="Ainda não sei" registro={register('tipoPessoa')} />
         <Opcao valor="PF" rotulo="Pessoa física" registro={register('tipoPessoa')} />
         <Opcao valor="PJ" rotulo="Pessoa jurídica" registro={register('tipoPessoa')} />
       </fieldset>
-      <details className="rounded border border-stone-300 p-3">
+      <details className="cartao">
         <summary className="min-h-12 cursor-pointer text-base">Contato</summary>
         <Campo rotulo="Telefone" registro={register('telefone')} />
         <Campo rotulo="E-mail" registro={register('email')} />
       </details>
       {tipo === 'PF' ? (
-        <details className="rounded border border-stone-300 p-3" open>
+        <details className="cartao" open>
           <summary className="min-h-12 cursor-pointer text-base">
             Documento da pessoa física
           </summary>
@@ -188,7 +181,7 @@ export function FormularioCaptura() {
         </details>
       ) : null}
       {tipo === 'PJ' ? (
-        <details className="rounded border border-stone-300 p-3" open>
+        <details className="cartao" open>
           <summary className="min-h-12 cursor-pointer text-base">
             Documento da pessoa jurídica
           </summary>
@@ -197,7 +190,7 @@ export function FormularioCaptura() {
           <Campo rotulo="Nome fantasia" registro={register('nomeFantasia')} />
         </details>
       ) : null}
-      <details className="rounded border border-stone-300 p-3">
+      <details className="cartao">
         <summary className="min-h-12 cursor-pointer text-base">Endereço</summary>
         <Campo rotulo="CEP" registro={register('cep')} />
         <Campo rotulo="Logradouro" registro={register('logradouro')} />
@@ -216,32 +209,22 @@ export function FormularioCaptura() {
           }}
         />
       ) : null}
-      <details className="rounded border border-stone-300 p-3">
+      <details className="cartao">
         <summary className="min-h-12 cursor-pointer text-base">Observações</summary>
         <Campo rotulo="Notas" registro={register('observacoes')} />
       </details>
       {contato?.idServidor && podeGerir() ? (
-        <Link
-          className="inline-flex min-h-12 items-center text-base underline"
-          to={`/promover/${contato.idServidor}`}
-        >
+        <Link className="atalho" to={`/promover/${contato.idServidor}`}>
           Promover a cliente
         </Link>
       ) : null}
       {contato?.idServidor && podeAuditar() ? (
-        <Link
-          className="inline-flex min-h-12 items-center text-base underline"
-          to={`/lead/${contato.idServidor}`}
-        >
+        <Link className="atalho" to={`/lead/${contato.idServidor}`}>
           Qualificar, descartar ou auditar
         </Link>
       ) : null}
       {contato && !contato.idServidor ? (
-        <button
-          type="button"
-          className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
-          onClick={() => void excluirRascunho()}
-        >
+        <button type="button" className="btn-secundario" onClick={() => void excluirRascunho()}>
           Excluir rascunho deste aparelho
         </button>
       ) : null}

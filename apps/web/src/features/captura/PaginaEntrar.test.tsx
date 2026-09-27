@@ -1,5 +1,14 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { PaginaEntrar } from './PaginaEntrar';
+
+function montar() {
+  return render(
+    <MemoryRouter>
+      <PaginaEntrar />
+    </MemoryRouter>,
+  );
+}
 
 describe('entrada do administrador', () => {
   it('guarda o token e pede a exportação com o mesmo token', async () => {
@@ -25,7 +34,7 @@ describe('entrada do administrador', () => {
     URL.createObjectURL = () => 'blob:leads';
     URL.revokeObjectURL = () => undefined;
     HTMLAnchorElement.prototype.click = () => undefined;
-    render(<PaginaEntrar />);
+    montar();
     fireEvent.change(screen.getByLabelText('Usuário'), { target: { value: 'erico' } });
     fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'senha-bem-longa' } });
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
@@ -57,7 +66,7 @@ describe('entrada do administrador', () => {
       return { ok: true, json: async () => ({ dados: { importados: 0, duplicatas: 0 } }) };
     });
     vi.stubGlobal('fetch', fetchMock);
-    const { unmount } = render(<PaginaEntrar />);
+    const { unmount } = montar();
     fireEvent.change(screen.getByLabelText('Usuário'), { target: { value: 'lia' } });
     fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'senha-bem-longa' } });
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
@@ -86,7 +95,7 @@ describe('entrada do administrador', () => {
         text: async () => String(init?.body ?? ''),
       };
     });
-    render(<PaginaEntrar />);
+    montar();
     fireEvent.change(screen.getByLabelText('Usuário'), { target: { value: 'guto' } });
     fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'senha-bem-longa' } });
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));

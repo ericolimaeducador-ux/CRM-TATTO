@@ -12,6 +12,7 @@ describe('menu por perfil', () => {
     );
     expect(screen.queryByRole('link', { name: 'Duplicatas' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Usuários' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Cadastros' })).toBeNull();
     unmount();
     localStorage.setItem(
       'captura7.perfil',
@@ -22,6 +23,8 @@ describe('menu por perfil', () => {
         <Menu />
       </MemoryRouter>,
     );
+    const nomes = screen.getAllByRole('link').map((item) => item.textContent);
+    expect(nomes[0]).toBe('Cadastros');
     expect(screen.getByRole('link', { name: 'Duplicatas' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Busca' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Usuários' })).toBeNull();

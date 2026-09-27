@@ -54,7 +54,7 @@ export function PainelEnriquecimento({
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded border border-stone-300 p-3">
+    <section className="flex flex-col gap-3 cartao">
       <h2 className="text-base font-semibold">Consulta oficial</h2>
       <p className="text-base">
         A fonte sugere. O que você digitou permanece até você escolher usar a sugestão.
@@ -66,7 +66,7 @@ export function PainelEnriquecimento({
       ) : null}
       <button
         type="button"
-        className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+        className="btn-secundario"
         onClick={() =>
           void consultar('/v1/enriquecimento/cnpj', 'POST', { contatoId: idServidor, cnpj })
         }
@@ -75,7 +75,7 @@ export function PainelEnriquecimento({
       </button>
       <button
         type="button"
-        className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+        className="btn-secundario"
         onClick={() =>
           void consultar(`/v1/enriquecimento/cep/${cep}?contatoId=${idServidor}`, 'GET')
         }
@@ -95,7 +95,7 @@ export function PainelEnriquecimento({
           </p>
           <button
             type="button"
-            className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white"
+            className="btn"
             onClick={() => void usar(sugestao, idServidor, versaoServidor, aoUsarCampo)}
           >
             Usar esta sugestão
