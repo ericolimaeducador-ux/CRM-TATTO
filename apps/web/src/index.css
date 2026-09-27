@@ -21,6 +21,8 @@
   --linha: #e4d8c8;
   --aviso: #fff6e8;
   --aviso-tinta: #6a4b12;
+  --sombra: 0 14px 36px rgba(20, 62, 68, 0.1);
+  --raio: 1.25rem;
   color-scheme: light;
 }
 
@@ -36,6 +38,7 @@
     --linha: #314044;
     --aviso: #2a2418;
     --aviso-tinta: #f0d7a2;
+    --sombra: 0 14px 36px rgba(0, 0, 0, 0.35);
     color-scheme: dark;
   }
 }
@@ -67,8 +70,16 @@ h2,
 
 @layer components {
   .btn {
-    @apply inline-flex min-h-12 items-center justify-center rounded-2xl px-4 text-base font-semibold text-white;
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-4 text-base font-semibold text-white;
     background: var(--petrol);
+  }
+
+  .btn-grande {
+    min-height: 4.75rem;
+    width: 100%;
+    font-family: 'Josefin Sans', 'Century Gothic', 'Trebuchet MS', sans-serif;
+    font-size: 1.35rem;
+    letter-spacing: 0.03em;
   }
 
   .btn-secundario {
@@ -86,10 +97,11 @@ h2,
   }
 
   .cartao {
-    @apply rounded-2xl border p-3;
+    @apply rounded-2xl border p-4;
     border-color: var(--linha);
     background: var(--superficie);
-    box-shadow: 0 8px 24px rgba(20, 62, 68, 0.06);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
   }
 
   .atalho {
@@ -104,58 +116,43 @@ h2,
   }
 
   .conteudo {
-    @apply mx-auto w-full max-w-5xl px-4 pb-28 pt-4;
+    @apply mx-auto w-full max-w-5xl px-4 pb-28 pt-6;
   }
 
   .nav-app {
-    @apply z-20 flex gap-1;
+    @apply z-20;
   }
 
-  .nav-app a {
-    @apply inline-flex min-h-11 items-center rounded-full px-3 text-sm font-semibold;
+  .item-nav {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    border: 0;
+    border-radius: 0.9rem;
+    background: transparent;
+    padding: 0.2rem 0.35rem;
+    font-size: 0.68rem;
+    font-weight: 700;
     color: var(--tinta);
   }
 
-  .nav-app a[aria-current='page'] {
+  .item-nav svg {
+    width: 1.2rem;
+    height: 1.2rem;
+    flex: none;
+  }
+
+  .item-nav[aria-current='page'] {
     background: var(--petrol);
     color: #fffdfb;
   }
-}
 
-@media (max-width: 1023px) {
-  .nav-app {
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    overflow-x: auto;
-    border-top: 1px solid var(--linha);
-    background: color-mix(in srgb, var(--superficie) 92%, transparent);
-    padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom));
-    backdrop-filter: blur(10px);
-  }
-}
-
-@media (min-width: 1024px) {
-  .nav-app {
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: 16rem;
-    flex-direction: column;
-    align-items: stretch;
-    border-right: 1px solid var(--linha);
-    background: var(--superficie);
-    padding: 1.25rem 1rem;
-  }
-
-  .nav-app a {
-    font-size: 1rem;
-  }
-
-  .conteudo {
-    margin-left: 16rem;
-    padding-bottom: 2rem;
+  .rotulo-curto {
+    max-width: 4.6rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }

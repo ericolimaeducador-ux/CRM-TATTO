@@ -129,12 +129,16 @@ export async function executarListagem(
     ];
   }
   const { ordem, sort } = completarFiltro(filtro, consulta);
+  const semCursor: Record<string, unknown> = { ...filtro };
   aplicarCursor(filtro, consulta.cursor, ordem);
-  const itens = await contatos
-    .find(filtro)
-    .sort(sort)
-    .limit(limite + 1)
-    .lean();
+  const [total, itens] = await Promise.all([
+    contatos.countDocuments(semCursor),
+    contatos
+      .find(filtro)
+      .sort(sort)
+      .limit(limite + 1)
+      .lean(),
+  ]);
   const pagina = itens.slice(0, limite).map((item) => semSegredoDeDocumento(plano(item)));
   await conexao.collection('acessos_dados').insertOne({
     usuario: new Types.ObjectId(usuario.id),
@@ -146,6 +150,7 @@ export async function executarListagem(
   const ultimo = pagina.at(-1);
   return {
     dados: pagina,
+    total,
     proximoCursor: itens.length > limite && ultimo ? cursorDe(ultimo, ordem) : null,
   };
 }

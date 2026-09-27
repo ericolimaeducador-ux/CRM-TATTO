@@ -1,4 +1,15 @@
 import { useEffect, useState } from 'react';
+import {
+  CalendarDays,
+  CalendarRange,
+  CloudUpload,
+  List,
+  NotebookTabs,
+  Search,
+  Users,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import { urlDaApi } from '@/lib/api-url';
 import { lerTodos } from '@/lib/offline/fila';
 import { cabecalhosDaSessao, tokenDaSessao } from '@/lib/offline/sessao';
@@ -9,7 +20,13 @@ interface Resumo {
   porStatus: Record<string, number>;
 }
 
-const STATUS = ['rascunho', 'capturado', 'qualificado', 'cliente', 'descartado'] as const;
+const STATUS: { chave: string; icone: LucideIcon }[] = [
+  { chave: 'rascunho', icone: List },
+  { chave: 'capturado', icone: NotebookTabs },
+  { chave: 'qualificado', icone: Search },
+  { chave: 'cliente', icone: Users },
+  { chave: 'descartado', icone: X },
+];
 
 export function PainelResumo() {
   const [resumo, setResumo] = useState<Resumo | null>(null);
@@ -50,27 +67,57 @@ export function PainelResumo() {
 
   if (!tokenDaSessao()) return null;
   if (erro) return <p className="text-base">{erro}</p>;
-  if (!resumo) return <p className="text-base">Carregando números…</p>;
+  if (!resumo) {
+    return (
+      <div>
+        <p className="sr-only">Carregando números…</p>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4" aria-hidden="true">
+          <div className="esqueleto" />
+          <div className="esqueleto" />
+          <div className="esqueleto" />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <section className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Resumo">
-      <Numero rotulo="Hoje" valor={resumo.hoje} />
-      <Numero rotulo="Nesta semana" valor={resumo.semana} />
-      <Numero rotulo="Aguardando envio" valor={pendentes} />
+    <section className="grid grid-cols-2 gap-4 md:grid-cols-4" aria-label="Resumo">
+      <Numero rotulo="Hoje" valor={resumo.hoje} icone={CalendarDays} />
+      <Numero rotulo="Nesta semana" valor={resumo.semana} icone={CalendarRange} />
+      <Numero rotulo="Aguardando envio" valor={pendentes} icone={CloudUpload} />
       {STATUS.map((status) => (
-        <Numero key={status} rotulo={status} valor={resumo.porStatus[status] ?? 0} />
+        <Numero
+          key={status.chave}
+          rotulo={status.chave}
+          valor={resumo.porStatus[status.chave] ?? 0}
+          icone={status.icone}
+        />
       ))}
     </section>
   );
 }
 
-function Numero({ rotulo, valor }: { rotulo: string; valor: number }) {
+function Numero({
+  rotulo,
+  valor,
+  icone: Icone,
+}: {
+  rotulo: string;
+  valor: number;
+  icone: LucideIcon;
+}) {
   return (
-    <article className="cartao">
-      <p className="text-sm capitalize" style={{ color: 'var(--lilas)' }}>
-        {rotulo}
+    <article className="cartao flex flex-col gap-2">
+      <span className="resumo-icone">
+        <Icone aria-hidden="true" />
+      </span>
+      <p
+        className="font-marca text-4xl font-semibold leading-none"
+        style={{ color: 'var(--petrol)' }}
+      >
+        {valor}
       </p>
-      <p className="font-marca text-3xl font-semibold">{valor}</p>
+      <p className="text-sm capitalize">{rotulo}</p>
     </article>
   );
 }

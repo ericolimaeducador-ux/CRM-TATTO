@@ -66,62 +66,74 @@ export function PaginaEntrar() {
   }
 
   return (
-    <section className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <Marca grande />
-      <h1 className="text-3xl font-semibold">Entrar</h1>
-      <form className="flex flex-col gap-3" onSubmit={(evento) => void entrar(evento)}>
-        <label className="flex flex-col gap-1 text-base">
-          Usuário
-          <input
-            className="campo"
-            autoComplete="username"
-            value={login}
-            onChange={(evento) => setLogin(evento.target.value)}
+    <section className="entrar-palco">
+      <aside className="entrar-marca">
+        <Marca grande clara />
+        <span className="fio-ouro" aria-hidden="true" />
+      </aside>
+      <div className="entrar-cartao">
+        <div className="entrar-logo-movel">
+          <Marca grande central />
+        </div>
+        <h1 className="text-3xl font-semibold">Entrar</h1>
+        <form className="flex flex-col gap-4" onSubmit={(evento) => void entrar(evento)}>
+          <label className="flex flex-col gap-1 text-base">
+            Usuário
+            <input
+              className="campo"
+              autoComplete="username"
+              value={login}
+              onChange={(evento) => setLogin(evento.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-base">
+            Senha
+            <input
+              className="campo"
+              type="password"
+              autoComplete="current-password"
+              value={senha}
+              onChange={(evento) => setSenha(evento.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-base">
+            Código do autenticador, obrigatório se você já inscreveu
+            <input
+              className="campo"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={codigo}
+              onChange={(evento) => setCodigo(evento.target.value)}
+            />
+          </label>
+          <button type="submit" className="btn">
+            Entrar
+          </button>
+        </form>
+        {token ? (
+          <PainelConta
+            codigo={codigo}
+            pendente={totpPendenteLocal()}
+            aoMensagem={setMensagem}
+            aoSegredo={setSegredo}
+            aoSair={() => {
+              setToken('');
+              setSegredo('');
+            }}
           />
-        </label>
-        <label className="flex flex-col gap-1 text-base">
-          Senha
-          <input
-            className="campo"
-            type="password"
-            autoComplete="current-password"
-            value={senha}
-            onChange={(evento) => setSenha(evento.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-base">
-          Código do autenticador, obrigatório se você já inscreveu
-          <input
-            className="campo"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            value={codigo}
-            onChange={(evento) => setCodigo(evento.target.value)}
-          />
-        </label>
-        <button type="submit" className="btn">
-          Entrar
-        </button>
-      </form>
-      {token ? (
-        <PainelConta
-          codigo={codigo}
-          pendente={totpPendenteLocal()}
-          aoMensagem={setMensagem}
-          aoSegredo={setSegredo}
-          aoSair={() => {
-            setToken('');
-            setSegredo('');
-          }}
-        />
-      ) : null}
-      {token && !totpPendenteLocal() ? <PainelPlanilha aoMensagem={setMensagem} /> : null}
-      {segredo ? (
-        <p className="break-all text-base" data-testid="segredo-totp">
-          {segredo}
-        </p>
-      ) : null}
-      {mensagem ? <p className="text-base">{mensagem}</p> : null}
+        ) : null}
+        {token && !totpPendenteLocal() ? <PainelPlanilha aoMensagem={setMensagem} /> : null}
+        {segredo ? (
+          <p className="break-all text-base" data-testid="segredo-totp">
+            {segredo}
+          </p>
+        ) : null}
+        {mensagem ? (
+          <p className="toast" role="status">
+            {mensagem}
+          </p>
+        ) : null}
+      </div>
     </section>
   );
 }

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { urlDaApi } from '@/lib/api-url';
 import { textoDaResposta } from '@/lib/texto-resposta';
 import { cabecalhosDaSessao, podeAuditar, podeGerir } from '@/lib/offline/sessao';
+import { dataHoraBr } from '@/lib/datas';
 import { AcoesSensiveis } from './AcoesSensiveis';
 
 interface ContatoLido {
@@ -96,7 +97,7 @@ export function PaginaLead() {
           {trilha.length === 0 ? <li className="text-base">Nenhuma linha nesta trilha.</li> : null}
           {trilha.map((linha, indice) => (
             <li key={linha._id ?? `${linha.campo}-${indice}`} className="text-base">
-              {linha.campo ?? 'campo'} · {linha.timestampServidor ?? 'sem horário'}
+              {linha.campo ?? 'campo'} · {dataHoraBr(linha.timestampServidor)}
             </li>
           ))}
         </ul>

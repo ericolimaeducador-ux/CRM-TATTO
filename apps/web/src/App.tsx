@@ -16,6 +16,7 @@ import { PaginaPromover } from './features/captura/PaginaPromover';
 import { PaginaQr } from './features/captura/PaginaQr';
 import { TelaCaptura } from './features/captura/TelaCaptura';
 import { PaginaCadastros } from './features/captura/PaginaCadastros';
+import { PaginaPlanilha } from './features/captura/PaginaPlanilha';
 import { Casca } from './features/marca/Casca';
 import { basenameDe } from './lib/base-publica';
 import { iniciarFila } from './lib/offline/fila';
@@ -33,6 +34,7 @@ export function App() {
           <Route path="/capturar" element={<TelaCaptura />} />
           <Route path="/capturar/qr" element={<PaginaQr />} />
           <Route path="/cadastros" element={<PaginaCadastros />} />
+          <Route path="/planilha" element={<PaginaPlanilha />} />
           <Route path="/contatos" element={<ListaContatos />} />
           <Route path="/contatos/:idLocal" element={<FormularioCaptura />} />
           <Route path="/fila" element={<PaginaFila />} />
