@@ -9,14 +9,18 @@ import {
 } from './composicao/carregar-registradores';
 import { LogJson } from './observabilidade/log-json';
 import { origemPermitida } from './lgpd/origem-cors';
+import { exigirSegredosDeProducao, portaDe } from './seguranca/boot-producao';
 import { saltosDeProxyConfiavel } from './lgpd/proxy-confiavel';
 import { profundidadeFila } from './observabilidade/fila-sincronizacao';
 
 async function bootstrap(): Promise<void> {
+  exigirSegredosDeProducao();
   carregarRegistradores();
   const app = await NestFactory.create(AppModule, { logger: new LogJson() });
   app.enableCors({
     origin: (origem, responder) => responder(null, origemPermitida(origem)),
+    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
   const expressApp = app.getHttpAdapter().getInstance() as Express;
   const saltos = saltosDeProxyConfiavel();
@@ -29,7 +33,7 @@ async function bootstrap(): Promise<void> {
     });
   });
   await garantirIndicesSeExistirem(app);
-  const porta = Number(process.env.PORT ?? 3000);
+  const porta = portaDe();
   await app.listen(porta, '0.0.0.0');
   console.log(
     JSON.stringify({ nivel: 'INFO', evento: 'api_pronta', porta, em: new Date().toISOString() }),

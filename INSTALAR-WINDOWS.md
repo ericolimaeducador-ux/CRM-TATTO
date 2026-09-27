@@ -1,6 +1,6 @@
 # Instalar o captura7 no Windows
 
-Este guia é para usar o captura7 no seu computador. O aplicativo não precisa de empresa, CNPJ nem de internet de nuvem. Os dados ficam nesta máquina.
+Este guia é para usar o captura7 no seu computador. O aplicativo não precisa de empresa, CNPJ nem de internet de nuvem. Os dados ficam nesta máquina. Para publicar na nuvem, o outro caminho é [PUBLICAR-NUVEM.md](PUBLICAR-NUVEM.md). Este arquivo continua sendo a alternativa local.
 
 Há dois caminhos. O primeiro usa o Docker Desktop e é o que instala o aplicativo no celular. O segundo usa Node e MongoDB, sem Docker.
 
@@ -89,6 +89,8 @@ Há dois caminhos. O primeiro usa o Docker Desktop e é o que instala o aplicati
 13. O QR de autocadastro usa o mesmo endereço. Quem for se cadastrar pelo QR precisa alcançar esse IP **e** ter a mesma CA instalada, com a confiança total no iPhone. Sem a CA, o celular do visitante continua no aviso do certificado e o cadastro offline não fica garantido. O QR vale duas horas e um cadastro. Para outro cadastro, gere outro QR. Você pode revogar o QR atual.
 
 Se preferir gerar a CA no Windows antes do Docker, com o Git for Windows instalado:
+
+Se o PowerShell disser que a execução de scripts está desabilitada, rode nesta janela, só neste processo: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`. O `openssl` precisa estar no PATH. O Git for Windows traz esse programa. Se o comando não for achado, feche e abra o PowerShell depois de instalar o Git, ou inclua a pasta `C:\Program Files\Git\usr\bin`.
 
 ```
 .\infra\tls\gerar-ca-local.ps1 -Ips 192.168.0.20

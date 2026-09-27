@@ -44,6 +44,13 @@ export function PaginaPromover() {
       >
         Inscrever autenticador deste usuário
       </button>
+      <button
+        type="button"
+        className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+        onClick={() => void ativar(codigo, setMensagem)}
+      >
+        Ativar autenticador
+      </button>
       {segredo ? (
         <p className="text-base">
           Segredo mostrado uma vez. Guarde no autenticador e não cole em arquivo do projeto:{' '}
@@ -107,7 +114,23 @@ async function inscrever(
     return;
   }
   definirSegredo(json.dados.segredoBase32);
-  definirMensagem('Autenticador inscrito. Use o código de 6 dígitos para promover.');
+  definirMensagem(
+    'Segredo pendente. Confirme um código válido em Ativar autenticador. Só depois a promoção aceita.',
+  );
+}
+
+async function ativar(codigo: string, definirMensagem: (valor: string) => void): Promise<void> {
+  const resposta = await fetch(urlDaApi('/v1/auth/totp/ativar'), {
+    method: 'POST',
+    headers: cabecalhosDaSessao(),
+    body: JSON.stringify({ codigoTotp: codigo }),
+  });
+  const json = (await resposta.json()) as { erros?: { mensagem: string }[]; mensagem?: string };
+  definirMensagem(
+    resposta.ok
+      ? 'Autenticador ativado. O próximo código serve para promover.'
+      : (json.erros?.[0]?.mensagem ?? json.mensagem ?? 'O autenticador não foi ativado.'),
+  );
 }
 
 async function promover(

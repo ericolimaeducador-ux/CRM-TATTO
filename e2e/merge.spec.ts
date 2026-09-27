@@ -36,8 +36,14 @@ test('a fusão mostra o efeito e só descarta depois da escolha', async ({ page,
 
   const inscricao = await request.post('/v1/auth/totp/inscrever', { headers: cabecalhos });
   expect(inscricao.ok()).toBeTruthy();
-  const segredo = ((await inscricao.json()) as { dados: { segredoBase32: string } }).dados
-    .segredoBase32;
+  const segredo = (
+    (await inscricao.json()) as { dados: { segredoBase32: string; pendente: boolean } }
+  ).dados.segredoBase32;
+  const ativado = await request.post('/v1/auth/totp/ativar', {
+    headers: cabecalhos,
+    data: { codigoTotp: codigoTotp(segredo, Date.now() - 30_000) },
+  });
+  expect(ativado.ok()).toBeTruthy();
 
   await page.addInitScript((sessao) => {
     localStorage.setItem('captura7.sessao', JSON.stringify(sessao));

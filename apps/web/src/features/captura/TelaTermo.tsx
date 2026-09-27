@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { fetchComAcordar } from '@/lib/acordar';
 import { urlDaApi } from '@/lib/api-url';
 import { cabecalhosDaSessao } from '@/lib/offline/sessao';
 import { DesafioCaptcha, tokenDoWidget } from './DesafioCaptcha';
@@ -38,7 +39,7 @@ export function TelaTermo({
 
   useEffect(() => {
     if (modo !== 'autocadastro') return;
-    void fetch(urlDaApi('/v1/publico/captcha'))
+    void fetchComAcordar(urlDaApi('/v1/publico/captcha'), undefined, setMensagem)
       .then((resposta) => resposta.json())
       .then(
         (json: {
@@ -52,16 +53,24 @@ export function TelaTermo({
           }
         },
       )
-      .catch(() => setMensagem('Não consegui carregar o desafio. Nada foi gravado.'));
+      .catch(() =>
+        setMensagem(
+          'Servidor acordando, aguarde… Não consegui carregar o desafio. Nada foi gravado.',
+        ),
+      );
   }, [modo]);
 
   useEffect(() => {
-    void fetch(urlDaApi('/v1/publico/termo/atual'))
+    void fetchComAcordar(urlDaApi('/v1/publico/termo/atual'), undefined, setMensagem)
       .then((resposta) => resposta.json())
       .then((json: { dados?: TextoTermo }) => {
         if (json.dados?.textoCurto) setTexto(json.dados);
       })
-      .catch(() => setMensagem('Não consegui carregar o termo. Nada foi gravado.'));
+      .catch(() =>
+        setMensagem(
+          'Servidor acordando, aguarde… Não consegui carregar o termo. Nada foi gravado.',
+        ),
+      );
   }, []);
 
   const curto = texto?.textoCurto ?? '';
@@ -75,7 +84,7 @@ export function TelaTermo({
     provedorCaptcha === 'local' &&
     Boolean(captchaId) &&
     !respostaCaptcha.trim();
-  const captchaExternoPendente = captchaExterno && !tokenDoWidget(respostaCaptcha);
+  const captchaExternoPendente = captchaExterno && !respostaCaptcha.trim();
 
   async function concluir() {
     if (!marcado) return;
@@ -106,12 +115,18 @@ export function TelaTermo({
             captchaToken: provedorCaptcha === 'local' ? undefined : tokenDoWidget(respostaCaptcha),
           }
         : { contatoComercial: true, emDispositivo, envioErp };
-    const resposta = await fetch(urlDaApi(caminho), {
-      method: 'POST',
-      headers:
-        modo === 'autocadastro' ? { 'content-type': 'application/json' } : cabecalhosDaSessao(),
-      body: JSON.stringify(corpo),
-    });
+    let resposta: Response;
+    try {
+      resposta = await fetchComAcordar(urlDaApi(caminho), {
+        method: 'POST',
+        headers:
+          modo === 'autocadastro' ? { 'content-type': 'application/json' } : cabecalhosDaSessao(),
+        body: JSON.stringify(corpo),
+      });
+    } catch {
+      setMensagem('Servidor acordando, aguarde… Não concluí. Nada foi gravado.');
+      return;
+    }
     const json = (await resposta.json()) as {
       mensagem?: string;
       erros?: { mensagem?: string }[];
@@ -135,7 +150,7 @@ export function TelaTermo({
         data-testid="destaque-consentimento"
       >
         {destaque ||
-          'Importante: este cadastro existe para que o controlador, pessoa física, possa entrar em contato com você. O canal é o e-mail em CONTROLADOR_EMAIL. Por isso, sem a autorização de contato comercial abaixo não é possível concluir o cadastro.'}
+          'Importante: este cadastro existe para que o controlador, pessoa física, possa entrar em contato com você. O canal é o e-mail do controlador. Por isso, sem a autorização de contato comercial abaixo não é possível concluir o cadastro.'}
       </p>
       <label className="flex min-h-12 items-start gap-3 text-base">
         <input
@@ -154,7 +169,7 @@ export function TelaTermo({
           onChange={(evento) => setEnvioErp(evento.target.checked)}
         />
         <span>
-          Envio a sistema externo, opcional e desligado. Enquanto ERP_WEBHOOK_URL estiver vazio,
+          Envio a um sistema externo, opcional. Enquanto o controlador não configurar esse destino,
           esta caixa não envia nada.
         </span>
       </label>

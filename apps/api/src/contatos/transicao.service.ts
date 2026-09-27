@@ -92,7 +92,12 @@ export class TransicaoService {
     codigoTotp: string | undefined,
   ): Promise<void> {
     if (para !== 'cliente' || usuario.stepUp === true) return;
-    const veredito = await this.totp.confirmar(usuario.id, codigoTotp ?? '');
+    const veredito = await this.totp.confirmar(
+      usuario.id,
+      codigoTotp ?? '',
+      Date.now(),
+      'promocao',
+    );
     if (!veredito.aceito) {
       throw new RespostaComErro(403, veredito.codigo, veredito.mensagem, null);
     }

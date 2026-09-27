@@ -1,3 +1,4 @@
+import { marcarServidorAcordando } from '../acordar';
 import { patchCampo, postarContato } from './api';
 import { atrasoMs } from './atraso';
 import { apagarOperacao, apagarOperacoesDoContato, gravarOperacao, lerContato } from './db';
@@ -57,8 +58,10 @@ export async function sincronizarContato(
       await apagarOperacao(operacao.id);
     }
     await definirEstado(contato, 'sincronizado', 0);
+    marcarServidorAcordando(false);
     return null;
   } catch {
+    marcarServidorAcordando(true);
     const tentativas = contato.tentativas + 1;
     const estado: EstadoSync = tentativas >= 10 ? 'preso' : 'local';
     await definirEstado(contato, estado, tentativas);
@@ -91,6 +94,7 @@ async function criar(
   contato.versaoServidor = Number(resposta.dados?.versao ?? 1);
   await apagarOperacoesDoContato(idLocal);
   await definirEstado(contato, 'sincronizado', 0);
+  marcarServidorAcordando(false);
   return null;
 }
 

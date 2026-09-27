@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TelaTermo } from './TelaTermo';
 
@@ -54,6 +54,8 @@ describe('tela do termo', () => {
     const destaque = screen.getByTestId('destaque-consentimento');
     expect(destaque.textContent).toContain('pessoa física');
     expect(destaque.textContent).not.toContain('7Safe');
+    expect(destaque.textContent).not.toContain('CONTROLADOR_EMAIL');
+    expect(screen.getByText(/sistema externo/i).textContent).not.toContain('ERP_WEBHOOK_URL');
     const erp = screen.getByRole('checkbox', { name: /sistema externo/i });
     expect((erp as HTMLInputElement).checked).toBe(false);
   });
@@ -71,6 +73,16 @@ describe('tela do termo', () => {
     );
     render(<TelaTermo modo="autocadastro" token="abc" />);
     expect(await screen.findByTestId('widget-captcha')).toBeTruthy();
-    expect(screen.getByLabelText('Token do captcha')).toBeTruthy();
+    expect(screen.queryByLabelText('Token do captcha')).toBeNull();
+    const area = document.createElement('textarea');
+    area.name = 'cf-turnstile-response';
+    area.value = 'token-do-widget';
+    document.body.appendChild(area);
+    fireEvent.click(screen.getByRole('checkbox', { name: /contato comercial/i }));
+    await waitFor(() => {
+      expect(
+        (screen.getByRole('button', { name: 'Concluir cadastro' }) as HTMLButtonElement).disabled,
+      ).toBe(false);
+    });
   });
 });

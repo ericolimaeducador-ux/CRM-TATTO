@@ -1,6 +1,6 @@
 # Termo de consentimento — captura7
 
-Versão `2026-09-26-uso-pessoal`. Controlador: pessoa física Erico Henrique de Lima Araujo. Uso pessoal, no computador local do controlador. Não há CNPJ.
+Versão `2026-09-26-uso-pessoal`. Controlador: pessoa física Erico Henrique de Lima Araujo. Uso pessoal. Não há CNPJ. A publicação na nuvem está na ADR-011.
 
 **Seus dados no captura7**
 
@@ -23,21 +23,23 @@ Você pode **revogar** sua autorização quando quiser, de graça, pelo e-mail {
 
 **Erico Henrique de Lima Araujo**, pessoa física, sem CNPJ, é o controlador dos dados tratados no aplicativo captura7, nos termos do Art. 5, VI, da LGPD. O contato é {{CONTROLADOR_EMAIL}}. O encarregado, neste uso pessoal, é o próprio controlador, no mesmo e-mail.
 
-Os dados ficam no **computador local do controlador**. Não há provedor de nuvem nem transferência internacional.
+Os dados ficam em serviços de nuvem contratados pelo controlador: o GitHub guarda as telas, o Render guarda o servidor e o MongoDB Atlas guarda o banco. Esses serviços podem usar servidores fora do Brasil. Isso é transferência internacional (art. 33 da LGPD). O caminho no computador do controlador continua disponível para quem não publicar.
 
 | Código | Finalidade | O que acontece | Base legal | Como você controla |
 |---|---|---|---|---|
 | F1 | **Contato comercial** | Contato pelos canais que você informou | **Consentimento** — Art. 7, I, e Art. 8. Vale para o autocadastro e para o lead em que o vendedor colhe a caixa na hora. A caixa é condição para concluir o autocadastro (Art. 9, §3) | Caixa própria; revogação a qualquer momento (Art. 8, §5, e Art. 18, IX) |
 | F2 | **Uso da base importada** | Leads de planilha entram para organização pessoal do controlador | **Legítimo interesse** — Art. 7, IX. A origem fica marcada como importado. A caixa de consentimento não é marcada sozinha | Você pode pedir eliminação (Art. 18, VI) |
-| F3 | **Envio a sistema externo** | Se um webhook for configurado e você autorizar, o contato de cliente segue para esse endereço | Consentimento específico `envio_erp`. Sem a caixa, o webhook não envia o registro. Com a variável vazia, o envio fica desligado e não gera erro | Caixa opcional |
+| F3 | **Envio a sistema externo** | Se um destino for configurado e você autorizar, o contato de cliente segue para esse endereço | Consentimento específico `envio_erp`. Sem a caixa, o destino não recebe o registro. Enquanto o controlador não configurar o destino, o envio fica desligado e não gera erro | Caixa opcional |
 | F4 | **Exportação da base** | O administrador, com TOTP, exporta CSV ou XLSX | Uso pessoal do controlador. Só saem contatos com consentimento de contato comercial válido e ativo. Revogados, eliminados e sem essa autorização ficam de fora. A trilha guarda autor, papel, formato, filtros, quantidade e horário | Só o administrador, com passo extra |
 
 | Quem recebe | Para quê | Papel |
 |---|---|---|
-| Computador local do controlador | Guardar o aplicativo e a base | O próprio controlador. Não há operador de nuvem |
-| Webhook que o controlador configurar | Enviar contato de cliente, se você autorizar | Destino opcional. Desligado quando `ERP_WEBHOOK_URL` está vazio |
+| GitHub | Guardar as telas do aplicativo | Operador contratado pelo controlador |
+| Render | Guardar o servidor | Operador contratado pelo controlador |
+| MongoDB Atlas | Guardar o banco | Operador contratado pelo controlador |
+| Sistema externo que o controlador configurar | Enviar contato de cliente, se você autorizar | Destino opcional. Desligado enquanto o controlador não configurar esse destino |
 
-Não há destinatário no exterior. Os Arts. 33 a 36 não se aplicam a este uso.
+Os servidores desses operadores podem ficar fora do Brasil (art. 33 da LGPD).
 
 Medidas do Art. 46: cifragem em repouso dos documentos; exportação só do administrador, com verificação em duas etapas; trilha de auditoria com identificadores pseudonimizados para nome, e-mail e telefone. No aparelho, o rascunho fica no IndexedDB e no armazenamento local do navegador até a sincronização, protegido pela sessão do aparelho.
 
@@ -58,4 +60,4 @@ Se este termo mudar de forma relevante e a mudança afetar uma finalidade autori
 
 ## PARTE 3 — Notas de operação
 
-Decisões fechadas na ADR-010: D1 pessoa física sem CNPJ; D2 o controlador é o canal; D5 canais informados pelo titular; D7 webhook opcional e desligado; D8 exportação de uso pessoal; D9 {{RETENCAO_MESES}} meses sem interação; D11 planilha com legítimo interesse e origem importado; D12 computador local, sem transferência internacional. O campo `conflito` grava as duas versões no servidor para escolha humana.
+Decisões fechadas na ADR-010: D1 pessoa física sem CNPJ; D2 o controlador é o canal; D5 canais informados pelo titular; D7 webhook opcional e desligado; D8 exportação de uso pessoal; D9 {{RETENCAO_MESES}} meses sem interação; D11 planilha com legítimo interesse e origem importado. A ADR-011 descreve GitHub, Render e MongoDB Atlas, com possível transferência internacional. O texto final do termo precisa da revisão do Jurídico LGPD Dados, só do captura7. O campo `conflito` grava as duas versões no servidor para escolha humana. O caminho no computador local continua em INSTALAR-WINDOWS.md.

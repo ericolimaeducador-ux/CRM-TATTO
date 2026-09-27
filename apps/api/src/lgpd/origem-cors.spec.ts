@@ -16,6 +16,16 @@ describe('origem de rede local', () => {
     delete process.env.CORS_ORIGENS;
   });
 
+  it('libera o Pages só quando a origem está na lista', () => {
+    process.env.CORS_ORIGENS = 'https://ericolimaeducador-ux.github.io';
+    expect(origemPermitida('https://ericolimaeducador-ux.github.io')).toBe(true);
+    expect(origemPermitida('https://outro.github.io')).toBe(false);
+    expect(origemPermitida('https://captura7.onrender.com')).toBe(false);
+    expect(origemPermitida('https://ericolimaeducador-ux.github.io.evil.example')).toBe(false);
+    delete process.env.CORS_ORIGENS;
+    expect(origemPermitida('https://ericolimaeducador-ux.github.io')).toBe(false);
+  });
+
   it('recusa endereço público', () => {
     expect(origemDeRedeLocal('https://exemplo.com')).toBe(false);
     expect(origemDeRedeLocal('http://172.15.0.1')).toBe(false);

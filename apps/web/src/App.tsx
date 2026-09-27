@@ -17,6 +17,8 @@ import { PaginaMerge } from './features/captura/PaginaMerge';
 import { PaginaPromover } from './features/captura/PaginaPromover';
 import { PaginaQr } from './features/captura/PaginaQr';
 import { TelaCaptura } from './features/captura/TelaCaptura';
+import { AvisoServidor } from './features/captura/AvisoServidor';
+import { basenameDe } from './lib/base-publica';
 import { iniciarFila } from './lib/offline/fila';
 
 export function App() {
@@ -24,8 +26,9 @@ export function App() {
     iniciarFila();
   }, []);
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={basenameDe()}>
       <main className="mx-auto min-h-screen w-full max-w-xl p-4">
+        <AvisoServidor />
         <BarraSincronizacao />
         <Menu />
         <Routes>

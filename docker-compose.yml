@@ -4,8 +4,6 @@ services:
     restart: unless-stopped
     volumes:
       - mongo-data:/data/db
-    ports:
-      - '127.0.0.1:27017:27017'
     healthcheck:
       test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok"]
       interval: 5s
@@ -31,7 +29,9 @@ services:
       ERP_WEBHOOK_URL: ${ERP_WEBHOOK_URL:-}
       ERP_WEBHOOK_SEGREDO: ${ERP_WEBHOOK_SEGREDO:-}
       HCAPTCHA_SEGREDO: ${HCAPTCHA_SEGREDO:-}
+      HCAPTCHA_SITEKEY: ${HCAPTCHA_SITEKEY:-}
       TURNSTILE_SEGREDO: ${TURNSTILE_SEGREDO:-}
+      TURNSTILE_SITEKEY: ${TURNSTILE_SITEKEY:-}
     volumes:
       - segredos:/segredos
     depends_on:

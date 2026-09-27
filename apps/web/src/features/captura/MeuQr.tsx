@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import QRCode from 'qrcode';
+import { fetchComAcordar, FRASE_ACORDANDO } from '@/lib/acordar';
 import { urlDaApi } from '@/lib/api-url';
+import { hospedagemPublica, urlDoAplicativo } from '@/lib/base-publica';
 import { cabecalhosDaSessao } from '@/lib/offline/sessao';
 
 export function MeuQr() {
@@ -11,11 +13,17 @@ export function MeuQr() {
   const [mensagem, setMensagem] = useState('');
 
   async function gerar() {
-    const resposta = await fetch(urlDaApi('/v1/qr'), {
-      method: 'POST',
-      headers: cabecalhosDaSessao(),
-      body: '{}',
-    });
+    let resposta: Response;
+    try {
+      resposta = await fetchComAcordar(
+        urlDaApi('/v1/qr'),
+        { method: 'POST', headers: cabecalhosDaSessao(), body: '{}' },
+        setMensagem,
+      );
+    } catch {
+      setMensagem(`${FRASE_ACORDANDO} Não gerei o QR. Nada foi publicado.`);
+      return;
+    }
     const json = (await resposta.json()) as {
       dados?: { caminho?: string; token?: string };
       erros?: { mensagem?: string }[];
@@ -28,7 +36,7 @@ export function MeuQr() {
       );
       return;
     }
-    const url = new URL(recebido, window.location.origin).toString();
+    const url = urlDoAplicativo(recebido);
     setToken(json.dados.token);
     setCaminho(url);
     setImagem(await QRCode.toDataURL(url, { margin: 1, width: 240 }));
@@ -57,8 +65,9 @@ export function MeuQr() {
     <section className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">Meu QR</h1>
       <p className="text-base">
-        Quem estiver na mesma rede Wi-Fi abre o endereço deste computador. O QR vale duas horas e um
-        cadastro.
+        {hospedagemPublica()
+          ? 'O titular abre o endereço abaixo. Este modo usa certificado válido, então não precisa instalar certificado no celular. O QR vale duas horas e um cadastro.'
+          : 'Quem estiver na mesma rede Wi-Fi abre o endereço deste computador. Nesse modo o celular precisa da CA instalada. O QR vale duas horas e um cadastro.'}
       </p>
       <button
         type="button"

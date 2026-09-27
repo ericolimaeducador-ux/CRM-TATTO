@@ -1,11 +1,12 @@
 import { FormEvent, useState } from 'react';
+import { fetchComAcordar } from '@/lib/acordar';
 import { urlDaApi } from '@/lib/api-url';
 import { cabecalhosDaSessao, limparSessao, marcarTotpPendente } from '@/lib/offline/sessao';
 
 interface RespostaJson {
   mensagem?: string;
   erros?: { mensagem?: string }[];
-  dados?: { segredoBase32?: string };
+  dados?: { segredoBase32?: string; pendente?: boolean };
 }
 
 export function PainelConta({
@@ -25,51 +26,63 @@ export function PainelConta({
   const [senhaNova, setSenhaNova] = useState('');
 
   async function inscrever() {
-    const resposta = await fetch(urlDaApi('/v1/auth/totp/inscrever'), {
-      method: 'POST',
-      headers: cabecalhosDaSessao(),
-      body: JSON.stringify({ codigoTotp: codigo || undefined }),
-    });
-    const json = (await resposta.json()) as RespostaJson;
-    if (!resposta.ok || !json.dados?.segredoBase32) {
-      aoMensagem(textoDe(json, 'O autenticador não foi inscrito.'));
+    const resposta = await chamar('/v1/auth/totp/inscrever', { codigoTotp: codigo || undefined });
+    if (!resposta?.ok || !resposta.json.dados?.segredoBase32) {
+      aoMensagem(textoDe(resposta?.json, 'O autenticador não foi inscrito.'));
+      return;
+    }
+    aoSegredo(resposta.json.dados.segredoBase32);
+    aoMensagem(
+      'Segredo pendente. Guarde no aplicativo autenticador e confirme um código válido para ativar.',
+    );
+  }
+
+  async function ativar() {
+    const resposta = await chamar('/v1/auth/totp/ativar', { codigoTotp: codigo });
+    if (!resposta?.ok) {
+      aoMensagem(textoDe(resposta?.json, 'O autenticador não foi ativado.'));
       return;
     }
     marcarTotpPendente(false);
-    aoSegredo(json.dados.segredoBase32);
-    aoMensagem('Guarde este segredo no aplicativo autenticador e confirme o código de 6 dígitos.');
+    aoMensagem('Autenticador ativado.');
   }
 
   async function confirmarPasso() {
-    const resposta = await fetch(urlDaApi('/v1/auth/step-up'), {
-      method: 'POST',
-      headers: cabecalhosDaSessao(),
-      body: JSON.stringify({ codigoTotp: codigo }),
-    });
-    const json = (await resposta.json()) as RespostaJson;
+    const resposta = await chamar('/v1/auth/step-up', { codigoTotp: codigo });
     aoMensagem(
-      resposta.ok
+      resposta?.ok
         ? 'Passo extra confirmado por cinco minutos.'
-        : textoDe(json, 'Código não aceito.'),
+        : textoDe(resposta?.json, 'Código não aceito.'),
     );
   }
 
   async function sair() {
-    await fetch(urlDaApi('/v1/auth/sair'), { method: 'POST', headers: cabecalhosDaSessao() });
+    let aviso = '';
+    try {
+      const resposta = await fetchComAcordar(
+        urlDaApi('/v1/auth/sair'),
+        { method: 'POST', headers: cabecalhosDaSessao() },
+        aoMensagem,
+      );
+      if (!resposta.ok) aviso = ' O servidor pode ainda guardar a sessão.';
+    } catch {
+      aviso = ' Sem rede, o servidor pode ainda guardar a sessão.';
+    }
     limparSessao();
     aoSair();
-    aoMensagem('Sessão encerrada neste aparelho e no servidor.');
+    aoMensagem(`Sessão encerrada neste aparelho.${aviso}`);
   }
 
   async function trocarSenha(evento: FormEvent) {
     evento.preventDefault();
-    const resposta = await fetch(urlDaApi('/v1/auth/senha'), {
-      method: 'POST',
-      headers: cabecalhosDaSessao(),
-      body: JSON.stringify({ senhaAtual, senhaNova }),
-    });
-    const json = (await resposta.json()) as RespostaJson;
-    aoMensagem(resposta.ok ? 'Senha trocada.' : textoDe(json, 'A senha não mudou.'));
+    const resposta = await chamar('/v1/auth/senha', { senhaAtual, senhaNova });
+    if (!resposta?.ok) {
+      aoMensagem(textoDe(resposta?.json, 'A senha não mudou.'));
+      return;
+    }
+    setSenhaAtual('');
+    setSenhaNova('');
+    aoMensagem('Senha trocada. As outras sessões foram encerradas.');
   }
 
   return (
@@ -85,6 +98,13 @@ export function PainelConta({
         onClick={() => void inscrever()}
       >
         Inscrever autenticador
+      </button>
+      <button
+        type="button"
+        className="min-h-12 rounded-lg border border-stone-900 px-4"
+        onClick={() => void ativar()}
+      >
+        Ativar autenticador
       </button>
       <button
         type="button"
@@ -129,6 +149,23 @@ export function PainelConta({
   );
 }
 
-function textoDe(json: RespostaJson, reserva: string): string {
-  return json.erros?.[0]?.mensagem ?? json.mensagem ?? reserva;
+async function chamar(
+  caminho: string,
+  corpo: unknown,
+): Promise<{ ok: boolean; json: RespostaJson } | null> {
+  try {
+    const resposta = await fetchComAcordar(urlDaApi(caminho), {
+      method: 'POST',
+      headers: cabecalhosDaSessao(),
+      body: JSON.stringify(corpo),
+    });
+    const json = (await resposta.json()) as RespostaJson;
+    return { ok: resposta.ok, json };
+  } catch {
+    return null;
+  }
+}
+
+function textoDe(json: RespostaJson | undefined, reserva: string): string {
+  return json?.erros?.[0]?.mensagem ?? json?.mensagem ?? reserva;
 }
