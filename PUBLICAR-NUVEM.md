@@ -45,17 +45,16 @@ O workflow **firebase** publica em cada push na `main` e também em **Actions**,
 
 ## 3. MongoDB Atlas
 
-O cluster gratuito já existe. O host é `cluster0.tbl9r9u.mongodb.net`. A senha que você já usa continua.
+O cluster gratuito já existe. É o plano **M0** (FREE), na AWS, região **São Paulo** (`sa-east-1`). O host é `cluster0.tbl9r9u.mongodb.net`. O banco fica no Brasil.
 
 1. Entre em [cloud.mongodb.com](https://cloud.mongodb.com) e abra o projeto do cluster.
-2. Anote a região que o painel mostrar. Ela ainda está a confirmar no termo. Não invente outra.
-3. Em **Database Access**, use o usuário do banco que você já criou. A senha atual permanece. Guarde-a no gerenciador de senhas se ainda não estiver lá. Não publique essa senha.
-4. Em **Network Access**, deixe o endereço `0.0.0.0/0`. O Render no plano gratuito não tem IP fixo: o servidor acorda em máquinas diferentes e uma lista de IPs certos não se mantém. A senha do usuário do banco é o que impede um estranho de entrar.
-5. Em **Database**, **Connect**, escolha **Drivers**. A URI tem este formato, com o nome do banco `captura7` antes do ponto de interrogação:
+2. Em **Database Access**, crie um usuário só para o aplicativo. **Add New Database User**, autenticação por senha. Guarde a senha no gerenciador de senhas. Em privilégios, escolha o específico: função `readWrite`, banco `captura7`. Esse usuário lê e grava só esse banco. O `atlasAdmin` administra o cluster inteiro e fica no painel. A URI do aplicativo usa o usuário novo, com `readWrite`.
+3. Em **Network Access**, o endereço `0.0.0.0/0` já está liberado. Deixe assim. O Render no plano gratuito não tem IP fixo: o servidor acorda em máquinas diferentes e uma lista de IPs certos não se mantém. A senha do usuário `readWrite` é o que impede um estranho de entrar.
+4. Em **Database**, **Connect**, escolha **Drivers**. A URI tem este formato, com o nome do banco `captura7` antes do ponto de interrogação:
 
    `mongodb+srv://<usuario>:<senha>@cluster0.tbl9r9u.mongodb.net/captura7`
 
-   Use o usuário e a senha atuais. Se a senha tiver caracteres como `@`, `#` ou `:`, use o código que o Atlas mostra na própria tela de conexão. Guarde a URI inteira no gerenciador de senhas. Ela é o valor de `MONGO_URI` do passo 2. Não a commite e não a cole neste repositório.
+   `<usuario>` é o usuário `readWrite` do item 2. Se a senha tiver caracteres como `@`, `#` ou `:`, use o código que o Atlas mostra na própria tela de conexão. Guarde a URI inteira no gerenciador de senhas. Ela é o valor de `MONGO_URI` do passo 2. Não a commite e não a cole neste repositório.
 
 Se você ainda não preencheu o `MONGO_URI` no Render, volte ao serviço, abra **Environment** e cole a URI no campo secreto. Salve. O Render sobe de novo.
 
@@ -103,7 +102,7 @@ Guarde o arquivo `captura7.archive.gz` fora do projeto, num pen drive ou numa pa
 ## Limitações do plano gratuito
 
 - O Render dorme depois de um tempo parado. A primeira chamada pode levar cerca de um minuto. Não há IP fixo, o disco some a cada deploy e o Shell pode não existir. O servidor fica nos Estados Unidos. Há um teto de horas no mês.
-- O Atlas gratuito é compartilhado e pequeno (cerca de 512 MB). A rede aberta `0.0.0.0/0` existe porque o Render não tem IP fixo. A senha atual do banco continua sendo a proteção. A URI não vai para o repositório. A região do cluster está a confirmar no painel.
+- O Atlas no plano M0 é compartilhado e pequeno (cerca de 512 MB), na AWS em São Paulo (`sa-east-1`). A rede `0.0.0.0/0` já está liberada porque o Render não tem IP fixo. A senha do usuário `readWrite` é a proteção. A URI não vai para o repositório.
 - O Firebase Hosting no plano Spark publica as telas em `https://captura7-5e1da.web.app` e `https://captura7-5e1da.firebaseapp.com`. Não há cartão. A API é o único lugar que fala com o banco.
 - A chave e o pepper não podem mudar. Se o serviço reiniciar sem eles, ele para em vez de inventar outros.
 - Quem preferir o computador, sem essas contas, segue o [INSTALAR-WINDOWS.md](INSTALAR-WINDOWS.md). Nesse caminho a CA local continua necessária no celular.
