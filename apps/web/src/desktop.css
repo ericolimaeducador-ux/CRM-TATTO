@@ -35,7 +35,8 @@
     padding: 0.35rem 0.75rem;
   }
 
-  .botao-mais {
+  .botao-mais,
+  .fundo-sobreposicao {
     display: none;
   }
 
