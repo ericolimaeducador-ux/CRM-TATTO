@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   FileSpreadsheet,
   GitMerge,
@@ -7,11 +7,13 @@ import {
   List,
   MoreHorizontal,
   NotebookTabs,
+  Plus,
   QrCode,
   Search,
   Users,
   type LucideIcon,
 } from 'lucide-react';
+import { criarIdLocal } from '@/lib/offline/fila';
 import { perfilLogado, podeGerir, podeImportar } from '@/lib/offline/sessao';
 import { Marca } from '../marca/Marca';
 import { MenuConta } from './MenuConta';
@@ -26,17 +28,13 @@ export function Menu() {
   const local = useLocation();
   const perfil = perfilLogado();
   const [mais, setMais] = useState(false);
-  const principais: AtalhoItem[] = perfil
-    ? [
-        { to: '/capturar', nome: 'Início', icone: Home },
-        { to: '/cadastros', nome: 'Cadastros', icone: NotebookTabs },
-        { to: '/fila', nome: 'Fila', icone: List },
-      ]
-    : [
-        { to: '/capturar', nome: 'Início', icone: Home },
-        { to: '/contatos', nome: 'Contatos', icone: NotebookTabs },
-        { to: '/fila', nome: 'Fila', icone: List },
-      ];
+  const principais: AtalhoItem[] = [
+    { to: '/capturar', nome: 'Início', icone: Home },
+    perfil
+      ? { to: '/cadastros', nome: 'Cadastros', icone: NotebookTabs }
+      : { to: '/contatos', nome: 'Contatos', icone: NotebookTabs },
+  ];
+  const fila: AtalhoItem = { to: '/fila', nome: 'Fila', icone: List };
   const extras: AtalhoItem[] = [
     ...(perfil ? [{ to: '/contatos', nome: 'Contatos', icone: NotebookTabs }] : []),
     { to: '/meu-qr', nome: 'Meu QR', icone: QrCode },
@@ -59,6 +57,8 @@ export function Menu() {
         {principais.map((item) => (
           <Atalho key={item.to} item={item} caminho={local.pathname} />
         ))}
+        <BotaoNovo />
+        <Atalho item={fila} caminho={local.pathname} />
         <button
           type="button"
           className="item-nav botao-mais"
@@ -70,6 +70,7 @@ export function Menu() {
         </button>
       </div>
       <div className={mais ? 'painel-mais aberto' : 'painel-mais'}>
+        <MenuConta />
         {extras.map((item) => (
           <Atalho key={item.to} item={item} caminho={local.pathname} />
         ))}
@@ -82,8 +83,21 @@ export function Menu() {
           </>
         ) : null}
       </div>
-      <MenuConta />
     </nav>
+  );
+}
+
+function BotaoNovo() {
+  const navegar = useNavigate();
+  return (
+    <button
+      type="button"
+      className="item-nav"
+      onClick={() => navegar(`/contatos/${criarIdLocal()}`)}
+    >
+      <Plus aria-hidden="true" />
+      <span className="rotulo-curto">Novo</span>
+    </button>
   );
 }
 

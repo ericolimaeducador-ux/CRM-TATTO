@@ -20,16 +20,19 @@
     gap: 0.25rem;
   }
 
+  .barra .item-nav {
+    flex-direction: row;
+    width: 100%;
+    font-size: 1rem;
+    line-height: normal;
+  }
+
   .item-nav {
     justify-content: flex-start;
     gap: 0.65rem;
     width: 100%;
     font-size: 1rem;
     padding: 0.35rem 0.75rem;
-  }
-
-  .rotulo-curto {
-    max-width: none;
   }
 
   .botao-mais {
@@ -47,7 +50,7 @@
     flex-direction: column;
     gap: 0.25rem;
     max-height: none;
-    margin-top: 0.75rem;
+    margin-top: auto;
     overflow: visible;
     border: 0;
     background: transparent;
@@ -84,25 +87,35 @@
 
   .entrar-palco {
     flex-direction: row;
+    align-items: center;
     padding: 0;
   }
 
   .entrar-marca {
     display: flex;
     flex: 1.05;
+    align-self: stretch;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
-    padding: 4rem;
+    padding: 3rem;
     color: #fffdfb;
   }
 
+  .entrar-marca img {
+    width: 11.5rem;
+    height: 11.5rem;
+  }
+
   .entrar-cartao {
-    flex: 0.95;
-    max-width: none;
-    margin: 2.5rem;
-    justify-content: center;
-    padding: 2.5rem;
+    align-self: center;
+    flex: 0 1 34rem;
+    width: min(34rem, calc(100% - 4rem));
+    max-width: 34rem;
+    height: auto;
+    margin: 2rem;
+    justify-content: flex-start;
+    padding: 2rem 2.25rem;
   }
 
   .toast {

@@ -26,10 +26,12 @@ describe('menu por perfil', () => {
       </MemoryRouter>,
     );
     expect(screen.queryByRole('link', { name: 'Entrar' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Novo' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Cadastros' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Fila' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Mais' }));
     expect(screen.getByRole('button', { name: 'Gestor' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Sair' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'Cadastros' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Mais' }));
     expect(screen.getByText('Administração')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Duplicatas' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Busca' })).toBeTruthy();

@@ -1,6 +1,18 @@
 .barra {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
+}
+
+.barra .item-nav {
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  gap: 0.1rem;
+  padding: 0.15rem 0;
+  font-size: 0.7rem;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .painel-mais,
