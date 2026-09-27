@@ -13,9 +13,8 @@ WORKDIR /repo
 COPY --from=build /repo /repo
 WORKDIR /repo/apps/api
 ENV NODE_ENV=production
-# O Cloud Run injeta PORT=8080. O Compose local sobrescreve com 3000.
-ENV PORT=8080
-EXPOSE 8080
+ENV PORT=3000
+EXPOSE 3000
 COPY infra/docker/entrypoint-api.sh /entrypoint-api.sh
 USER root
 RUN apk add --no-cache su-exec && chmod +x /entrypoint-api.sh

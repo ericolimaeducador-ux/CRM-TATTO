@@ -15,4 +15,3 @@ playwright-report/
 infra/backup/saida/
 .firebase/
 *-firebase-adminsdk-*.json
-gcp-sa-key.json

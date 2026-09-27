@@ -10,7 +10,7 @@ describe('boot de produção', () => {
         CIFRA_CHAVE_BASE64: randomBytes(16).toString('base64'),
         CIFRA_PEPPER: 'curto',
       }),
-    ).toThrow(/Secret Manager/);
+    ).toThrow(/Render/);
     expect(() =>
       exigirSegredosDeProducao({
         NODE_ENV: 'production',
@@ -34,7 +34,6 @@ describe('boot de produção', () => {
   it('lê PORT e usa 3000 quando a variável falta', () => {
     expect(portaDe({})).toBe(3000);
     expect(portaDe({ PORT: '10000' })).toBe(10000);
-    expect(portaDe({ PORT: '8080' })).toBe(8080);
     expect(portaDe({ PORT: 'abc' })).toBe(3000);
   });
 });

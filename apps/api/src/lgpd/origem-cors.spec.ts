@@ -1,4 +1,4 @@
-import { origemDeRedeLocal, origemPermitida } from './origem-cors';
+import { opcoesDeCors, origemDeRedeLocal, origemPermitida } from './origem-cors';
 
 describe('origem de rede local', () => {
   it('aceita o computador e a rede da casa', () => {
@@ -21,11 +21,18 @@ describe('origem de rede local', () => {
     expect(origemPermitida('https://captura7.web.app')).toBe(true);
     expect(origemPermitida('https://captura7.firebaseapp.com')).toBe(true);
     expect(origemPermitida('https://outro.web.app')).toBe(false);
-    expect(origemPermitida('https://captura7-api-xxxx.a.run.app')).toBe(false);
+    expect(origemPermitida('https://captura7-api.onrender.com')).toBe(false);
     expect(origemPermitida('https://captura7.web.app.evil.example')).toBe(false);
     delete process.env.CORS_ORIGENS;
     expect(origemPermitida('https://captura7.web.app')).toBe(false);
     expect(origemPermitida('https://captura7.firebaseapp.com')).toBe(false);
+  });
+
+  it('manda o token no Authorization e não pede cookie entre sites', () => {
+    const opcoes = opcoesDeCors();
+    expect(opcoes.credentials).toBe(false);
+    expect(opcoes.allowedHeaders).toContain('Authorization');
+    expect(opcoes.allowedHeaders).toEqual(['Content-Type', 'Authorization']);
   });
 
   it('recusa endereço público', () => {
