@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { PaginaEntrar } from './PaginaEntrar';
 
 function montar() {
@@ -109,5 +109,61 @@ describe('entrada do administrador', () => {
     expect(await screen.findByText(/Novos: 1/)).toBeTruthy();
     const envio = fetchMock.mock.calls.find((item) => String(item[0]).includes('/v1/importacoes'));
     expect(String(envio?.[1]?.body)).toContain('xlsxBase64');
+  });
+
+  it('no primeiro acesso fica na tela e mostra a inscrição logo abaixo do botão', async () => {
+    localStorage.clear();
+    const segredo = 'JBSWY3DPEHPK3PXP';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (entrada: RequestInfo | URL) => {
+        const url = String(entrada);
+        if (url.endsWith('/v1/auth/entrar')) {
+          return {
+            ok: true,
+            json: async () => ({
+              dados: {
+                token: 'tok-novo',
+                precisaInscreverTotp: true,
+                usuario: { id: 'abc', papel: 'admin', nome: 'Erico' },
+              },
+            }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            dados: {
+              segredoBase32: segredo,
+              otpauth: `otpauth://totp/TattooArt:erico?secret=${segredo}&issuer=TattooArt&digits=6&period=30`,
+              pendente: true,
+            },
+          }),
+        };
+      }),
+    );
+    render(
+      <MemoryRouter initialEntries={['/entrar']}>
+        <Routes>
+          <Route path="/entrar" element={<PaginaEntrar />} />
+          <Route path="/cadastros" element={<p>tela de cadastros</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    fireEvent.change(screen.getByLabelText('Usuário'), { target: { value: 'erico' } });
+    fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'senha-bem-longa' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+    expect(await screen.findByText('Entrou como Erico.')).toBeTruthy();
+    expect(screen.queryByText('tela de cadastros')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Trocar senha' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Inscrever autenticador' }));
+    const titulo = await screen.findByRole('heading', {
+      name: 'Cadastre o TattooArt no seu autenticador',
+    });
+    const sair = screen.getByRole('button', { name: 'Sair' });
+    // A chave aparece antes do Sair, não solta no fim da página.
+    expect(titulo.compareDocumentPosition(sair) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByTestId('segredo-totp')).toHaveLength(1);
+    expect(screen.getByTestId('segredo-totp').textContent).toBe('JBSW Y3DP EHPK 3PXP');
   });
 });
