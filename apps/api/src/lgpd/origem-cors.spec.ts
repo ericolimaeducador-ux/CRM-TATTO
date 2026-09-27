@@ -10,22 +10,23 @@ describe('origem de rede local', () => {
   });
 
   it('aceita origem extra configurada e recusa o resto', () => {
-    process.env.CORS_ORIGENS = 'https://captura7.web.app';
-    expect(origemPermitida('https://captura7.web.app')).toBe(true);
+    process.env.CORS_ORIGENS = 'https://captura7-5e1da.web.app';
+    expect(origemPermitida('https://captura7-5e1da.web.app')).toBe(true);
     expect(origemPermitida('https://outro.example')).toBe(false);
     delete process.env.CORS_ORIGENS;
   });
 
   it('libera o Firebase só quando cada origem está na lista', () => {
-    process.env.CORS_ORIGENS = 'https://captura7.web.app,https://captura7.firebaseapp.com';
-    expect(origemPermitida('https://captura7.web.app')).toBe(true);
-    expect(origemPermitida('https://captura7.firebaseapp.com')).toBe(true);
+    process.env.CORS_ORIGENS =
+      'https://captura7-5e1da.web.app,https://captura7-5e1da.firebaseapp.com';
+    expect(origemPermitida('https://captura7-5e1da.web.app')).toBe(true);
+    expect(origemPermitida('https://captura7-5e1da.firebaseapp.com')).toBe(true);
     expect(origemPermitida('https://outro.web.app')).toBe(false);
     expect(origemPermitida('https://captura7-api.onrender.com')).toBe(false);
-    expect(origemPermitida('https://captura7.web.app.evil.example')).toBe(false);
+    expect(origemPermitida('https://captura7-5e1da.web.app.evil.example')).toBe(false);
     delete process.env.CORS_ORIGENS;
-    expect(origemPermitida('https://captura7.web.app')).toBe(false);
-    expect(origemPermitida('https://captura7.firebaseapp.com')).toBe(false);
+    expect(origemPermitida('https://captura7-5e1da.web.app')).toBe(false);
+    expect(origemPermitida('https://captura7-5e1da.firebaseapp.com')).toBe(false);
   });
 
   it('manda o token no Authorization e não pede cookie entre sites', () => {

@@ -29,6 +29,6 @@ mongorestore --uri="mongodb://127.0.0.1:27017" --archive=captura7.archive.gz --g
 
 ## Publicar na nuvem
 
-O passo a passo está em [PUBLICAR-NUVEM.md](PUBLICAR-NUVEM.md). As telas vão para o Google Firebase Hosting, no plano Spark, a API para o Render gratuito e o banco para o MongoDB Atlas. A URI do banco não entra no Git. O caminho neste computador continua em [INSTALAR-WINDOWS.md](INSTALAR-WINDOWS.md).
+O passo a passo está em [PUBLICAR-NUVEM.md](PUBLICAR-NUVEM.md). As telas vão para o Google Firebase Hosting, no plano Spark, em `https://captura7-5e1da.web.app` (o ID do projeto é `captura7-5e1da`). A API vai para o Render gratuito e o banco para o MongoDB Atlas. O CORS da API aceita `https://captura7-5e1da.web.app` e `https://captura7-5e1da.firebaseapp.com`. A URI do banco não entra no Git. O caminho neste computador continua em [INSTALAR-WINDOWS.md](INSTALAR-WINDOWS.md).
 
 O termo cita o Google Firebase Hosting, o Render (servidor nos Estados Unidos) e o MongoDB Atlas, e a transferência internacional do art. 33 da LGPD. A região do cluster do Atlas está a confirmar. O texto final ainda precisa da revisão do Jurídico LGPD Dados, só do captura7. A ADR-011 registra isso.
