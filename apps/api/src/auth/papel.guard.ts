@@ -1,11 +1,18 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { CHAVE_PAPEIS, CHAVE_PUBLICO, CHAVE_SEM_TOTP, CHAVE_STEP_UP } from './papeis.decorator';
+import {
+  CHAVE_PAPEIS,
+  CHAVE_PUBLICO,
+  CHAVE_SEM_TOTP,
+  CHAVE_SENHA_PROVISORIA,
+  CHAVE_STEP_UP,
+} from './papeis.decorator';
 
 interface UsuarioDaRequisicao {
   papel?: string;
   stepUp?: boolean;
   totpPendente?: boolean;
+  trocarSenhaObrigatoria?: boolean;
 }
 
 @Injectable()
@@ -30,6 +37,17 @@ export class PapelGuard implements CanActivate {
       throw new ForbiddenException({
         codigo: 'PAPEL_INSUFICIENTE',
         mensagem: 'Seu papel não faz esta ação. Se a tarefa é sua, peça a um gestor ou admin.',
+      });
+    }
+
+    if (
+      usuario.trocarSenhaObrigatoria === true &&
+      !this.reflector.getAllAndOverride<boolean>(CHAVE_SENHA_PROVISORIA, alvos)
+    ) {
+      throw new ForbiddenException({
+        codigo: 'SENHA_PROVISORIA',
+        mensagem:
+          'Crie sua nova senha antes de continuar. A senha provisória só serve para esse primeiro passo. Nada foi alterado.',
       });
     }
 

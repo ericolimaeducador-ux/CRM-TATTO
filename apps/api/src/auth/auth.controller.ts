@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Headers, HttpCode, Post, Req } from '@nestjs/common';
-import { Papel, Publico, SemTotp } from './papeis.decorator';
+import { Papel, PermiteSenhaProvisoria, Publico, SemTotp } from './papeis.decorator';
 import { PAPEIS } from './perfil-permissoes';
 import { RespostaComErro } from '../contatos/erros-http';
 import type { RequisicaoComUsuario, UsuarioSessao } from '../contatos/sessao.middleware';
@@ -32,6 +32,7 @@ export class AuthController {
   @Get('eu')
   @Papel(...PAPEIS)
   @SemTotp()
+  @PermiteSenhaProvisoria()
   eu(@Req() req: RequisicaoComUsuario) {
     const usuario = exigir(req);
     return { dados: usuario, avisos: [], erros: [] };
@@ -41,6 +42,7 @@ export class AuthController {
   @HttpCode(200)
   @Papel(...PAPEIS)
   @SemTotp()
+  @PermiteSenhaProvisoria()
   async sair(
     @Headers('authorization') authorization: string | undefined,
     @Req() req: RequisicaoComUsuario,
@@ -54,6 +56,7 @@ export class AuthController {
   @HttpCode(200)
   @Papel(...PAPEIS)
   @SemTotp()
+  @PermiteSenhaProvisoria()
   async senha(
     @Body() corpo: { senhaAtual?: string; senhaNova?: string },
     @Req() req: RequisicaoComUsuario,

@@ -146,7 +146,7 @@ describe('painel da conta', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Inscrever autenticador' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Copiar' }));
-    expect(await screen.findByRole('button', { name: 'Chave copiada' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Copiado' })).toBeTruthy();
     expect(escrever).toHaveBeenCalledWith(SEGREDO_TESTE);
     unmount();
 
@@ -158,7 +158,7 @@ describe('painel da conta', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Inscrever autenticador' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Copiar' }));
-    expect(await screen.findByRole('button', { name: 'Chave copiada' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Copiado' })).toBeTruthy();
     expect(execCommand).toHaveBeenCalledWith('copy');
   });
 });

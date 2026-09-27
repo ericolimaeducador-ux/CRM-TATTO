@@ -166,4 +166,27 @@ describe('entrada do administrador', () => {
     expect(screen.getAllByTestId('segredo-totp')).toHaveLength(1);
     expect(screen.getByTestId('segredo-totp').textContent).toBe('JBSW Y3DP EHPK 3PXP');
   });
+
+  it('senha provisória no login liga a troca obrigatória', async () => {
+    localStorage.clear();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          dados: {
+            token: 'tok-prov',
+            trocarSenhaObrigatoria: true,
+            usuario: { id: 'v', papel: 'vendedor', nome: 'Lia' },
+          },
+        }),
+      })),
+    );
+    montar();
+    fireEvent.change(screen.getByLabelText('Usuário'), { target: { value: 'lia' } });
+    fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'Abcd-Efgh-Jkmn-Pqrs' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+    expect(await screen.findByText('Entrou como Lia.')).toBeTruthy();
+    expect(localStorage.getItem('captura7.trocarSenha')).toBe('1');
+  });
 });

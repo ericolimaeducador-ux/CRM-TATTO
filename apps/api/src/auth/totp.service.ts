@@ -108,12 +108,34 @@ export class TotpService {
       { $set: { usuarioId, segredoPendenteCifrado: cifrar(segredoBase32) } },
       { upsert: true },
     );
-    const rotulo = encodeURIComponent(await this.rotuloDaConta(usuarioId));
     return {
       segredoBase32,
       pendente: true,
-      otpauth: `otpauth://totp/TattooArt:${rotulo}?secret=${segredoBase32}&issuer=TattooArt&digits=6&period=30`,
+      otpauth: await this.otpauthDe(usuarioId, segredoBase32),
     };
+  }
+
+  /**
+   * Gera um segredo novo já ativo, trocando o anterior (conta criada ou
+   * autenticador regenerado pelo admin). O segredo é gravado cifrado, como na
+   * inscrição, e só sai daqui uma vez, na resposta para o admin.
+   */
+  async criarAtivo(usuarioId: string): Promise<{ segredoBase32: string; otpauth: string }> {
+    const segredoBase32 = gerarSegredoBase32();
+    await this.usuarios.findOneAndUpdate(
+      { usuarioId },
+      {
+        $set: { usuarioId, segredoCifrado: cifrar(segredoBase32), ultimoPassoAceito: null },
+        $unset: { segredoPendenteCifrado: '' },
+      },
+      { upsert: true },
+    );
+    return { segredoBase32, otpauth: await this.otpauthDe(usuarioId, segredoBase32) };
+  }
+
+  private async otpauthDe(usuarioId: string, segredoBase32: string): Promise<string> {
+    const rotulo = encodeURIComponent(await this.rotuloDaConta(usuarioId));
+    return `otpauth://totp/TattooArt:${rotulo}?secret=${segredoBase32}&issuer=TattooArt&digits=6&period=30`;
   }
 
   async ativar(usuarioId: string, codigoInformado: string, agoraMs = Date.now()) {

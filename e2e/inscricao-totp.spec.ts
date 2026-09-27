@@ -19,11 +19,24 @@ test('primeiro acesso do administrador: inscrição em passos e ativação', asy
     data: { login, senha: 'senha-bem-longa-da-prova', nome: 'Admin Novo', papel: 'admin' },
   });
   expect(criado.ok()).toBeTruthy();
+  const idNovo = ((await criado.json()) as { dados: { id: string } }).dados.id;
+  // Conta admin nasce com autenticador ativo; zera para testar a inscrição feita pela própria pessoa.
+  const zerado = await request.post(`/v1/usuarios/${idNovo}/totp/zerar`, { headers: ADMIN_TESTE });
+  expect(zerado.ok()).toBeTruthy();
 
   await page.goto('/entrar');
   await page.getByLabel('Usuário').fill(login);
   await page.getByLabel('Senha', { exact: true }).fill('senha-bem-longa-da-prova');
   await page.getByRole('button', { name: 'Entrar' }).click();
+
+  // Primeiro a senha provisória vira a senha da pessoa.
+  await expect(page.getByRole('heading', { name: 'Crie sua nova senha' })).toBeVisible();
+  await expect(page.getByRole('navigation')).toHaveCount(0);
+  await page.getByLabel('Senha provisória').fill('senha-bem-longa-da-prova');
+  await page.getByLabel('Senha nova', { exact: true }).fill('senha-propria-do-admin');
+  await page.getByLabel('Confirme a senha nova').fill('senha-propria-do-admin');
+  await page.getByRole('button', { name: 'Salvar senha nova' }).click();
+
   await expect(page.getByText('O administrador precisa inscrever o autenticador')).toBeVisible();
   await expect(page).toHaveURL(/\/entrar$/);
   await expect(page.getByRole('button', { name: 'Trocar senha' })).toHaveCount(0);

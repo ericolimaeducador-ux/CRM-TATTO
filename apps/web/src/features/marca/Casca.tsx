@@ -1,12 +1,18 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AvisoServidor } from '../captura/AvisoServidor';
 import { BarraSincronizacao } from '../captura/BarraSincronizacao';
 import { Menu } from '../captura/Menu';
+import { TelaNovaSenha } from '../captura/TelaNovaSenha';
+import { trocaSenhaLocal } from '@/lib/offline/sessao';
 import { Marca } from './Marca';
 
 export function Casca({ children }: { children: ReactNode }) {
   const local = useLocation();
+  const [, atualizar] = useState(0);
+  if (!local.pathname.startsWith('/p/') && trocaSenhaLocal()) {
+    return <TelaNovaSenha aoConcluir={() => atualizar((valor) => valor + 1)} />;
+  }
   if (local.pathname.startsWith('/p/')) {
     return (
       <div className="min-h-screen">

@@ -252,3 +252,39 @@
   flex-direction: column;
   gap: 0.2rem;
 }
+
+.entrega-conta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  border: 1px solid var(--linha);
+  border-left: 4px solid var(--lilas);
+  border-radius: var(--raio);
+  background: var(--superficie);
+  padding: 1rem;
+  box-shadow: var(--sombra);
+}
+
+.senha-provisoria {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-align: center;
+  overflow-wrap: anywhere;
+  user-select: all;
+  border: 1px dashed var(--bronze);
+  border-radius: 0.9rem;
+  background: var(--fundo);
+  padding: 0.6rem 0.75rem;
+}
+
+.confirmacao-acao {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-radius: 0.9rem;
+  background: var(--aviso);
+  color: var(--aviso-tinta);
+  padding: 0.75rem;
+}
