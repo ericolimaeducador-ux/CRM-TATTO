@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { urlDaApi } from '@/lib/api-url';
 import { textoDaResposta } from '@/lib/texto-resposta';
 import { cabecalhosDaSessao, podeAuditar, podeGerir } from '@/lib/offline/sessao';
+import { dataHoraBr } from '@/lib/datas';
 import { AcoesSensiveis } from './AcoesSensiveis';
 
 interface ContatoLido {
@@ -38,10 +39,7 @@ export function PaginaLead() {
         Consentimento: {contato?.lgpd?.contatoComercial ?? 'sem leitura'}.
       </p>
       {gerir ? (
-        <Link
-          className="inline-flex min-h-12 items-center text-base underline"
-          to={`/promover/${id}`}
-        >
+        <Link className="atalho" to={`/promover/${id}`}>
           Promover a cliente
         </Link>
       ) : (
@@ -58,7 +56,7 @@ export function PaginaLead() {
           <label className="flex flex-col gap-1 text-base">
             Motivo do descarte
             <input
-              className="min-h-12 rounded border border-stone-300 px-3"
+              className="campo"
               value={motivo}
               onChange={(evento) => setMotivo(evento.target.value)}
             />
@@ -88,7 +86,7 @@ export function PaginaLead() {
       {auditar ? (
         <button
           type="button"
-          className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+          className="btn-secundario"
           onClick={() => void carregarTrilha(id, setTrilha, setMensagem)}
         >
           Ver trilha de auditoria
@@ -99,7 +97,7 @@ export function PaginaLead() {
           {trilha.length === 0 ? <li className="text-base">Nenhuma linha nesta trilha.</li> : null}
           {trilha.map((linha, indice) => (
             <li key={linha._id ?? `${linha.campo}-${indice}`} className="text-base">
-              {linha.campo ?? 'campo'} · {linha.timestampServidor ?? 'sem horário'}
+              {linha.campo ?? 'campo'} · {dataHoraBr(linha.timestampServidor)}
             </li>
           ))}
         </ul>
@@ -111,11 +109,7 @@ export function PaginaLead() {
 
 function Acao({ rotulo, aoClicar }: { rotulo: string; aoClicar: () => Promise<void> }) {
   return (
-    <button
-      type="button"
-      className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white"
-      onClick={() => void aoClicar()}
-    >
+    <button type="button" className="btn" onClick={() => void aoClicar()}>
       {rotulo}
     </button>
   );

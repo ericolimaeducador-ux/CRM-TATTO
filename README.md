@@ -1,6 +1,6 @@
-# captura7
+# TattooArt
 
-Uso pessoal no computador do controlador. O passo a passo no Windows está em [INSTALAR-WINDOWS.md](INSTALAR-WINDOWS.md).
+Cuidados para pele tatuada. Uso pessoal no computador do controlador. O passo a passo no Windows está em [INSTALAR-WINDOWS.md](INSTALAR-WINDOWS.md).
 
 ## Backup do Mongo
 
@@ -31,4 +31,4 @@ mongorestore --uri="mongodb://127.0.0.1:27017" --archive=captura7.archive.gz --g
 
 O passo a passo está em [PUBLICAR-NUVEM.md](PUBLICAR-NUVEM.md). As telas vão para o Google Firebase Hosting, no plano Spark, em `https://captura7-5e1da.web.app` (o ID do projeto é `captura7-5e1da`). A API vai para o Render gratuito e o banco para o MongoDB Atlas. O CORS da API aceita `https://captura7-5e1da.web.app` e `https://captura7-5e1da.firebaseapp.com`. A URI do banco não entra no Git. O caminho neste computador continua em [INSTALAR-WINDOWS.md](INSTALAR-WINDOWS.md).
 
-O termo cita o Google Firebase Hosting, o Render (servidor nos Estados Unidos) e o MongoDB Atlas (banco em São Paulo, no Brasil, AWS `sa-east-1`). A transferência internacional do art. 33 da LGPD fica no Render e, eventualmente, no Firebase Hosting. O texto final ainda precisa da revisão do Jurídico LGPD Dados, só do captura7. A ADR-011 registra isso.
+O termo cita o Google Firebase Hosting, o Render (servidor nos Estados Unidos) e o MongoDB Atlas (banco em São Paulo, no Brasil, AWS `sa-east-1`). A transferência internacional do art. 33 da LGPD fica no Render e, eventualmente, no Firebase Hosting. O texto final ainda precisa da revisão do Jurídico LGPD Dados, só do TattooArt. A ADR-011 registra isso. O nome do banco na cópia continua `captura7`. O ID do projeto Firebase é `captura7-5e1da` e não muda.

@@ -25,36 +25,24 @@ export function AcoesSensiveis({
 
   return (
     <>
-      <button
-        type="button"
-        className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white"
-        onClick={() => setRevogar(true)}
-      >
+      <button type="button" className="btn" onClick={() => setRevogar(true)}>
         Revogar consentimento
       </button>
       {revogar ? (
         <>
           <button
             type="button"
-            className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+            className="btn-secundario"
             onClick={() => void enviar(id, 'revogacao', { confirmar: true }, aoAtualizar)}
           >
             Confirmar revogação
           </button>
-          <button
-            type="button"
-            className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
-            onClick={() => setRevogar(false)}
-          >
+          <button type="button" className="btn-secundario" onClick={() => setRevogar(false)}>
             Cancelar revogação
           </button>
         </>
       ) : null}
-      <button
-        type="button"
-        className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white"
-        onClick={() => setEliminar(true)}
-      >
+      <button type="button" className="btn" onClick={() => setEliminar(true)}>
         Eliminar titular
       </button>
       {eliminar ? (
@@ -62,14 +50,14 @@ export function AcoesSensiveis({
           <label className="flex flex-col gap-1 text-base">
             Digite o nome do titular ou ELIMINAR
             <input
-              className="min-h-12 rounded border border-stone-300 px-3"
+              className="campo"
               value={confirmacao}
               onChange={(evento) => setConfirmacao(evento.target.value)}
             />
           </label>
           <button
             type="button"
-            className="min-h-12 rounded-lg border border-stone-900 px-4 text-base disabled:opacity-40"
+            className="btn-secundario disabled:opacity-40"
             disabled={!aceita}
             onClick={() =>
               void enviar(id, 'eliminacao', { confirmacao: confirmacao.trim() }, aoAtualizar)
@@ -79,7 +67,7 @@ export function AcoesSensiveis({
           </button>
           <button
             type="button"
-            className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+            className="btn-secundario"
             onClick={() => {
               setEliminar(false);
               setConfirmacao('');

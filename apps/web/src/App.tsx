@@ -1,7 +1,5 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import { BarraSincronizacao } from './features/captura/BarraSincronizacao';
-import { Menu } from './features/captura/Menu';
 import { PaginaBusca } from './features/captura/PaginaBusca';
 import { PaginaLead } from './features/captura/PaginaLead';
 import { PaginaUsuarios } from './features/captura/PaginaUsuarios';
@@ -17,7 +15,9 @@ import { PaginaMerge } from './features/captura/PaginaMerge';
 import { PaginaPromover } from './features/captura/PaginaPromover';
 import { PaginaQr } from './features/captura/PaginaQr';
 import { TelaCaptura } from './features/captura/TelaCaptura';
-import { AvisoServidor } from './features/captura/AvisoServidor';
+import { PaginaCadastros } from './features/captura/PaginaCadastros';
+import { PaginaPlanilha } from './features/captura/PaginaPlanilha';
+import { Casca } from './features/marca/Casca';
 import { basenameDe } from './lib/base-publica';
 import { iniciarFila } from './lib/offline/fila';
 
@@ -27,15 +27,14 @@ export function App() {
   }, []);
   return (
     <BrowserRouter basename={basenameDe()}>
-      <main className="mx-auto min-h-screen w-full max-w-xl p-4">
-        <AvisoServidor />
-        <BarraSincronizacao />
-        <Menu />
+      <Casca>
         <Routes>
           <Route path="/" element={<TelaCaptura />} />
           <Route path="/entrar" element={<PaginaEntrar />} />
           <Route path="/capturar" element={<TelaCaptura />} />
           <Route path="/capturar/qr" element={<PaginaQr />} />
+          <Route path="/cadastros" element={<PaginaCadastros />} />
+          <Route path="/planilha" element={<PaginaPlanilha />} />
           <Route path="/contatos" element={<ListaContatos />} />
           <Route path="/contatos/:idLocal" element={<FormularioCaptura />} />
           <Route path="/fila" element={<PaginaFila />} />
@@ -49,7 +48,7 @@ export function App() {
           <Route path="/p/:token" element={<PaginaAutocadastro />} />
           <Route path="/contatos/:idLocal/termo" element={<PaginaConsentimento />} />
         </Routes>
-      </main>
+      </Casca>
     </BrowserRouter>
   );
 }

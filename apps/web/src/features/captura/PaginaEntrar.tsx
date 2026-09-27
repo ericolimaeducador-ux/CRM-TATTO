@@ -1,4 +1,5 @@
 import { FormEvent, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { fetchComAcordar, FRASE_ACORDANDO } from '@/lib/acordar';
 import { urlDaApi } from '@/lib/api-url';
 import {
@@ -8,6 +9,7 @@ import {
   tokenDaSessao,
   totpPendenteLocal,
 } from '@/lib/offline/sessao';
+import { Marca } from '../marca/Marca';
 import { PainelConta } from './PainelConta';
 import { PainelPlanilha } from './PainelPlanilha';
 
@@ -22,6 +24,7 @@ interface RespostaJson {
 }
 
 export function PaginaEntrar() {
+  const navegar = useNavigate();
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
   const [codigo, setCodigo] = useState('');
@@ -59,67 +62,78 @@ export function PaginaEntrar() {
     }
     setToken(json.dados.token);
     setMensagem(`Entrou como ${usuario?.nome ?? login}.`);
+    if (usuario?.papel === 'admin' || usuario?.papel === 'gestor') navegar('/cadastros');
   }
 
   return (
-    <section className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">Entrar</h1>
-      <form className="flex flex-col gap-3" onSubmit={(evento) => void entrar(evento)}>
-        <label className="flex flex-col gap-1 text-base">
-          Usuário
-          <input
-            className="min-h-12 rounded border border-stone-400 px-3"
-            autoComplete="username"
-            value={login}
-            onChange={(evento) => setLogin(evento.target.value)}
+    <section className="entrar-palco">
+      <aside className="entrar-marca">
+        <Marca grande clara />
+        <span className="fio-ouro" aria-hidden="true" />
+      </aside>
+      <div className="entrar-cartao">
+        <div className="entrar-logo-movel">
+          <Marca grande central />
+        </div>
+        <h1 className="text-3xl font-semibold">Entrar</h1>
+        <form className="flex flex-col gap-4" onSubmit={(evento) => void entrar(evento)}>
+          <label className="flex flex-col gap-1 text-base">
+            Usuário
+            <input
+              className="campo"
+              autoComplete="username"
+              value={login}
+              onChange={(evento) => setLogin(evento.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-base">
+            Senha
+            <input
+              className="campo"
+              type="password"
+              autoComplete="current-password"
+              value={senha}
+              onChange={(evento) => setSenha(evento.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-base">
+            Código do autenticador, obrigatório se você já inscreveu
+            <input
+              className="campo"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={codigo}
+              onChange={(evento) => setCodigo(evento.target.value)}
+            />
+          </label>
+          <button type="submit" className="btn">
+            Entrar
+          </button>
+        </form>
+        {token ? (
+          <PainelConta
+            codigo={codigo}
+            pendente={totpPendenteLocal()}
+            aoMensagem={setMensagem}
+            aoSegredo={setSegredo}
+            aoSair={() => {
+              setToken('');
+              setSegredo('');
+            }}
           />
-        </label>
-        <label className="flex flex-col gap-1 text-base">
-          Senha
-          <input
-            className="min-h-12 rounded border border-stone-400 px-3"
-            type="password"
-            autoComplete="current-password"
-            value={senha}
-            onChange={(evento) => setSenha(evento.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-base">
-          Código do autenticador, obrigatório se você já inscreveu
-          <input
-            className="min-h-12 rounded border border-stone-400 px-3"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            value={codigo}
-            onChange={(evento) => setCodigo(evento.target.value)}
-          />
-        </label>
-        <button
-          type="submit"
-          className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white"
-        >
-          Entrar
-        </button>
-      </form>
-      {token ? (
-        <PainelConta
-          codigo={codigo}
-          pendente={totpPendenteLocal()}
-          aoMensagem={setMensagem}
-          aoSegredo={setSegredo}
-          aoSair={() => {
-            setToken('');
-            setSegredo('');
-          }}
-        />
-      ) : null}
-      {token && !totpPendenteLocal() ? <PainelPlanilha aoMensagem={setMensagem} /> : null}
-      {segredo ? (
-        <p className="break-all text-base" data-testid="segredo-totp">
-          {segredo}
-        </p>
-      ) : null}
-      {mensagem ? <p className="text-base">{mensagem}</p> : null}
+        ) : null}
+        {token && !totpPendenteLocal() ? <PainelPlanilha aoMensagem={setMensagem} /> : null}
+        {segredo ? (
+          <p className="break-all text-base" data-testid="segredo-totp">
+            {segredo}
+          </p>
+        ) : null}
+        {mensagem ? (
+          <p className="toast" role="status">
+            {mensagem}
+          </p>
+        ) : null}
+      </div>
     </section>
   );
 }

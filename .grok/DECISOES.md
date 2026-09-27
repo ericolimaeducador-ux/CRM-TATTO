@@ -238,4 +238,28 @@ reprocessamento da coleção — documentar o procedimento antes de produção.
 
 **Consequências.** O Firebase fica no plano Spark, sem cartão. O Render dorme; a primeira chamada pode demorar e a tela mostra que o servidor está acordando. O passo a passo para o controlador está em `PUBLICAR-NUVEM.md`. O QR de autocadastro nesse modo usa `https://captura7-5e1da.web.app` e não pede a CA local, porque o certificado é público. Quem ficar no computador continua no guia do Windows.
 
-**Status.** aceito · 2026-09-27 · texto do termo pendente de revisão do Jurídico LGPD Dados (só do captura7)
+**Status.** aceito · 2026-09-27 · texto do termo pendente de revisão do Jurídico LGPD Dados (só do TattooArt)
+
+---
+
+## ADR-012 — Nome TattooArt e telas de cadastro
+
+**Contexto.** Quem usa o aplicativo via o nome interno nas telas, no título, no ícone instalado e no termo. A lista chamada Contatos lia só o IndexedDB deste aparelho, então um cadastro gravado no servidor por outro caminho não aparecia. O layout era uma coluna estreita de links. O ID do projeto Firebase `captura7-5e1da` não pode ser renomeado. O nome do banco `captura7` também permanece.
+
+**Decisão.**
+
+- **Nome visível.** Telas, título, manifesto (`name` e `short_name`), ícone instalado, termo, textos do QR, e-mails de arquivo baixado e o emissor do autenticador dizem TattooArt. O slogan é "Cuidados para pele tatuada". O nome interno de pacote, pasta, variável, chave `captura7.token` e o banco `captura7` ficam.
+- **Interface.** O Tailwind que já está no projeto desenha as telas. Não entra biblioteca de componentes, para o pacote instalado continuar leve. Há tokens de cor da marca, modo claro e escuro pelo sistema, menu lateral no computador e barra embaixo no celular. A ADR-005 continua valendo para o modelo desta conversa.
+- **Cadastros.** `GET /v1/contatos` já existia, com papéis e paginação. A tela nova `/cadastros` chama essa rota. Para gestor e administrador ela é o primeiro item do menu e o destino depois do login. A lista aceita busca, status, origem, PF/PJ, consentimento, intervalo de datas e ordem. CPF e CNPJ saem mascarados; o cifrado e o hash não vão na lista. O registro completo continua em `/lead/:id`.
+- **Números.** `GET /v1/contatos/resumo` conta leads de hoje, da semana e por status, no fuso de São Paulo, com o mesmo recorte de carteira do vendedor. O que ainda não saiu deste aparelho é contado na fila local.
+- **Hosting.** O `firebase.json` publica no target `app`. O `.firebaserc` aplica esse target, hoje, ao site `captura7-5e1da`. Um site adicional no mesmo projeto entra com `firebase target:apply hosting app NOME_DO_SITE` quando o nome for confirmado. `CORS_ORIGENS` continua variável do Render.
+
+**Alternativas consideradas.**
+
+- *Biblioteca de componentes pronta:* rejeitada — o Tailwind já cobre botão, campo, cartão e a barra. Outro pacote aumentaria o que o celular baixa.
+- *Endpoint novo só para a lista:* rejeitada — a listagem já autoriza por papel. Os filtros entraram na mesma rota.
+- *Renomear o projeto Firebase ou o banco:* rejeitada — o ID do projeto não muda e o banco `captura7` quebraria a URI já combinada.
+
+**Consequências.** O deploy atual continua no site `captura7-5e1da` até o target apontar para o site novo. Quem abrir o aplicativo vê TattooArt. A marca em `apps/web/public/marca` saiu de uma foto e deve ser trocada quando o arquivo original existir.
+
+**Status.** aceito · 2026-09-27

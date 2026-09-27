@@ -82,10 +82,7 @@ export function PaginaUsuarios() {
             ))}
           </select>
         </Rotulo>
-        <button
-          type="submit"
-          className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white"
-        >
+        <button type="submit" className="btn">
           Criar usuário
         </button>
       </form>
@@ -119,7 +116,7 @@ export function PaginaUsuarios() {
   );
 }
 
-const campo = 'min-h-12 rounded border border-stone-300 px-3';
+const campo = 'campo';
 
 function Rotulo({ texto, children }: { texto: string; children: ReactNode }) {
   return (
@@ -141,7 +138,7 @@ function Linha({
 }) {
   const [papel, setPapel] = useState(item.papel);
   return (
-    <li className="flex flex-col gap-2 rounded border border-stone-300 p-3">
+    <li className="cartao flex flex-col gap-2">
       <p className="text-base">
         {item.nome} ({item.login}) · {item.ativo ? item.papel : 'inativo'}
       </p>
@@ -152,25 +149,17 @@ function Linha({
           </option>
         ))}
       </select>
-      <button
-        type="button"
-        className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
-        onClick={() => void aoMudar({ papel })}
-      >
+      <button type="button" className="btn-secundario" onClick={() => void aoMudar({ papel })}>
         Definir perfil
       </button>
       <button
         type="button"
-        className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+        className="btn-secundario"
         onClick={() => void aoMudar({ ativo: !item.ativo })}
       >
         {item.ativo ? 'Desativar' : 'Reativar'}
       </button>
-      <button
-        type="button"
-        className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
-        onClick={() => void aoZerar()}
-      >
+      <button type="button" className="btn-secundario" onClick={() => void aoZerar()}>
         Resetar autenticador
       </button>
     </li>

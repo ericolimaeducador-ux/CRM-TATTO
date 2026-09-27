@@ -43,7 +43,7 @@ export function DesafioCaptcha({
         Resposta do desafio
         <span data-testid="pergunta-captcha">{pergunta}</span>
         <input
-          className="min-h-12 rounded border border-stone-300 px-3"
+          className="campo"
           value={valor}
           onChange={(evento) => aoMudar(evento.target.value)}
         />

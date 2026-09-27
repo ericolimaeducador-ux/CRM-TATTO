@@ -1,4 +1,4 @@
-# Publicar o captura7 na nuvem
+# Publicar o TattooArt na nuvem
 
 Este guia é para o Erico, pessoa física, sem CNPJ e sem ERP. Tudo aqui é gratuito e não pede cartão. As telas ficam no Google Firebase Hosting, plano Spark. A API fica no Render, plano gratuito, nos Estados Unidos. O banco fica no MongoDB Atlas. O caminho neste computador continua em [INSTALAR-WINDOWS.md](INSTALAR-WINDOWS.md).
 
@@ -16,7 +16,23 @@ O plano é o **Spark**, o gratuito. Ele não pede cartão. O aplicativo fica na 
 4. Gere o acesso do GitHub. No console, **Configurações do projeto**, **Contas de serviço**, **Gerar nova chave privada**. O download é um JSON. No GitHub, no repositório, **Settings**, **Secrets and variables**, **Actions**, **New repository secret**. O nome é exatamente `FIREBASE_SERVICE_ACCOUNT`. O valor é o JSON inteiro. Apague o arquivo do computador depois de colar. Não o commite.
 5. A variável `VITE_API_URL` entra no passo 3, depois que o Render mostrar o endereço da API. Sem essa URL o site publicado não acha o servidor.
 
-O workflow **firebase** publica em cada push na `main` e também em **Actions**, **firebase**, **Run workflow**. Enquanto o secret não existir, ele mostra um aviso e pula o deploy. O check não fica vermelho por isso.
+O ID do projeto `captura7-5e1da` não pode ser renomeado. O site que recebe as telas é outro ajuste, no mesmo projeto. O `firebase.json` usa o target `app`. O `.firebaserc` aponta esse target, hoje, para o site `captura7-5e1da`, que é o site padrão. Assim o deploy atual continua no endereço que já existe.
+
+Quando você confirmar o nome exato de um site adicional (a ideia é um nome TattooArt no mesmo projeto), rode na pasta do projeto:
+
+```
+firebase target:apply hosting app NOME_DO_SITE
+```
+
+Troque `NOME_DO_SITE` pelo nome que o console do Hosting mostrar. Isso só muda o destino das telas. O projeto continua `captura7-5e1da`.
+
+O `CORS_ORIGENS` é uma variável do Render, com cadeado. Para incluir o site novo, edite essa variável e salve. Não precisa mudar código. Separe as origens por vírgula, sem barra no fim. Pode manter as duas de hoje e acrescentar as do site novo:
+
+`https://captura7-5e1da.web.app,https://captura7-5e1da.firebaseapp.com,https://NOME_DO_SITE.web.app,https://NOME_DO_SITE.firebaseapp.com`
+
+O nome exato do site ainda será confirmado. Até lá, as telas seguem em `https://captura7-5e1da.web.app`.
+
+O workflow **firebase** publica em cada push na `main` e também em **Actions**, **firebase**, **Run workflow**. Enquanto o secret não existir, ele mostra um aviso e pula o deploy. O check não fica vermelho por isso. O workflow usa o target `app`.
 
 ## 2. Render
 

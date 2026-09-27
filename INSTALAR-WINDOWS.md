@@ -1,6 +1,6 @@
-# Instalar o captura7 no Windows
+# Instalar o TattooArt no Windows
 
-Este guia é para usar o captura7 no seu computador. O aplicativo não precisa de empresa, CNPJ nem de internet de nuvem. Os dados ficam nesta máquina. Para publicar na nuvem, o outro caminho é [PUBLICAR-NUVEM.md](PUBLICAR-NUVEM.md). Este arquivo continua sendo a alternativa local.
+Este guia é para usar o TattooArt no seu computador. O aplicativo não precisa de empresa, CNPJ nem de internet de nuvem. Os dados ficam nesta máquina. Para publicar na nuvem, o outro caminho é [PUBLICAR-NUVEM.md](PUBLICAR-NUVEM.md). Este arquivo continua sendo a alternativa local.
 
 Há dois caminhos. O primeiro usa o Docker Desktop e é o que instala o aplicativo no celular. O segundo usa Node e MongoDB, sem Docker.
 
@@ -171,7 +171,7 @@ Este caminho abre o site em HTTP. O navegador do celular funciona. O botão de i
 
 ## Planilha do Google
 
-No Google Planilhas: Arquivo, Fazer download, Valores separados por vírgula (.csv) ou planilha Excel (.xlsx). No captura7, entre como gestor ou administrador, cole o texto ou escolha o arquivo em **Arquivo CSV ou XLSX** e toque em **Importar planilha**. Linha com o mesmo e-mail, telefone, CPF ou CNPJ é pulada. Linha só com nome igual a um cadastro que também só tem nome é pulada. O mesmo nome em outra empresa entra como novo. Não há fusão automática. A origem fica `importado`.
+No Google Planilhas: Arquivo, Fazer download, Valores separados por vírgula (.csv) ou planilha Excel (.xlsx). No TattooArt, entre como gestor ou administrador, cole o texto ou escolha o arquivo em **Arquivo CSV ou XLSX** e toque em **Importar planilha**. Linha com o mesmo e-mail, telefone, CPF ou CNPJ é pulada. Linha só com nome igual a um cadastro que também só tem nome é pulada. O mesmo nome em outra empresa entra como novo. Não há fusão automática. A origem fica `importado`.
 
 ## Exportar
 

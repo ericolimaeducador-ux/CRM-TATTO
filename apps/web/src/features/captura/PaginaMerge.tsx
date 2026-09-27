@@ -29,7 +29,7 @@ export function PaginaMerge() {
 
   return (
     <section className="flex flex-col gap-4">
-      <Link className="inline-flex min-h-12 items-center text-base underline" to="/duplicatas">
+      <Link className="atalho" to="/duplicatas">
         Duplicatas
       </Link>
       <h1 className="text-2xl font-semibold">Fundir</h1>
@@ -38,7 +38,7 @@ export function PaginaMerge() {
         Não há fusão automática.
       </p>
       {CAMPOS.map(([campo, rotulo]) => (
-        <fieldset key={campo} className="flex flex-col gap-2 rounded border border-stone-300 p-3">
+        <fieldset key={campo} className="cartao flex flex-col gap-2">
           <legend className="text-base font-semibold">{rotulo}</legend>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Escolha
@@ -61,14 +61,14 @@ export function PaginaMerge() {
       <label className="flex flex-col gap-1 text-base">
         Código TOTP. O servidor confere os 6 dígitos. Sem código válido, nada é fundido.
         <input
-          className="min-h-12 rounded border border-stone-300 px-3"
+          className="campo"
           value={codigo}
           onChange={(evento) => setCodigo(evento.target.value)}
         />
       </label>
       <button
         type="button"
-        className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white"
+        className="btn"
         onClick={() => void fundir(a, b, escolha, codigo, setMensagem, setFeito)}
       >
         Fundir com esta escolha
@@ -76,7 +76,7 @@ export function PaginaMerge() {
       {feito ? (
         <button
           type="button"
-          className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+          className="btn-secundario"
           onClick={() => void recuperar(b, codigo, setMensagem)}
         >
           Recuperar o contato descartado

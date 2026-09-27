@@ -1,0 +1,126 @@
+.barra {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
+}
+
+.barra .item-nav {
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  gap: 0.1rem;
+  padding: 0.15rem 0;
+  font-size: 0.7rem;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.painel-mais,
+.conta-painel,
+.gaveta,
+.tabela {
+  display: none;
+}
+
+.painel-mais.aberto,
+.conta-painel.aberto,
+.gaveta.aberta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.lista-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.nav-app {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-top: 1px solid var(--linha);
+  background: color-mix(in srgb, var(--superficie) 92%, transparent);
+  padding: 0.35rem 0.4rem calc(0.35rem + env(safe-area-inset-bottom));
+  backdrop-filter: blur(12px);
+}
+
+.painel-mais.aberto,
+.conta-painel.aberto {
+  position: fixed;
+  right: 0.75rem;
+  bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  left: 0.75rem;
+  z-index: 30;
+  max-height: 70vh;
+  overflow: auto;
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  background: var(--superficie);
+  padding: 0.85rem;
+  box-shadow: var(--sombra);
+}
+
+.secao-nav {
+  margin: 0.35rem 0.4rem 0;
+  font-family: 'Josefin Sans', 'Century Gothic', 'Trebuchet MS', sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bronze);
+}
+
+.gaveta.aberta {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow: auto;
+  border-radius: 0;
+  background: var(--superficie);
+  padding: 1.25rem;
+}
+
+.entrar-palco {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  background:
+    radial-gradient(420px 220px at 80% 0%, rgba(166, 132, 72, 0.45), transparent 60%),
+    linear-gradient(165deg, #123f46 0%, #1a5c64 46%, #4a3d62 100%);
+  padding: 1.5rem 1rem 2rem;
+}
+
+.entrar-marca {
+  display: none;
+}
+
+.entrar-logo-movel {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.entrar-cartao {
+  margin: auto;
+  display: flex;
+  width: 100%;
+  max-width: 28rem;
+  flex-direction: column;
+  gap: 1.25rem;
+  border-radius: 1.75rem;
+  border-top: 4px solid var(--bronze);
+  background: var(--superficie);
+  padding: 2rem 1.35rem 1.5rem;
+  box-shadow: 0 22px 50px rgba(10, 28, 32, 0.28);
+}
+
+.fio-ouro {
+  display: block;
+  width: 4.5rem;
+  height: 3px;
+  margin-top: 1.25rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #e7d3a1, #a68448);
+}

@@ -29,7 +29,7 @@ export function textoDoTermo(): TextoTermo {
     .replaceAll('{{RETENCAO_MESES}}', String(mesesDeRetencao()))
     .replaceAll('{{PURGA_REVOGACAO_DIAS}}', String(diasDePurgaRevogacao()))
     .replaceAll('{{RASCUNHO_DIAS}}', String(diasDeRascunho()));
-  const textoCurto = entre(minuta, '**Seus dados no captura7**', '## PARTE 2').trim();
+  const textoCurto = entre(minuta, '**Seus dados no TattooArt**', '## PARTE 2').trim();
   const textoCompleto = entre(minuta, '## PARTE 2 — Versão completa', '## PARTE 3').trim();
   return {
     versao: VERSAO_TERMO,

@@ -43,11 +43,7 @@ export function LeitorQr({ onLido, onDigitar }: Propriedades) {
       <h1 className="text-2xl font-semibold">Ler QR</h1>
       <video ref={videoRef} className="w-full rounded-lg bg-stone-900" muted playsInline />
       {aviso ? <p className="text-base text-amber-900">{aviso}</p> : null}
-      <button
-        type="button"
-        className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white"
-        onClick={onDigitar}
-      >
+      <button type="button" className="btn" onClick={onDigitar}>
         Digitar em vez disso
       </button>
     </section>

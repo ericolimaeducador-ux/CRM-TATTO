@@ -119,15 +119,39 @@ export class ContatosController {
     return { dados: resultado.dados, avisos: resultado.avisos, erros: [] };
   }
 
+  @Get('resumo')
+  @Papel(...PERFIL_PERMISSOES.ler_contato)
+  resumo(@Req() req: RequisicaoComUsuario) {
+    return this.contatos.resumo(exigirUsuario(req));
+  }
+
   @Get()
   @Papel(...PERFIL_PERMISSOES.ler_contato)
   listar(
     @Query('cursor') cursor: string | undefined,
     @Query('limite') limite: string | undefined,
     @Query('q') q: string | undefined,
+    @Query('status') status: string | undefined,
+    @Query('origem') origem: string | undefined,
+    @Query('pessoa') pessoa: string | undefined,
+    @Query('consentimento') consentimento: string | undefined,
+    @Query('desde') desde: string | undefined,
+    @Query('ate') ate: string | undefined,
+    @Query('ordem') ordem: string | undefined,
     @Req() req: RequisicaoComUsuario,
   ) {
-    return this.contatos.listar(exigirUsuario(req), cursor, limite, q);
+    return this.contatos.listar(exigirUsuario(req), {
+      cursor,
+      limite,
+      q,
+      status,
+      origem,
+      pessoa,
+      consentimento,
+      desde,
+      ate,
+      ordem,
+    });
   }
 
   @Get(':id/auditoria')

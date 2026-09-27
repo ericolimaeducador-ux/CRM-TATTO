@@ -33,7 +33,7 @@ export function PainelConta({
     }
     aoSegredo(resposta.json.dados.segredoBase32);
     aoMensagem(
-      'Segredo pendente. Guarde no aplicativo autenticador e confirme um código válido para ativar.',
+      'Segredo pendente. No autenticador, crie a conta TattooArt com este segredo e confirme um código válido para ativar.',
     );
   }
 
@@ -92,32 +92,20 @@ export function PainelConta({
           O administrador precisa inscrever o autenticador antes de usar o restante.
         </p>
       ) : null}
-      <button
-        type="button"
-        className="min-h-12 rounded-lg border border-stone-900 px-4"
-        onClick={() => void inscrever()}
-      >
+      <button type="button" className="btn-secundario" onClick={() => void inscrever()}>
         Inscrever autenticador
       </button>
-      <button
-        type="button"
-        className="min-h-12 rounded-lg border border-stone-900 px-4"
-        onClick={() => void ativar()}
-      >
+      <button type="button" className="btn-secundario" onClick={() => void ativar()}>
         Ativar autenticador
       </button>
-      <button
-        type="button"
-        className="min-h-12 rounded-lg border border-stone-900 px-4"
-        onClick={() => void confirmarPasso()}
-      >
+      <button type="button" className="btn-secundario" onClick={() => void confirmarPasso()}>
         Confirmar passo extra
       </button>
       <form className="flex flex-col gap-2" onSubmit={(evento) => void trocarSenha(evento)}>
         <label className="flex flex-col gap-1 text-base">
           Senha atual
           <input
-            className="min-h-12 rounded border border-stone-400 px-3"
+            className="campo"
             type="password"
             autoComplete="current-password"
             value={senhaAtual}
@@ -127,22 +115,18 @@ export function PainelConta({
         <label className="flex flex-col gap-1 text-base">
           Senha nova
           <input
-            className="min-h-12 rounded border border-stone-400 px-3"
+            className="campo"
             type="password"
             autoComplete="new-password"
             value={senhaNova}
             onChange={(evento) => setSenhaNova(evento.target.value)}
           />
         </label>
-        <button type="submit" className="min-h-12 rounded-lg border border-stone-900 px-4">
+        <button type="submit" className="btn-secundario">
           Trocar senha
         </button>
       </form>
-      <button
-        type="button"
-        className="min-h-12 rounded-lg border border-stone-900 px-4"
-        onClick={() => void sair()}
-      >
+      <button type="button" className="btn-secundario" onClick={() => void sair()}>
         Sair
       </button>
     </div>

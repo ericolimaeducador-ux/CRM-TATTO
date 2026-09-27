@@ -69,11 +69,7 @@ export function MeuQr() {
           ? 'O titular abre o endereço abaixo. Este modo usa certificado válido, então não precisa instalar certificado no celular. O QR vale duas horas e um cadastro.'
           : 'Quem estiver na mesma rede Wi-Fi abre o endereço deste computador. Nesse modo o celular precisa da CA instalada. O QR vale duas horas e um cadastro.'}
       </p>
-      <button
-        type="button"
-        className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white"
-        onClick={() => void gerar()}
-      >
+      <button type="button" className="btn" onClick={() => void gerar()}>
         Gerar QR de autocadastro
       </button>
       {imagem ? <img alt="QR do autocadastro" className="h-60 w-60" src={imagem} /> : null}
@@ -83,16 +79,12 @@ export function MeuQr() {
         </a>
       ) : null}
       {token ? (
-        <button
-          type="button"
-          className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
-          onClick={() => void revogar()}
-        >
+        <button type="button" className="btn-secundario" onClick={() => void revogar()}>
           Revogar este QR
         </button>
       ) : null}
       {mensagem ? <p className="text-base">{mensagem}</p> : null}
-      <Link className="inline-flex min-h-12 items-center text-base underline" to="/capturar">
+      <Link className="atalho" to="/capturar">
         Voltar para capturar
       </Link>
     </section>

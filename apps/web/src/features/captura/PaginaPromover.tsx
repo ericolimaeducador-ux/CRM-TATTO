@@ -24,7 +24,7 @@ export function PaginaPromover() {
 
   return (
     <section className="flex flex-col gap-4">
-      <Link className="inline-flex min-h-12 items-center text-base underline" to="/contatos">
+      <Link className="atalho" to="/contatos">
         Contatos
       </Link>
       <h1 className="text-2xl font-semibold">Promover a cliente</h1>
@@ -39,14 +39,14 @@ export function PaginaPromover() {
       </p>
       <button
         type="button"
-        className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+        className="btn-secundario"
         onClick={() => void inscrever(setSegredo, setMensagem)}
       >
         Inscrever autenticador deste usuário
       </button>
       <button
         type="button"
-        className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+        className="btn-secundario"
         onClick={() => void ativar(codigo, setMensagem)}
       >
         Ativar autenticador
@@ -71,15 +71,12 @@ export function PaginaPromover() {
             required
             inputMode="numeric"
             autoComplete="one-time-code"
-            className="min-h-12 rounded border border-stone-300 px-3 text-base"
+            className="campo"
             value={codigo}
             onChange={(evento) => setCodigo(evento.target.value)}
           />
         </label>
-        <button
-          type="submit"
-          className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white"
-        >
+        <button type="submit" className="btn">
           Promover {nome} a cliente
         </button>
       </form>

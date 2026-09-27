@@ -20,31 +20,25 @@ export function ListaContatos() {
 
   return (
     <section className="flex flex-col gap-4">
-      <Link className="inline-flex min-h-12 items-center text-base underline" to="/capturar">
+      <Link className="atalho" to="/capturar">
         Captura
       </Link>
       <h1 className="text-2xl font-semibold">Contatos</h1>
       {itens.length === 0 ? <p className="text-base">Nenhum contato neste aparelho.</p> : null}
       <ul className="flex flex-col gap-3">
         {itens.map((item) => (
-          <li key={item.idLocal} className="rounded border border-stone-300 p-3">
+          <li key={item.idLocal} className="cartao">
             <Link className="text-base underline" to={`/contatos/${item.idLocal}`}>
               {rotulo(item)}
             </Link>
             <IndicadorSincronizacao estado={item.estado} />
             {item.idServidor && podeGerir() ? (
-              <Link
-                className="mt-2 inline-flex min-h-12 items-center text-base underline"
-                to={`/promover/${item.idServidor}`}
-              >
+              <Link className="mt-2 atalho" to={`/promover/${item.idServidor}`}>
                 Promover
               </Link>
             ) : null}
             {item.idServidor && podeAuditar() ? (
-              <Link
-                className="mt-2 inline-flex min-h-12 items-center text-base underline"
-                to={`/lead/${item.idServidor}`}
-              >
+              <Link className="mt-2 atalho" to={`/lead/${item.idServidor}`}>
                 Abrir lead
               </Link>
             ) : null}
