@@ -77,6 +77,9 @@ export class AutocadastroService {
         null,
       );
     }
+    // O QR é conferido antes do desafio: um QR vencido, revogado ou já usado mostra o motivo
+    // real e não gasta o desafio que o titular acabou de responder.
+    await this.conferirToken(corpo.token ?? '');
     const captcha = await conferirCaptcha(corpo);
     if (captcha === 'nao_configurado') {
       throw new RespostaComErro(
@@ -126,9 +129,9 @@ export class AutocadastroService {
     return { dados: gravado, avisos: montado.avisos, erros: [] };
   }
 
-  private async reservar(tokenBruto: string): Promise<TokenDoc> {
+  private async conferirToken(tokenBruto: string): Promise<TokenDoc> {
     const token = tokenBruto.trim();
-    const doc = await this.tokens.findOne({ token }).lean<TokenDoc>();
+    const doc = token ? await this.tokens.findOne({ token }).lean<TokenDoc>() : null;
     if (!doc) {
       recusar(
         404,
@@ -146,6 +149,19 @@ export class AutocadastroService {
     if (new Date(doc.expiraEm).getTime() <= Date.now()) {
       recusar(410, 'TOKEN_EXPIRADO', 'Este QR expirou. Peça outro ao vendedor. Nada foi gravado.');
     }
+    if (doc.usos >= doc.limiteUsos) {
+      recusar(
+        410,
+        'TOKEN_ESGOTADO',
+        'Este QR já foi usado. Peça outro ao vendedor. Nada foi gravado.',
+      );
+    }
+    return doc;
+  }
+
+  private async reservar(tokenBruto: string): Promise<TokenDoc> {
+    const token = tokenBruto.trim();
+    const doc = await this.conferirToken(token);
     const reservado = await this.tokens
       .findOneAndUpdate(
         { token, revogadoEm: null, expiraEm: { $gt: new Date() }, usos: { $lt: doc.limiteUsos } },

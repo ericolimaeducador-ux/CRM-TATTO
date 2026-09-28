@@ -10,6 +10,7 @@ import { ContatosModule } from '../contatos/contatos.module';
 import { AuditoriaImutavel } from '../contatos/schemas/erro-nomeado';
 import { garantirIndices } from '../contatos/schemas/registrar-modelos';
 import { LgpdModule } from './lgpd.module';
+import { zerarDesafios } from './captcha';
 import { zerarPedidosPublicos } from './pedidos-publicos';
 import { textoDoTermo } from './texto-termo';
 
@@ -160,6 +161,29 @@ describe('termo de consentimento', () => {
     const depois = await concluir(fresco, 'Revogado');
     expect(depois.status).toBe(410);
     expect(depois.body.erros[0].codigo).toBe('TOKEN_REVOGADO');
+  });
+
+  it('QR vencido diz que venceu e não gasta o desafio respondido', async () => {
+    const token = await emitirQr();
+    const modelo = app.get<Model<{ expiraEm: Date }>>(getModelToken('TokenAutocadastro'));
+    await modelo.updateOne({ token }, { $set: { expiraEm: new Date(Date.now() - 1000) } });
+    const corpo = await comCaptcha(app, { token, nome: 'Vencido', contatoComercial: true });
+    const vencido = await request(app.getHttpServer()).post('/v1/publico/autocadastro').send(corpo);
+    expect(vencido.status).toBe(410);
+    expect(vencido.body.erros[0].codigo).toBe('TOKEN_EXPIRADO');
+    const fresco = await emitirQr();
+    const ok = await request(app.getHttpServer())
+      .post('/v1/publico/autocadastro')
+      .send({ ...corpo, token: fresco });
+    expect(ok.status).toBe(201);
+  });
+
+  it('o desafio respondido vale mesmo se a memória da API sumir no meio do formulário', async () => {
+    const token = await emitirQr();
+    const corpo = await comCaptcha(app, { token, nome: 'Depois Do Sono', contatoComercial: true });
+    zerarDesafios();
+    const ok = await request(app.getHttpServer()).post('/v1/publico/autocadastro').send(corpo);
+    expect(ok.status).toBe(201);
   });
 
   it('não soma o limite de visitantes diferentes atrás do proxy', async () => {
