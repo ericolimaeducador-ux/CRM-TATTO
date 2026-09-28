@@ -16,6 +16,8 @@ interface Usuario {
 export function PaginaUsuarios() {
   const [itens, setItens] = useState<Usuario[]>([]);
   const [mensagem, setMensagem] = useState('');
+  const [mensagemCriacao, setMensagemCriacao] = useState('');
+  const [criando, setCriando] = useState(false);
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
   const [nome, setNome] = useState('');
@@ -27,15 +29,26 @@ export function PaginaUsuarios() {
 
   async function criar(evento: FormEvent) {
     evento.preventDefault();
-    const resposta = await enviar('/v1/usuarios', 'POST', { login, senha, nome, papel });
-    if (!resposta.ok) {
-      setMensagem(textoDaResposta(resposta.json, 'O usuário não foi criado.'));
+    if (criando) return;
+    setCriando(true);
+    setMensagemCriacao('');
+    try {
+      const resposta = await enviar('/v1/usuarios', 'POST', { login, senha, nome, papel });
+      if (!resposta.ok) {
+        // Os campos digitados ficam como estão para corrigir e tentar de novo.
+        setMensagemCriacao(textoDaResposta(resposta.json, 'O usuário não foi criado.'));
+        return;
+      }
+      setLogin('');
+      setSenha('');
+      setNome('');
+      setMensagemCriacao('Usuário criado. A senha não aparece de novo.');
+    } catch {
+      setMensagemCriacao('Sem resposta do servidor. O usuário não foi criado. Tente de novo.');
       return;
+    } finally {
+      setCriando(false);
     }
-    setLogin('');
-    setSenha('');
-    setNome('');
-    setMensagem('Usuário criado. A senha não aparece de novo.');
     await carregar(setItens, setMensagem);
   }
 
@@ -82,9 +95,14 @@ export function PaginaUsuarios() {
             ))}
           </select>
         </Rotulo>
-        <button type="submit" className="btn">
-          Criar usuário
+        <button type="submit" className="btn disabled:opacity-40" disabled={criando}>
+          {criando ? 'Criando…' : 'Criar usuário'}
         </button>
+        {mensagemCriacao ? (
+          <p className="text-base" role="status" data-testid="mensagem-criacao">
+            {mensagemCriacao}
+          </p>
+        ) : null}
       </form>
       <ul className="flex flex-col gap-3">
         {itens.map((item) => (

@@ -44,6 +44,12 @@ export function DesafioCaptcha({
         <span data-testid="pergunta-captcha">{pergunta}</span>
         <input
           className="campo"
+          name="captcha-resposta"
+          autoComplete="off"
+          autoCorrect="off"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={3}
           value={valor}
           onChange={(evento) => aoMudar(evento.target.value)}
         />
