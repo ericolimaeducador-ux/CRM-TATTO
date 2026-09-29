@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Types, type Model } from 'mongoose';
 import { TotpService } from '../auth/totp.service';
 import { enderecoCompleto, type EnderecoMinimo } from '../qualidade/completude';
+import { aplicarCompletude } from './completude-contato';
 import type { Contato } from './schemas/contato.schema';
 import { ContatosService } from './contatos.service';
 import { RespostaComErro } from './erros-http';
@@ -123,8 +124,7 @@ export class TransicaoService {
       };
     }
     if (para === 'capturado') {
-      const score = (doc.completude as { score?: number } | undefined)?.score ?? 0;
-      if (score < 25) {
+      if (scoreAtual(doc) < 25) {
         return {
           codigo: 'CAMPOS_OBRIGATORIOS_TRANSICAO',
           mensagem:
@@ -158,6 +158,19 @@ function transicaoPermitida(de: string, para: string): boolean {
   const origem = SEQUENCIA.indexOf(de as (typeof SEQUENCIA)[number]);
   const destino = SEQUENCIA.indexOf(para as (typeof SEQUENCIA)[number]);
   return origem >= 0 && destino === origem + 1;
+}
+
+/**
+ * Recalcula a completude a partir dos dados, em vez de confiar no campo gravado: registros
+ * antigos (como os do autocadastro antes desta correção) não têm `completude`.
+ */
+function scoreAtual(doc: Record<string, unknown>): number {
+  const copia = JSON.parse(JSON.stringify(doc)) as Record<string, unknown>;
+  copia.status = 'rascunho';
+  const pf = doc.pf as { cpfHash?: string } | undefined;
+  const pj = doc.pj as { cnpjHash?: string } | undefined;
+  aplicarCompletude(copia, Boolean(pf?.cpfHash || pj?.cnpjHash));
+  return (copia.completude as { score: number }).score;
 }
 
 function aptoQualificado(doc: Record<string, unknown>): boolean {
