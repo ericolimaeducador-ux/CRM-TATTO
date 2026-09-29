@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Types, type Model } from 'mongoose';
 import { montarCriacao } from '../contatos/aplicar-campo';
+import { aplicarCompletude } from '../contatos/completude-contato';
 import { RespostaComErro } from '../contatos/erros-http';
 import type { Contato } from '../contatos/schemas/contato.schema';
 import type { UsuarioSessao } from '../contatos/sessao.middleware';
@@ -112,6 +113,11 @@ export class AutocadastroService {
       telefone: corpo.telefone,
       origem: { modo: 'qr_proprio' },
     });
+    // Mesma regra da captura pelo vendedor: nome + telefone (ou e-mail) já passam do limiar
+    // e o lead chega como "capturado", com a completude calculada.
+    aplicarCompletude(montado.doc, montado.documentoValido);
+    montado.doc.avisos = montado.avisos;
+    montado.doc.sincronizadoEm = new Date();
     const contato = new this.contatos(montado.doc) as unknown as DocNovo;
     contato.set('origem.modo', 'qr_proprio');
     contato.set('origem.vendedorAtribuido', token.vendedorId);

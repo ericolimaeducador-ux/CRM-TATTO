@@ -186,6 +186,52 @@ describe('termo de consentimento', () => {
     expect(ok.status).toBe(201);
   });
 
+  it('autocadastro com nome e telefone chega como capturado, com completude, e não volta a rascunho', async () => {
+    const token = await emitirQr();
+    const ok = await postarPublico(app, {
+      token,
+      nome: 'Gabriel Teste',
+      email: 'gabriel@exemplo.com',
+      telefone: '11987654321',
+      contatoComercial: true,
+    });
+    expect(ok.status).toBe(201);
+    expect(ok.body.dados.status).toBe('capturado');
+    expect(ok.body.dados.completude.score).toBeGreaterThanOrEqual(25);
+    const pular = await request(app.getHttpServer())
+      .post(`/v1/contatos/${ok.body.dados._id}/transicao`)
+      .set(cabecalho('gestor', GESTOR))
+      .send({ para: 'rascunho' });
+    expect(pular.status).toBe(422);
+    expect(pular.body.erros[0].codigo).toBe('TRANSICAO_INVALIDA');
+  });
+
+  it('rascunho antigo do autocadastro, sem completude gravada, passa a capturado', async () => {
+    const token = await emitirQr();
+    const ok = await postarPublico(app, {
+      token,
+      nome: 'Legado Autocadastro',
+      telefone: '11912345678',
+      contatoComercial: true,
+    });
+    const modelo = app.get<Model<unknown>>(getModelToken('Contato'));
+    await modelo.collection.updateOne(
+      { _id: new Types.ObjectId(String(ok.body.dados._id)) },
+      { $set: { status: 'rascunho' }, $unset: { completude: '' } },
+    );
+    const lido = await request(app.getHttpServer())
+      .get(`/v1/contatos/${ok.body.dados._id}`)
+      .set(cabecalho('admin', GESTOR));
+    expect(lido.status).toBe(200);
+    expect(lido.body.dados.status).toBe('rascunho');
+    const capturado = await request(app.getHttpServer())
+      .post(`/v1/contatos/${ok.body.dados._id}/transicao`)
+      .set(cabecalho('gestor', GESTOR))
+      .send({ para: 'capturado' });
+    expect(capturado.status).toBe(201);
+    expect(capturado.body.dados.status).toBe('capturado');
+  });
+
   it('não soma o limite de visitantes diferentes atrás do proxy', async () => {
     const http = app.getHttpAdapter().getInstance() as {
       set: (chave: string, valor: unknown) => void;
