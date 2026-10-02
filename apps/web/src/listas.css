@@ -186,3 +186,69 @@
     background: #3f1d1d;
   }
 }
+
+.inscricao-totp {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  scroll-margin-top: 1rem;
+  border: 1px solid var(--linha);
+  border-top: 4px solid var(--bronze);
+  border-radius: var(--raio);
+  background: var(--superficie);
+  padding: 1.1rem 1rem;
+  box-shadow: var(--sombra);
+}
+
+.inscricao-totp h2 {
+  color: var(--petrol);
+}
+
+.passo-totp {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.passo-rotulo {
+  font-family: 'Josefin Sans', 'Century Gothic', 'Trebuchet MS', sans-serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lilas);
+}
+
+.qr-totp {
+  align-self: center;
+  width: 12.5rem;
+  height: 12.5rem;
+  border-radius: 0.75rem;
+  background: #fff;
+  padding: 0.35rem;
+}
+
+.chave-totp {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  justify-content: center;
+  gap: 0.25rem 0.85rem;
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.05em;
+  user-select: all;
+  border: 1px dashed var(--bronze);
+  border-radius: 0.9rem;
+  background: var(--fundo);
+  padding: 0.6rem 0.75rem;
+}
+
+.lista-passos {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style: decimal;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}

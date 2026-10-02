@@ -48,6 +48,9 @@ describe('sessão, TOTP obrigatório e senha', () => {
     expect(inscricao.status).toBe(201);
     expect(inscricao.body.dados.pendente).toBe(true);
     const segredo = inscricao.body.dados.segredoBase32 as string;
+    expect(inscricao.body.dados.otpauth).toBe(
+      `otpauth://totp/TattooArt:lia?secret=${segredo}&issuer=TattooArt&digits=6&period=30`,
+    );
     const ainda = await request(app.getHttpServer())
       .post('/v1/auth/entrar')
       .send({ login: 'lia', senha: 'senha-bem-longa' });

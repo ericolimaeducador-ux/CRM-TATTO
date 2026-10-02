@@ -30,7 +30,6 @@ export function PaginaEntrar() {
   const [codigo, setCodigo] = useState('');
   const [mensagem, setMensagem] = useState('');
   const [token, setToken] = useState(tokenDaSessao);
-  const [segredo, setSegredo] = useState('');
 
   async function entrar(evento: FormEvent) {
     evento.preventDefault();
@@ -62,7 +61,10 @@ export function PaginaEntrar() {
     }
     setToken(json.dados.token);
     setMensagem(`Entrou como ${usuario?.nome ?? login}.`);
-    if (usuario?.papel === 'admin' || usuario?.papel === 'gestor') navegar('/cadastros');
+    // No primeiro acesso do administrador a inscrição do autenticador vem antes de tudo:
+    // fica nesta tela, onde está o botão Inscrever autenticador.
+    const gerente = usuario?.papel === 'admin' || usuario?.papel === 'gestor';
+    if (gerente && json.dados.precisaInscreverTotp !== true) navegar('/cadastros');
   }
 
   return (
@@ -115,19 +117,10 @@ export function PaginaEntrar() {
             codigo={codigo}
             pendente={totpPendenteLocal()}
             aoMensagem={setMensagem}
-            aoSegredo={setSegredo}
-            aoSair={() => {
-              setToken('');
-              setSegredo('');
-            }}
+            aoSair={() => setToken('')}
           />
         ) : null}
         {token && !totpPendenteLocal() ? <PainelPlanilha aoMensagem={setMensagem} /> : null}
-        {segredo ? (
-          <p className="break-all text-base" data-testid="segredo-totp">
-            {segredo}
-          </p>
-        ) : null}
         {mensagem ? (
           <p className="toast" role="status">
             {mensagem}

@@ -2,28 +2,29 @@ import { FormEvent, useState } from 'react';
 import { fetchComAcordar } from '@/lib/acordar';
 import { urlDaApi } from '@/lib/api-url';
 import { cabecalhosDaSessao, limparSessao, marcarTotpPendente } from '@/lib/offline/sessao';
+import { InscricaoTotp, type DadosInscricao } from './InscricaoTotp';
 
 interface RespostaJson {
   mensagem?: string;
   erros?: { mensagem?: string }[];
-  dados?: { segredoBase32?: string; pendente?: boolean };
+  dados?: { segredoBase32?: string; otpauth?: string; pendente?: boolean };
 }
 
 export function PainelConta({
   codigo,
   pendente,
   aoMensagem,
-  aoSegredo,
   aoSair,
 }: {
   codigo: string;
   pendente: boolean;
   aoMensagem: (texto: string) => void;
-  aoSegredo: (segredo: string) => void;
   aoSair: () => void;
 }) {
   const [senhaAtual, setSenhaAtual] = useState('');
   const [senhaNova, setSenhaNova] = useState('');
+  const [inscricao, setInscricao] = useState<DadosInscricao | null>(null);
+  const [geracao, setGeracao] = useState(0);
 
   async function inscrever() {
     const resposta = await chamar('/v1/auth/totp/inscrever', { codigoTotp: codigo || undefined });
@@ -31,19 +32,23 @@ export function PainelConta({
       aoMensagem(textoDe(resposta?.json, 'O autenticador não foi inscrito.'));
       return;
     }
-    aoSegredo(resposta.json.dados.segredoBase32);
-    aoMensagem(
-      'Segredo pendente. No autenticador, crie a conta TattooArt com este segredo e confirme um código válido para ativar.',
-    );
+    setInscricao({
+      segredo: resposta.json.dados.segredoBase32,
+      otpauth: resposta.json.dados.otpauth ?? '',
+    });
+    setGeracao((valor) => valor + 1);
+    // O bloco com os passos já é a resposta; um aviso flutuante cobriria as instruções.
+    aoMensagem('');
   }
 
-  async function ativar() {
-    const resposta = await chamar('/v1/auth/totp/ativar', { codigoTotp: codigo });
+  async function ativar(codigoInformado: string) {
+    const resposta = await chamar('/v1/auth/totp/ativar', { codigoTotp: codigoInformado });
     if (!resposta?.ok) {
       aoMensagem(textoDe(resposta?.json, 'O autenticador não foi ativado.'));
       return;
     }
     marcarTotpPendente(false);
+    setInscricao(null);
     aoMensagem('Autenticador ativado.');
   }
 
@@ -85,6 +90,8 @@ export function PainelConta({
     aoMensagem('Senha trocada. As outras sessões foram encerradas.');
   }
 
+  const focoNaInscricao = pendente || inscricao !== null;
+
   return (
     <div className="flex flex-col gap-3">
       {pendente ? (
@@ -92,40 +99,62 @@ export function PainelConta({
           O administrador precisa inscrever o autenticador antes de usar o restante.
         </p>
       ) : null}
-      <button type="button" className="btn-secundario" onClick={() => void inscrever()}>
+      <button
+        type="button"
+        className={pendente && !inscricao ? 'btn' : 'btn-secundario'}
+        onClick={() => void inscrever()}
+      >
         Inscrever autenticador
       </button>
-      <button type="button" className="btn-secundario" onClick={() => void ativar()}>
-        Ativar autenticador
-      </button>
-      <button type="button" className="btn-secundario" onClick={() => void confirmarPasso()}>
-        Confirmar passo extra
-      </button>
-      <form className="flex flex-col gap-2" onSubmit={(evento) => void trocarSenha(evento)}>
-        <label className="flex flex-col gap-1 text-base">
-          Senha atual
-          <input
-            className="campo"
-            type="password"
-            autoComplete="current-password"
-            value={senhaAtual}
-            onChange={(evento) => setSenhaAtual(evento.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-base">
-          Senha nova
-          <input
-            className="campo"
-            type="password"
-            autoComplete="new-password"
-            value={senhaNova}
-            onChange={(evento) => setSenhaNova(evento.target.value)}
-          />
-        </label>
-        <button type="submit" className="btn-secundario">
-          Trocar senha
+      {inscricao ? (
+        <InscricaoTotp
+          key={geracao}
+          dados={inscricao}
+          codigoInicial=""
+          aoAtivar={(valor) => void ativar(valor)}
+        />
+      ) : (
+        <button type="button" className="btn-secundario" onClick={() => void ativar(codigo)}>
+          Ativar autenticador
         </button>
-      </form>
+      )}
+      {inscricao && !pendente ? (
+        <button type="button" className="btn-secundario" onClick={() => setInscricao(null)}>
+          Fechar sem ativar
+        </button>
+      ) : null}
+      {focoNaInscricao ? null : (
+        <>
+          <button type="button" className="btn-secundario" onClick={() => void confirmarPasso()}>
+            Confirmar passo extra
+          </button>
+          <form className="flex flex-col gap-2" onSubmit={(evento) => void trocarSenha(evento)}>
+            <label className="flex flex-col gap-1 text-base">
+              Senha atual
+              <input
+                className="campo"
+                type="password"
+                autoComplete="current-password"
+                value={senhaAtual}
+                onChange={(evento) => setSenhaAtual(evento.target.value)}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-base">
+              Senha nova
+              <input
+                className="campo"
+                type="password"
+                autoComplete="new-password"
+                value={senhaNova}
+                onChange={(evento) => setSenhaNova(evento.target.value)}
+              />
+            </label>
+            <button type="submit" className="btn-secundario">
+              Trocar senha
+            </button>
+          </form>
+        </>
+      )}
       <button type="button" className="btn-secundario" onClick={() => void sair()}>
         Sair
       </button>

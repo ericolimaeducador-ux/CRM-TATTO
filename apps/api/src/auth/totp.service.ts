@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import type { Model } from 'mongoose';
+import { Types, type Model } from 'mongoose';
 import { RespostaComErro } from '../contatos/erros-http';
 import { cifrar, decifrar } from '../seguranca/cifra';
 import {
@@ -67,7 +67,20 @@ const FRASES: Record<
 
 @Injectable()
 export class TotpService {
-  constructor(@InjectModel('UsuarioTotp') private readonly usuarios: Model<DocumentoTotp>) {}
+  constructor(
+    @InjectModel('UsuarioTotp') private readonly usuarios: Model<DocumentoTotp>,
+    @InjectModel('Usuario') private readonly contas: Model<{ login?: string }>,
+  ) {}
+
+  /** Nome que aparece no autenticador: o login do usuário; o id só se não houver login. */
+  private async rotuloDaConta(usuarioId: string): Promise<string> {
+    if (!Types.ObjectId.isValid(usuarioId)) return usuarioId;
+    const conta = await this.contas
+      .findById(usuarioId, { login: 1 })
+      .lean<{ login?: string } | null>()
+      .catch(() => null);
+    return conta?.login?.trim() || usuarioId;
+  }
 
   async inscrever(usuarioId: string, opcoes: OpcoesInscricao = {}): Promise<InscricaoTotp> {
     const existente = await this.usuarios.findOne({ usuarioId }).lean<DocumentoTotp | null>();
@@ -95,10 +108,11 @@ export class TotpService {
       { $set: { usuarioId, segredoPendenteCifrado: cifrar(segredoBase32) } },
       { upsert: true },
     );
+    const rotulo = encodeURIComponent(await this.rotuloDaConta(usuarioId));
     return {
       segredoBase32,
       pendente: true,
-      otpauth: `otpauth://totp/TattooArt:${usuarioId}?secret=${segredoBase32}&issuer=TattooArt&digits=6&period=30`,
+      otpauth: `otpauth://totp/TattooArt:${rotulo}?secret=${segredoBase32}&issuer=TattooArt&digits=6&period=30`,
     };
   }
 

@@ -4,9 +4,15 @@ import { SessaoMiddleware } from '../contatos/sessao.middleware';
 import { TotpController } from './totp.controller';
 import { TotpService } from './totp.service';
 import { usuarioTotpSchema } from './usuario-totp.schema';
+import { usuarioSchema } from './usuario.schema';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: 'UsuarioTotp', schema: usuarioTotpSchema }])],
+  imports: [
+    MongooseModule.forFeature([
+      { name: 'UsuarioTotp', schema: usuarioTotpSchema },
+      { name: 'Usuario', schema: usuarioSchema },
+    ]),
+  ],
   controllers: [TotpController],
   providers: [TotpService],
   exports: [TotpService],
