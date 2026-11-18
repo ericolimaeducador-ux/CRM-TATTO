@@ -13,3 +13,7 @@ apps/web/dev-dist/
 test-results/
 playwright-report/
 infra/backup/saida/
+ca.crt
+.graphify/
+.playwright-mcp/
+*.archive.gz

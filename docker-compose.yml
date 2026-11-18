@@ -19,7 +19,7 @@ services:
     environment:
       NODE_ENV: production
       CAPTURA7_TRUST_PROXY_SALTOS: '1'
-      MONGO_URI: mongodb://mongo:27017/captura7
+      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017/captura7}
       PORT: '3000'
       SEGREDOS_ARQUIVO: /segredos/captura7.env
       CAPTCHA_PROVEDOR: ${CAPTCHA_PROVEDOR:-local}

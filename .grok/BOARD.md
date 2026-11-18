@@ -28,13 +28,21 @@ _(vazio — F3-02 foi para FEITO com a autorização de 26/09/2026)_
 
 ## EM CURSO
 
-_(vazio)_
+_(vazio — TV-16 aprovado e movido para FEITO)_
+
+
+
 
 ## EM REVISÃO
 
-_(vazio)_
+_(vazio — TV-16 não permanece em revisão)_
 
 ## FEITO
+
+- `[TV-16]` Portão de revisão da paridade local — **@REV-11** — aceite: rever calendário São Paulo e regressão pós-TV-18 — dep: [TV-15, TV-17, TV-18] — APROVADO COM RESSALVAS para uso local: API 162/37, focal de fuso 3/3, E2E 10/10, lint completo e build produção final aprovados; Docker API/Mongo saudáveis e web redireciona HTTP→HTTPS; volume/dados persistidos (usuários 1, documentos comerciais 0). Web 39/17 é baseline anterior; suíte web não repetida no fechamento TV-18
+- `[TV-18]` Alinhar janela de relatório ao fuso de São Paulo — **@API-03** + **@QA-09** — aceite: dias civis inclusivos America/Sao_Paulo, fronteira 23:30/00:00 preservada — dep: [TV-14, TV-17] — FEITO: focal 3/3, API completa 162 testes/37 suítes, E2E 10/10, lint e build produção final; ADR-015
+- `[TV-15]` Regressão dos módulos novos e antigos — **@QA-09** — aceite: carteira, preços, QR, participantes, proposta, relatórios e captura offline preservados — dep: [TV-14A, TV-13A, TV-18] — FEITO: API pós-TV-18 162/37, E2E 10/10, focal de fuso 3/3, lint completo e build produção final aprovados; web 39/17 é baseline anterior sem alteração funcional desde então
+
 
 - `[F0-01]` Bootstrap do repositório (monorepo pnpm, apps/api + apps/web, Docker Compose, lint, husky) — **@OPS-10** — aceite: `docker compose up` sobe api+web+mongo e `pnpm build` passa nos dois apps — dep: [] — observação: `pnpm lint` e `pnpm build` verdes neste host; o Compose só subiu os três serviços depois de regra ACCEPT no bridge (iptables-legacy do host, fora do repositório). Critério de máquina limpa não ficou verde
 - `[F0-02]` Schemas Mongoose `Contato` e `ContatoAuditoria` + índices — **@ARQ-02** — aceite: os 5 critérios listados abaixo — dep: [F0-01] — observação: critérios verdes contra MongoDB 7 em memória na suíte do F0-05. Índice parcial usa `$in` (ADR-007)
@@ -68,6 +76,29 @@ _(vazio)_
 - `[T-05]` Bateria do termo e regressão das fases anteriores — **@QA-09** — aceite: lint, build, Jest, Vitest, Playwright e varredura de segredos executados neste host — dep: [T-03, T-04] — observação: Jest 18/93, Vitest 7/15, Playwright 7, varredura limpa, em 2026-09-26
 - `[T-06]` Portão do ciclo do termo — **@REV-11** — aceite: veredito consolidado em PROGRESS_FASE_TERMO.md — dep: [T-05] — observação: APROVADO COM RESSALVAS. O portão prepara revisão e não substitui revisão humana. Parada deste ciclo.
 - `[F3-02]` Exportação CSV/XLSX com log de exportação (quem levou qual base, quando) — **@INT-06** + **@SEC-07** — aceite: administrador com passo extra baixa CSV e XLSX filtrados e a trilha guarda autor, formato e hora — dep: [F3-01] — observação: autorização de 26/09/2026 17h26 BRT; JSON ficou de fora; ADR-010
+- `[TV-01]` Contrato e persistência do CRM B2B — **@ARQ-02** — aceite: ADR-011 e entidades de contas, produtos, oportunidades, atividades e propostas; nenhuma migração destrutiva da base existente — dep: [] — observação: coleção `tela_viva_comercial` aditiva, sem seed; base antiga preservada
+- `[TV-02]` API comercial e segurança — **@API-03** — aceite: CRUD autenticado, escopo de carteira, totais calculados no servidor, auditoria e controle de versão; testes de permissões e transições — dep: [TV-01] — observação: coberto na regressão de 132 testes API
+- `[TV-06]` Integridade da captura offline — **@SCAN-05** — aceite: edição durante criação remota permanece na fila; commit IndexedDB confirmado antes de prometer gravação; regressões automatizadas — dep: [TV-02] — observação: 6 testes IndexedDB/sincronização verdes; captura, avião e fila presa cobertos no E2E
+- `[TV-03]` Identidade Tela Viva e interface comercial responsiva — **@UI-04** — aceite: painel, contas, funil, agenda, catálogo e propostas conectados à API; captura e QR preservados; estados vazios/erro/rede explícitos — dep: [TV-02] — observação: responsivo, marca oficial; comercial autenticado online e captura offline
+- `[TV-04]` Regressão e validação — **@QA-09** — aceite: executar lint, build, testes e verificar fluxos comerciais e captura; registrar limitações — dep: [TV-03] — observação: API132, web34, E2E9, lint e build de produção aprovados em 16/11/2026
+- `[TV-07]` Arte oficial para camiseta preta — **@UI-04** — aceite: logo claro original com slogan, SVG autossuficiente e PNG transparente 6000×1800, preview preto; sem alteração da marca — dep: [TV-03] — observação: PNG 30×9 cm a 508 dpi, alpha conferido e preview visual revisado
+- `[TV-05]` Portão e documentação — **@REV-11** — aceite: parecer em PROGRESS_FASE_TELA_VIVA.md e instruções de uso com escopo e limites explícitos — dep: [TV-04] — observação: aprovado para uso local com ressalvas; teste físico de câmera, integrações externas e transação da fusão histórica não cobertos
+
+### Paridade com o vídeo de treinamento — ciclo local
+
+- `[TV-08]` Contrato aditivo de contatos, preços negociados, treinamentos e participantes — **@ARQ-02** — aceite: relacionamentos e índices documentados; compatibilidade com coleção e auditoria preservada; sem migração destrutiva — dep: [TV-05] — concluído; schema aditivo, Prettier passou, sem migração necessária
+- `[TV-09]` API para contatos de conta, negociação/aprovação de preços e realização de tarefas — **@API-03** + **@SEC-07** — aceite: escopo por carteira, gestor aprova/reprova com motivo, transições válidas e histórico de alterações auditado — dep: [TV-08] — concluído; testes comerciais e regressão TV-15 passaram; ressalva de responsável resolvida no TV-17: servidor valida usuário ativo e papel comercial
+- `[TV-10A]` Diretório mínimo da equipe para atribuição de tarefas — **@SEC-07** — aceite: endpoint autenticado para vendedor/gestor/admin retorna só ID, nome, papel e ativo; sem login/senha e sem exibir usuários inativos — dep: [TV-09] — FEITO; leitura mínima auditada, build e ESLint da API passaram
+- `[TV-10]` Interface de contatos, negociação de preços e tarefas atribuídas — **@UI-04** — aceite: fluxos móveis integrados à API; contatos padrão elegíveis para proposta; conclusão de tarefa registra realização — dep: [TV-09, TV-10A] — implementação e QA TV-15 concluídos; atribuição usa diretório ativo e validação de existência/estado na API desde TV-17
+- `[TV-11A]` Índice único parcial de participantes por treinamento/e-mail hash — **@ARQ-02** — aceite: inscrições duplicadas no mesmo evento são barradas pelo Mongo; duplicata em outro evento continua permitida; hash somente, sem indexar e-mail em claro — dep: [TV-10] — FEITO; índices aditivos, Prettier passou, sem migração
+- `[TV-11]` API de treinamentos, participantes e QR de inscrição/presença — **@API-03** + **@SEC-07** — aceite: QR limitado ao evento, consulta pública whitelist, rate limit, inscrição idempotente e presença autenticada/auditada — dep: [TV-11A] — FEITO; API build/lint passaram; rate limit em memória é adequado somente ao ambiente local
+- `[TV-11B]` Reforço de autorização/auditoria de participantes e exportação — **@API-03** + **@SEC-07** — aceite: vendedor não marca confirmado/presente; leitura de lista registrada em acessos_dados; CSV/XLSX só gestor/admin com TOTP e linha em auditoria_exportacao — dep: [TV-11] — FEITO; API build/lint passaram
+- `[TV-12B]` Exportação de participantes pela interface com TOTP — **@UI-04** — aceite: botão de CSV/XLSX só para gestor/admin; código TOTP validado no servidor antes do download; arquivo obtido apenas da rota protegida — dep: [TV-11B] — implementação e QA TV-15 concluídos; fluxo validado por E2E
+- `[TV-13]` Auditoria do preparo de proposta para e-mail — **@API-03** + **@INT-06** — aceite: rota autenticada confirma conta e contato ativo e grava em trilha que o rascunho foi solicitado; não afirma que foi enviado — dep: [TV-12B] — FEITO; API build/lint passaram
+- `[TV-14]` Endpoint agregado de relatórios comerciais — **@API-03** — aceite: filtros de período e carteira/representante retornam apenas totais de atividades, oportunidades, propostas, treinamentos e inscrições; trilha de acesso sem PII — dep: [TV-13A] — FEITO; API build/lint passaram
+- `[TV-14A]` Tela de relatórios com período e representante — **@UI-04** — aceite: dashboard agregado usa endpoint TV-14, filtra datas, respeita papel/carteira, não exibe PII nem exporta lista localmente — dep: [TV-14] — implementado; QA funcional 5/5 componente e E2E QR→relatório em 360px passaram
+- `[TV-13A]` Interface abre rascunho de e-mail após registrar solicitação — **@UI-04** — aceite: POST de auditoria precede `mailto`; mensagem diz rascunho preparado, não enviado; contato inativo/ausente bloqueia a ação — dep: [TV-13] — implementado e coberto por QA TV-15; permanece sem SMTP/envio automático
+- `[TV-12]` Interface de treinamentos, participantes, QR e presença — **@UI-04** — aceite: criar/editar evento, vincular conta/oportunidade, consultar participantes e confirmar presença — dep: [TV-11] — implementação e QA TV-15 concluídos, incluindo inscrição QR e viewport 360px
 
 **Critérios de aceite de `F0-02`:**
 1. Salvar `{ nome: "Ana" }` persiste sem erro de validação

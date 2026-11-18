@@ -28,7 +28,7 @@ test('lead em avião reabre e chega ao servidor sem duplicata', async ({
   const sessao = await reaberta.evaluate(() => localStorage.getItem('captura7.sessao'));
   expect(sessao).toBeTruthy();
   const dados = JSON.parse(sessao ?? '') as { id: string; papel: string; nome: string };
-  const lista = await request.get('http://127.0.0.1:3000/v1/contatos?limite=100', {
+  const lista = await request.get('http://127.0.0.1:3101/v1/contatos?limite=100', {
     headers: {
       'x-papel-teste': dados.papel,
       'x-usuario-id': dados.id,

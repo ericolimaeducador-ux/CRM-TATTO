@@ -11,7 +11,8 @@ test('item preso na fila mostra alerta e exportação', async ({ page, context }
   await page.getByRole('button', { name: 'Digitar' }).click();
   await page.getByLabel('Nome').fill('Preso Aqui');
   await expect(page.locator('[data-estado]').first()).toBeVisible();
-  await page.getByRole('link', { name: 'Captura' }).click();
+  await page.getByRole('link', { name: 'Captura', exact: true }).click();
+  await page.getByRole('button', { name: 'Abrir menu' }).click();
   await page.getByRole('link', { name: 'Fila' }).click();
   await expect(page.getByText('Este registro está preso na fila.')).toBeVisible({
     timeout: 60_000,

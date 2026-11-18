@@ -1,7 +1,15 @@
-import { useEffect } from 'react';
+﻿import { useEffect } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import { BarraSincronizacao } from './features/captura/BarraSincronizacao';
-import { Menu } from './features/captura/Menu';
+import { DetalheConta } from './features/comercial/DetalheConta';
+import { Layout } from './features/comercial/Layout';
+import { PainelComercial } from './features/comercial/PainelComercial';
+import { PaginaRegistros } from './features/comercial/PaginaRegistros';
+import { PaginaPrecosCliente } from './features/comercial/PaginaPrecosCliente';
+import { PaginaTreinamentos } from './features/comercial/PaginaTreinamentos';
+import { DetalheTreinamento } from './features/comercial/DetalheTreinamento';
+import { InscricaoTreinamento } from './features/comercial/InscricaoTreinamento';
+import { PaginaRelatorios } from './features/comercial/PaginaRelatorios';
+
 import { PaginaBusca } from './features/captura/PaginaBusca';
 import { PaginaLead } from './features/captura/PaginaLead';
 import { PaginaUsuarios } from './features/captura/PaginaUsuarios';
@@ -27,11 +35,26 @@ export function App() {
   }, []);
   return (
     <BrowserRouter basename={basename}>
-      <main className="mx-auto min-h-screen w-full max-w-xl p-4">
-        <BarraSincronizacao />
-        <Menu />
+      <Layout>
         <Routes>
-          <Route path="/" element={<TelaCaptura />} />
+          <Route path="/" element={<PainelComercial />} />
+          <Route path="/carteira/:id" element={<DetalheConta />} />
+          <Route path="/carteira" element={<PaginaRegistros key="contas" secao="contas" />} />
+          <Route path="/agenda" element={<PaginaRegistros key="atividades" secao="atividades" />} />
+          <Route
+            path="/oportunidades"
+            element={<PaginaRegistros key="oportunidades" secao="oportunidades" />}
+          />
+          <Route path="/produtos" element={<PaginaRegistros key="produtos" secao="produtos" />} />
+          <Route path="/precos" element={<PaginaPrecosCliente />} />
+          <Route path="/treinamentos" element={<PaginaTreinamentos />} />
+          <Route path="/relatorios" element={<PaginaRelatorios />} />
+          <Route path="/treinamentos/:id" element={<DetalheTreinamento />} />
+          <Route path="/inscricao-treinamento/:token" element={<InscricaoTreinamento />} />
+          <Route
+            path="/propostas"
+            element={<PaginaRegistros key="propostas" secao="propostas" />}
+          />
           <Route path="/entrar" element={<PaginaEntrar />} />
           <Route path="/capturar" element={<TelaCaptura />} />
           <Route path="/capturar/qr" element={<PaginaQr />} />
@@ -48,7 +71,7 @@ export function App() {
           <Route path="/p/:token" element={<PaginaAutocadastro />} />
           <Route path="/contatos/:idLocal/termo" element={<PaginaConsentimento />} />
         </Routes>
-      </main>
+      </Layout>
     </BrowserRouter>
   );
 }

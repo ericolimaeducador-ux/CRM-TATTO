@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+﻿import { createHash, randomBytes } from 'node:crypto';
 import { Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Types, type Model } from 'mongoose';
@@ -56,7 +56,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       throw new RespostaComErro(
         429,
         'LOGIN_BLOQUEADO',
-        'Muitas senhas erradas. Espere quinze minutos. Nada foi aberto.',
+        'Muitas tentativas de acesso inválidas. Espere quinze minutos. Nada foi aberto.',
         null,
       );
     }
@@ -70,7 +70,6 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
         null,
       );
     }
-    FALHAS.delete(login);
     const usuarioId = String(usuario._id);
     const inscrito = await this.totp.inscrito(usuarioId);
     let stepUpAte: Date | null = null;
@@ -85,10 +84,12 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       }
       const veredito = await this.totp.confirmar(usuarioId, codigoTotp);
       if (!veredito.aceito) {
+        this.registrarFalha(login);
         throw new RespostaComErro(403, veredito.codigo, veredito.mensagem, null);
       }
       stepUpAte = new Date(Date.now() + 5 * 60_000);
     }
+    FALHAS.delete(login);
     const token = randomBytes(32).toString('base64url');
     const expiraEm = new Date(Date.now() + 12 * 60 * 60 * 1000);
     await this.sessoes.create({
@@ -134,8 +135,10 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       .lean<SessaoDoc | null>();
     if (!sessao || new Date(sessao.expiraEm).getTime() <= Date.now()) return null;
     const stepUp = sessao.stepUpAte != null && new Date(sessao.stepUpAte).getTime() > Date.now();
-    const totpPendente = sessao.papel === 'admin' && !(await this.totp.inscrito(sessao.usuarioId));
-    return { id: sessao.usuarioId, papel: sessao.papel, nome: sessao.nome, stepUp, totpPendente };
+    const usuario = await this.usuarios.findById(sessao.usuarioId).lean<UsuarioDoc | null>();
+    if (!usuario || usuario.ativo === false) return null;
+    const totpPendente = usuario.papel === 'admin' && !(await this.totp.inscrito(sessao.usuarioId));
+    return { id: sessao.usuarioId, papel: usuario.papel, nome: usuario.nome, stepUp, totpPendente };
   }
 
   async sair(token: string): Promise<void> {

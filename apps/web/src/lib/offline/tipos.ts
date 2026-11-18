@@ -17,6 +17,7 @@ export interface ContatoLocal {
     estado: 'local' | 'enviado';
   };
   conflito?: {
+    operacaoId?: string;
     campo: string;
     valorLocal: string;
     valorServidor: Record<string, unknown>;

@@ -1,6 +1,6 @@
-# Instalar o captura7 no Windows
+# Instalar o Tela Viva no Windows
 
-Este guia é para usar o captura7 no seu computador. O aplicativo não precisa de empresa, CNPJ nem de internet de nuvem. Os dados ficam nesta máquina.
+Este guia é para usar o Tela Viva no seu computador. O aplicativo usa a identidade da JSETTE7, conforme os dados oficiais da Tela Viva. Os dados ficam nesta máquina; não é necessário um banco em nuvem.
 
 Há dois caminhos. O primeiro usa o Docker Desktop e é o que instala o aplicativo no celular. O segundo usa Node e MongoDB, sem Docker.
 
@@ -169,7 +169,7 @@ Este caminho abre o site em HTTP. O navegador do celular funciona. O botão de i
 
 ## Planilha do Google
 
-No Google Planilhas: Arquivo, Fazer download, Valores separados por vírgula (.csv) ou planilha Excel (.xlsx). No captura7, entre como gestor ou administrador, cole o texto ou escolha o arquivo em **Arquivo CSV ou XLSX** e toque em **Importar planilha**. Linha com o mesmo e-mail, telefone, CPF ou CNPJ é pulada. Linha só com nome igual a um cadastro que também só tem nome é pulada. O mesmo nome em outra empresa entra como novo. Não há fusão automática. A origem fica `importado`.
+No Google Planilhas: Arquivo, Fazer download, Valores separados por vírgula (.csv) ou planilha Excel (.xlsx). No Tela Viva, entre como gestor ou administrador, cole o texto ou escolha o arquivo em **Arquivo CSV ou XLSX** e toque em **Importar planilha**. Linha com o mesmo e-mail, telefone, CPF ou CNPJ é pulada. Linha só com nome igual a um cadastro que também só tem nome é pulada. O mesmo nome em outra empresa entra como novo. Não há fusão automática. A origem fica `importado`.
 
 ## Exportar
 

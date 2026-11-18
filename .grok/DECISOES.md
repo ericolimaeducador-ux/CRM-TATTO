@@ -213,3 +213,69 @@ reprocessamento da coleção — documentar o procedimento antes de produção.
 **Consequências.** A ADR-008 segue valendo para a captura de campo: rascunho com consentimento pendente não libera contato comercial. Esta ADR substitui, neste uso pessoal, o bloqueio de exportação, o bloqueio de uso do lead importado, a ausência de login e os placeholders do termo. A subchave HKDF do pepper continua pendente, como na ADR-009. O Compose assina o certificado do site com uma CA local (`ca.crt`), com SAN para `localhost`, `127.0.0.1` e os IPs em `CERT_IPS`. O celular e o computador precisam instalar essa CA. No iPhone, a confiança total fica em Ajustes, Geral, Sobre, Certificados Confiáveis. Visitante do QR na mesma rede precisa da mesma CA: um IP privado não recebe certificado de uma autoridade pública. Sem a CA instalada, o aviso do navegador continua e o aplicativo offline pode não instalar. O caminho sem Docker carrega o `.env` da raiz ao subir `node dist/main.js`, sem cobrir variável que o processo já tenha.
 
 **Status.** aceito · 2026-09-26
+
+---
+
+## ADR-011 — Tela Viva: CRM para representantes de saúde
+
+**Contexto.** Em 16/11/2026 o usuário pediu a reformulação do CRM como Tela Viva, inspirado no setor farmacêutico e de produtos médicos, e confirmou o foco em representantes comerciais gerenciando carteiras e visitas.
+
+**Decisão.** Preservar React/Vite PWA, NestJS, MongoDB, sessões, contatos e captura permissiva. Acrescentar um módulo comercial aditivo com contas/instituições, produtos representados, oportunidades por etapa, visitas/tarefas e propostas com itens. As entidades comerciais ficam separadas da captura e não migram nem apagam contatos existentes. A conta registra segmento, cidade, UF, especialidade/área, responsável e próxima ação; produtos registram linha, fabricante, categoria, unidade e preço de referência. Campos setoriais são metadados comerciais voluntários, sem alegação de validação regulatória.
+
+A API aplica autoria do servidor, carteira do representante, leitura de gestão/auditoria conforme perfil e versionamento otimista. Toda mutação comercial guarda evento de auditoria append-only junto ao próprio registro (operação atômica de documento), sem valores pessoais em claro na trilha. Arquivamento é lógico. Valores monetários são calculados em centavos no servidor; propostas são rascunhos internos, com impressão local, sem envio externo automático. O dashboard usa dados reais e estados vazios, sem seed de produção. Sem sessão ou sem rede, as telas comerciais explicam o estado; captura e fila offline permanecem disponíveis. Operações comerciais novas exigem rede, sem simular sincronização offline que não existe.
+
+**Alternativas consideradas.** Reescrever todo o armazenamento destruiria compatibilidade; implementar um ERP/estoque/faturamento ou prontuário extrapolaria o pedido. Publicação externa e mudança do controlador/termo não são parte da reformulação local.
+
+**Consequências.** A identidade visual passa a Tela Viva; identificadores internos captura7, banco e chaves existentes são preservados por compatibilidade. O produto organiza atuação de representantes, não substitui sistemas regulatórios, estoque nem prontuário. Integrações existentes permanecem configuráveis sem contas ou credenciais inventadas.
+
+**Status.** aceito · 2026-11-16 · escopo autorizado pelo usuário.
+
+---
+
+## ADR-012 — Identidade oficial do repositório Tela Viva
+
+**Contexto.** O usuário informou em 16/11/2026 que as informações, logo e ícones oficiais estão no repositório local `C:\Users\erico\telaviva`. A leitura de README, CLAUDE.md, index.html, CSS e arquivos de marca confirmou que Tela Viva é a marca de cuidados para pele tatuada, representante Pele Rara® para esse segmento. O modelo comercial continua inspirado em carteiras e visitas de representantes, conforme foco confirmado pelo usuário.
+
+**Decisão.** Usar os assets originais de `public/brand/`, favicon e ícone de instalação por cópia para este CRM, sem editar o repositório fonte. Adotar paleta areia/blush/sálvia e tipografia Playfair Display + Inter; substituir a direção provisória verde petróleo. Acrescentar segmentos estúdio de tatuagem e profissional autônomo e categorias comerciais cosmético/kit. Não preencher preços, registros sanitários, alegações terapêuticas ou credenciais a partir de suposições. O catálogo começa vazio, podendo ser preenchido pelo administrador com dados confirmados do fabricante. Fotografias de fabricante não serão alteradas nem receberão a marca Tela Viva.
+
+O site identifica a operadora JSETTE7 e publica contatos comerciais oficiais. O CRM histórico usa controlador pessoa física; essa diferença foi submetida ao usuário. Até a resposta, não mudar o controlador do consentimento nem os dados legais do emissor por inferência. Marca e produto podem ser atualizados de imediato.
+
+**Consequências.** Assets e fontes necessários são locais e preservam funcionamento offline. Nenhuma alteração no site/worker externo nem envio de mensagens a terceiros. Os pacotes, volume Mongo e identificadores internos permanecem compatíveis.
+
+**Status.** aceito · 2026-11-16 · fonte indicada expressamente pelo usuário.
+
+---
+
+## ADR-013 — JSETTE7 como operadora/controladora do Tela Viva
+
+**Contexto.** A pergunta sobre a diferença entre a configuração pessoal histórica do CRM e o site foi respondida pelo usuário em 16/11/2026: "JSETTE7, conforme os dados do site". A confirmação vale para consentimento e identificação nas propostas.
+
+**Decisão.** A identidade exibida passa a JSETTE7 Comércio de Produtos Médicos e Hospitalares LTDA, CNPJ 54.765.439/0001-34, Av. Paulo Afonso, 615, Nova Petrópolis, São Bernardo do Campo/SP, CEP 09770-351. Canal público confirmado no repositório fonte: settedistribuidora0777@gmail.com; WhatsApp comercial +55 (11) 91497-7007. O termo recebe versão `2026-11-16-tela-viva-jsette7`, identifica a empresa e o canal, sem inventar um encarregado nominal. A finalidade de organização deixa de ser descrita como uso pessoal da pessoa física. Mantêm-se os controles já existentes de consentimento, retenção, exportação e envio externo opcional. `CONTROLADOR_EMAIL` continua configurável; sem valor, o padrão público é o contato confirmado da empresa.
+
+**Consequências.** Substitui os trechos de identidade pessoal da ADR-010 para novas telas/novos consentimentos. Registros históricos de consentimento e suas versões não são reescritos. A implantação permanece local e preserva volumes/usuários; não há migração de infraestrutura nem ativação de serviços externos.
+
+**Status.** aceito · 2026-11-16 · confirmado expressamente pelo usuário.
+
+## ADR-014 — Paridade comercial local com a referência de treinamento
+
+**Contexto.** Em 16/11/2026 o usuário autorizou ampliar o Tela Viva para acompanhar, localmente, as funções do CRM apresentado no vídeo de treinamento. O CRM atual já cobre carteira, funil, agenda, catálogo e proposta impressa; faltam relacionamento com múltiplos interlocutores, preços negociados, aprovações, treinamentos, participantes/presença e proposta encaminhada ao contato.
+
+**Decisão.** Evoluir por módulos aditivos na coleção `tela_viva_comercial`, sem reescrever nem importar automaticamente a base antiga. Guardar vários contatos no registro da conta e manter alterações na auditoria existente. Registrar preços negociados por conta/produto em entidade própria, com solicitação pelo representante e aprovação/reprovação por gestor/admin com motivo e versão. Registrar treinamentos e participantes como tipos comerciais próprios, vinculados à carteira; o QR abre somente a ficha daquele treinamento/inscrição, nunca dados da conta, oportunidade, paciente ou procedimento. Presença e confirmação são campos de participação auditados. Uma proposta pode ser preparada para o contato escolhido; sem provedor configurado, oferecer abertura de rascunho no cliente de e-mail e registrar apenas que o rascunho foi aberto, sem declarar que foi enviado.
+
+Preservar o escopo de representantes e as permissões por carteira. Dados de paciente, cirurgia, estoque, faturamento, RH e módulos ERP ficam fora do escopo. Dados pessoais de participantes ficam visíveis apenas à carteira correspondente e a gestores/admin, sujeitos aos controles existentes. Nenhuma mensagem é enviada automaticamente; e-mail real depende de integração e configuração aprovadas posteriormente.
+
+**Alternativas consideradas.** Uma coleção relacional nova por entidade: rejeitada para esta fase local, pois o módulo atual já tem envelope versionado/auditado e não requer migração destrutiva. Copiar os módulos médicos/ERP mostrados integralmente: rejeitada por incluir estoque, dados de saúde e operação hospitalar sem necessidade comprovada para representantes da Tela Viva.
+
+**Consequências.** O módulo cresce sem alterar contatos capturados offline nem os dados existentes. A inscrição aberta por QR precisa de token restrito ao evento, limite de uso e proteção contra leitura de dados de clientes. A fase de e-mail não transmite enquanto não houver configuração local e ação explícita do usuário.
+
+**Status.** aceito · 2026-11-16 · execução local autorizada pelo usuário.
+
+## ADR-015 — Janelas dos relatórios no calendário de São Paulo
+
+**Contexto.** A interface envia datas civis escolhidas no calendário local (`AAAA-MM-DD`), enquanto registros são persistidos como instantes UTC. Interpretar as datas como meia-noite UTC excluía registros criados à noite em São Paulo, embora ainda pertencessem ao dia selecionado.
+
+**Decisão.** Interpretar `de` e `ate` como dias inclusivos no fuso `America/Sao_Paulo`. Converter o início de cada dia civil para UTC e consultar até o início do dia seguinte a `ate` (limite exclusivo). Validar datas de calendário e manter o limite de 366 dias contando dias civis. O filtro de auditoria e o período retornado preservam as datas enviadas.
+
+**Consequências.** As agregações por `criadoEm` e data marcada incluem todo o dia local escolhido, inclusive registros após 21h BRT; a duração UTC da janela pode variar com mudanças de fuso. Nenhum dado individual é adicionado ao relatório.
+
+**Status.** aceito para implementação local · 2026-11-16.

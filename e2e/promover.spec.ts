@@ -37,5 +37,5 @@ test('a promoção explica o código obrigatório e a captura segue livre', asyn
 
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Digitar' })).toBeEnabled();
-  await expect(page.getByRole('button', { name: 'Ler QR' })).toBeEnabled();
+  await expect(page.getByRole('link', { name: 'Ler QR' })).toBeEnabled();
 });

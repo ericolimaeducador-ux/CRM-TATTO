@@ -6,12 +6,12 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "pnpm -r --if-present build",
-    "lint": "pnpm -r --if-present lint",
-    "test": "pnpm -r --if-present test",
-    "test:e2e": "pnpm --filter @captura7/api build && VITE_CAPTURA7_HEADERS_TESTE=1 pnpm --filter @captura7/web build && playwright test -c e2e/playwright.config.ts",
+    "build": "corepack pnpm -r --if-present build",
+    "lint": "corepack pnpm -r --if-present lint",
+    "test": "corepack pnpm -r --if-present test",
+    "test:e2e": "node scripts/test-e2e.cjs",
     "prepare": "husky",
-    "criar-admin": "pnpm --filter @captura7/api criar-admin"
+    "criar-admin": "corepack pnpm --filter @captura7/api criar-admin"
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 180" width="400" height="180" role="img" aria-label="Tela Viva">
+  <g fill="none" stroke="#16140F" stroke-linecap="round">
+    <path d="M25 80 Q50 20 75 80 Q100 140 125 80 Q150 20 175 80 Q200 140 225 80 Q250 20 275 80 Q300 140 325 80 Q350 20 375 80" stroke-width="18"/>
+    <circle cx="200" cy="142" r="17" stroke-width="5"/>
+    <circle cx="200" cy="142" r="8" stroke-width="5"/>
+  </g>
+</svg>

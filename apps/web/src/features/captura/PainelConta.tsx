@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+﻿import { FormEvent, useState } from 'react';
 import { urlDaApi } from '@/lib/api-url';
 import { cabecalhosDaSessao, limparSessao, marcarTotpPendente } from '@/lib/offline/sessao';
 
@@ -55,10 +55,24 @@ export function PainelConta({
   }
 
   async function sair() {
-    await fetch(urlDaApi('/v1/auth/sair'), { method: 'POST', headers: cabecalhosDaSessao() });
-    limparSessao();
-    aoSair();
-    aoMensagem('Sessão encerrada neste aparelho e no servidor.');
+    try {
+      const resposta = await fetch(urlDaApi('/v1/auth/sair'), {
+        method: 'POST',
+        headers: cabecalhosDaSessao(),
+      });
+      aoMensagem(
+        resposta.ok
+          ? 'Sessão encerrada neste aparelho e no servidor.'
+          : 'Sessão encerrada neste aparelho. Não foi possível confirmar o encerramento no servidor.',
+      );
+    } catch {
+      aoMensagem(
+        'Sessão encerrada neste aparelho. Sem conexão para confirmar o encerramento no servidor.',
+      );
+    } finally {
+      limparSessao();
+      aoSair();
+    }
   }
 
   async function trocarSenha(evento: FormEvent) {
@@ -82,18 +96,37 @@ export function PainelConta({
       <button
         type="button"
         className="min-h-12 rounded-lg border border-stone-900 px-4"
-        onClick={() => void inscrever()}
+        onClick={() =>
+          void inscrever().catch(() =>
+            aoMensagem(
+              'Não consegui conectar. O autenticador não foi confirmado. Tente novamente.',
+            ),
+          )
+        }
       >
         Inscrever autenticador
       </button>
       <button
         type="button"
         className="min-h-12 rounded-lg border border-stone-900 px-4"
-        onClick={() => void confirmarPasso()}
+        onClick={() =>
+          void confirmarPasso().catch(() =>
+            aoMensagem('Sem conexão para confirmar o código. Tente novamente.'),
+          )
+        }
       >
         Confirmar passo extra
       </button>
-      <form className="flex flex-col gap-2" onSubmit={(evento) => void trocarSenha(evento)}>
+      <form
+        className="flex flex-col gap-2"
+        onSubmit={(evento) =>
+          void trocarSenha(evento).catch(() =>
+            aoMensagem(
+              'Não consegui confirmar a troca de senha. Confira a conexão antes de tentar novamente.',
+            ),
+          )
+        }
+      >
         <label className="flex flex-col gap-1 text-base">
           Senha atual
           <input

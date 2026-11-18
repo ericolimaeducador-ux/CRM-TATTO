@@ -1,9 +1,11 @@
 const { randomBytes } = require('node:crypto');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
-const { MongoMemoryServer } = require('mongodb-memory-server');
+const { createRequire } = require('node:module');
 
 const raiz = path.resolve(__dirname, '..');
+const requireApi = createRequire(path.join(raiz, 'apps/api/package.json'));
+const { MongoMemoryServer } = requireApi('mongodb-memory-server');
 
 async function main() {
   const memoria = await MongoMemoryServer.create();
@@ -12,10 +14,22 @@ async function main() {
     stdio: 'inherit',
     env: {
       ...process.env,
-      NODE_ENV: 'development',
+      NODE_ENV: 'test',
       CAPTURA7_HEADERS_TESTE: '1',
-      PORT: '3000',
+      PORT: '3101',
       MONGO_URI: memoria.getUri(),
+      SEGREDOS_ARQUIVO: '',
+      ERP_WEBHOOK_URL: '',
+      ERP_WEBHOOK_SEGREDO: '',
+      SHEETS_PLANILHA_ID: '',
+      SHEETS_TOKEN: '',
+      SHEETS_RESPONSAVEL_ID: '',
+      SHEETS_ABA: '',
+      CAPTCHA_PROVEDOR: 'local',
+      HCAPTCHA_SEGREDO: '',
+      HCAPTCHA_SITEKEY: '',
+      TURNSTILE_SEGREDO: '',
+      TURNSTILE_SITEKEY: '',
       CIFRA_CHAVE_BASE64: randomBytes(32).toString('base64'),
       CIFRA_PEPPER: randomBytes(32).toString('hex'),
     },

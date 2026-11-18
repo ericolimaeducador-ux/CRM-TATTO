@@ -1,4 +1,4 @@
-import react from '@vitejs/plugin-react';
+﻿import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -21,26 +21,23 @@ export default defineConfig({
       srcDir: 'public',
       filename: 'sw.js',
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,svg,ico,png,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,svg,ico,png,woff2,webmanifest}'],
       },
       manifest: {
-        name: 'captura7',
-        short_name: 'captura7',
+        name: 'Tela Viva — Carteira & visitas',
+        short_name: 'Tela Viva',
         lang: 'pt-BR',
         id: base,
         display: 'standalone',
         start_url: base,
         scope: base,
-        background_color: '#1c1917',
-        theme_color: '#1c1917',
+        background_color: '#FBF7F1',
+        theme_color: '#F2EADF',
         icons: [
-          { src: 'icone-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: 'icone-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          { src: 'icone-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-          { src: 'icone-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'brand/icone-pwa.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
       },
-      devOptions: { enabled: true, type: 'module' },
+      devOptions: { enabled: false, type: 'module' },
     }),
   ],
   resolve: {
@@ -50,7 +47,7 @@ export default defineConfig({
     proxy: { '/v1': 'http://127.0.0.1:3000' },
   },
   preview: {
-    proxy: { '/v1': 'http://127.0.0.1:3000' },
+    proxy: { '/v1': process.env.CAPTURA7_API_PROXY ?? 'http://127.0.0.1:3000' },
   },
   test: {
     environment: 'jsdom',

@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+﻿import { FormEvent, useState } from 'react';
 import { urlDaApi } from '@/lib/api-url';
 import { cabecalhosDaSessao, podeExportar, podeImportar } from '@/lib/offline/sessao';
 
@@ -28,7 +28,7 @@ export function PainelPlanilha({ aoMensagem }: { aoMensagem: (texto: string) => 
     const url = URL.createObjectURL(blob);
     const ancora = document.createElement('a');
     ancora.href = url;
-    ancora.download = `captura7-leads.${formato}`;
+    ancora.download = `tela-viva-leads.${formato}`;
     ancora.click();
     URL.revokeObjectURL(url);
     aoMensagem(`Arquivo ${formato.toUpperCase()} baixado.`);
