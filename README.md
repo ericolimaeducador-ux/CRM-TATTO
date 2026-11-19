@@ -37,7 +37,11 @@ corepack pnpm -r --if-present test
 
 Veja [docs/TELA-VIVA.md](docs/TELA-VIVA.md) para os módulos e contratos e [PROGRESS_FASE_PARIDADE.md](PROGRESS_FASE_PARIDADE.md) para a validação da fase de paridade: contatos múltiplos, preços negociados, equipe, treinamentos/QR, presença e relatórios.
 
-Uso interno da JSETTE7, com dados no computador local da operação. O passo a passo no Windows está em [INSTALAR-WINDOWS.md](INSTALAR-WINDOWS.md).
+Uso interno da JSETTE7, com API e frontend executados no computador da operação. A conexão de banco é definida por `MONGO_URI`; na instalação conferida em 18/11/2026, ela já aponta para MongoDB Atlas. O Mongo do Compose também existe, mas não é o destino dessa conexão. O passo a passo no Windows está em [INSTALAR-WINDOWS.md](INSTALAR-WINDOWS.md).
+
+## Automação de WhatsApp
+
+O módulo de boas-vindas usa a Cloud API oficial da Meta, fila persistente no Mongo e processamento em segundo plano. O envio nasce **desativado** (`WHATSAPP_ENVIO_ATIVO=false`). A preparação e os requisitos de ativação estão em [docs/WHATSAPP.md](docs/WHATSAPP.md). Novos leads precisam de telefone válido e autorização de contato registrada; a captura continua permissiva.
 
 ## Backup do Mongo
 

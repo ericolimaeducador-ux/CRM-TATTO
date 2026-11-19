@@ -28,7 +28,7 @@ _(vazio — F3-02 foi para FEITO com a autorização de 26/09/2026)_
 
 ## EM CURSO
 
-_(vazio — TV-16 aprovado e movido para FEITO)_
+_(vazio — WA-03 revisado e instalado; publicação no commit de entrega)_
 
 
 
@@ -38,6 +38,11 @@ _(vazio — TV-16 aprovado e movido para FEITO)_
 _(vazio — TV-16 não permanece em revisão)_
 
 ## FEITO
+
+- `[WA-03]` Revisão e entrega local/GitHub — **@REV-11** + **@OPS-10** — aceite: revisão aprovada, API Docker atualizada com envio `false`, entrega no CRM-TelaViva — dep: [WA-02] — REV final aprovado, API saudável, status protegido403, zero tentativas; URI preexistente preservada aponta Atlas (2 usuários/5 contatos), marco1/fila0. Retry-After corrigido e focal33/33; detalhes em PROGRESS_FASE_WHATSAPP.md
+
+- `[WA-01]` Preparar automação WhatsApp para novo lead, desativada — **@ORQ-01** + **@ARQ-02** + **@API-03** + **@SEC-07** — aceite: Cloud API oficial, fila Mongo persistente, idempotência, worker, consentimento/revogação, webhook assinado e flag OFF — dep: [TV-16] — implementado; build/lint aprovados, ADR-016
+- `[WA-02]` QA da automação sem envio real — **@QA-09** — aceite: OFF, elegibilidade, duplicatas, recuperação, falhas e assinatura — dep: [WA-01] — FEITO: 30 testes novos, API completa 192/38, E2E 10, lint/build API e web aprovados
 
 - `[TV-16]` Portão de revisão da paridade local — **@REV-11** — aceite: rever calendário São Paulo e regressão pós-TV-18 — dep: [TV-15, TV-17, TV-18] — APROVADO COM RESSALVAS para uso local: API 162/37, focal de fuso 3/3, E2E 10/10, lint completo e build produção final aprovados; Docker API/Mongo saudáveis e web redireciona HTTP→HTTPS; volume/dados persistidos (usuários 1, documentos comerciais 0). Web 39/17 é baseline anterior; suíte web não repetida no fechamento TV-18
 - `[TV-18]` Alinhar janela de relatório ao fuso de São Paulo — **@API-03** + **@QA-09** — aceite: dias civis inclusivos America/Sao_Paulo, fronteira 23:30/00:00 preservada — dep: [TV-14, TV-17] — FEITO: focal 3/3, API completa 162 testes/37 suítes, E2E 10/10, lint e build produção final; ADR-015

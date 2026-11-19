@@ -52,4 +52,4 @@ A captura por QR/manual continua offline-first. As novas telas comerciais exigem
 
 As integrações de Sheets, exportação e webhook continuam sendo as da base existente. Nenhuma credencial, destino externo, regra sanitária, distribuição de amostras, prontuário ou faturamento é criado automaticamente.
 
-A fase atual funciona localmente em Docker. O rate limit da inscrição é em memória; nuvem/múltiplas instâncias, SMTP e câmera física aguardam etapa própria. A bateria final confirmou API 162 testes/37 suítes e E2E 10 cenários. Evidências e limites estão em `PROGRESS_FASE_PARIDADE.md`.
+A API e o frontend atuais funcionam localmente em Docker. O destino do banco depende de `MONGO_URI`; a conexão preexistente desta instalação usa MongoDB Atlas, conforme a conferência em `PROGRESS_FASE_WHATSAPP.md`. O rate limit da inscrição é em memória; implantação da aplicação em nuvem/múltiplas instâncias, SMTP e câmera física aguardam etapa própria. A bateria final da paridade confirmou API 162 testes/37 suítes e E2E 10 cenários. Evidências e limites estão em `PROGRESS_FASE_PARIDADE.md`.

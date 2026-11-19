@@ -149,3 +149,7 @@ A indicação residual de UTC na descrição da tela foi reportada pela QA e cor
 **Evidências do fechamento:** API 162/162 em 37 suítes; testes focais de fuso 3/3; E2E 10/10; lint completo e build de produção final aprovados. A suíte web 39/39 é baseline anterior e não foi repetida neste fechamento; a tela só teve ajuste textual. Docker foi reconstruído e iniciado; API e Mongo saudáveis, web ativo respondendo HTTP→HTTPS 301. O volume Mongo persistiu e a contagem permaneceu em 1 usuário e 0 documentos comerciais.
 
 **Limites:** rate limit do QR permanece em memória e é local/single-instance; SMTP/entrega, câmera física e ambiente de nuvem não foram testados. Esta aprovação não certifica produção em nuvem nem integrações externas. A suíte web não executada novamente é uma limitação de cobertura documentada, sem regressão conhecida pelo ajuste textual.
+
+### Correção da conferência de banco — 18/11/2026
+
+Na etapa seguinte de WhatsApp, a leitura da conexão efetiva da API mostrou que a URI preexistente aponta para MongoDB Atlas, banco `captura7` (2 usuários, 5 contatos, 0 registros comerciais). As contagens de 1 usuário/0 documentos citadas anteriormente referiam-se ao Mongo do Compose, não ao banco efetivamente usado pela API. API e frontend rodam localmente; a conexão existente foi preservada, sem migração ou alteração de URI. Nenhuma credencial é registrada neste documento. Veja `PROGRESS_FASE_WHATSAPP.md` para a evidência e o estado desativado da automação.

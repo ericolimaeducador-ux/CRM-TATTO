@@ -279,3 +279,15 @@ Preservar o escopo de representantes e as permissões por carteira. Dados de pac
 **Consequências.** As agregações por `criadoEm` e data marcada incluem todo o dia local escolhido, inclusive registros após 21h BRT; a duração UTC da janela pode variar com mudanças de fuso. Nenhum dado individual é adicionado ao relatório.
 
 **Status.** aceito para implementação local · 2026-11-16.
+
+## ADR-016 — Boas-vindas WhatsApp em fila persistente, envio inicialmente desligado
+
+**Contexto.** O usuário pediu em 18/11/2026 automação de boas-vindas para cada novo lead pela API do WhatsApp, com as dependências de background prontas e o envio desligado. O termo atual já prevê contato comercial por WhatsApp quando autorizado. A captura deve continuar permissiva e nenhuma credencial real foi fornecida.
+
+**Decisão.** Acrescentar módulo NestJS independente, Cloud API oficial via `fetch` e fila/recibos/bloqueios em coleções Mongo aditivas. Não acrescentar Redis nem novo serviço. O worker reconcilia contatos novos com marco persistido no primeiro início do módulo e janela de elegibilidade de 24 horas; chave única por lead impede novos trabalhos por sincronização repetida ou reinício. A fila pode ser preparada localmente com a flag desligada, mas nunca faz HTTP externo quando `WHATSAPP_ENVIO_ATIVO` não é exatamente `true` ou a configuração está incompleta.
+
+Antes da saída, consultar novamente consentimento ativo de contato comercial, telefone E.164 e situação do lead. Revogado/eliminado/descartado/fundido ou telefone com opt-out não recebe mensagem. O template aprovado é configurado na Meta, sem parâmetros dinâmicos, e a versão Graph é obrigatória no ambiente. O webhook valida HMAC dos bytes originais, verify-token e ID do número; persiste recibos mínimos e bloqueios HMAC para comandos de parada, sem guardar corpo/número em claro.
+
+**Consequências.** Não há envio real nesta fase. Reservas atômicas e idempotência local impedem processamento concorrente do mesmo trabalho; resultado ambíguo de rede/5xx ou reserva perdida fica `incerto`, sem retry cego que poderia duplicar a mensagem. Rejeições 429 têm backoff e teto de cinco tentativas. Aceite HTTP não é tratado como entrega; apenas recibos assinados atualizam entrega/leitura. Nuvem, conta Meta, template aprovado, credenciais e webhook HTTPS público ficam para ativação futura; instruções estão em `docs/WHATSAPP.md`.
+
+**Status.** aceito para preparação desativada · 2026-11-18 · autorização expressa do usuário.

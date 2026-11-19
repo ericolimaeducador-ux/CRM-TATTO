@@ -14,7 +14,8 @@ import { profundidadeFila } from './observabilidade/fila-sincronizacao';
 
 async function bootstrap(): Promise<void> {
   carregarRegistradores();
-  const app = await NestFactory.create(AppModule, { logger: new LogJson() });
+  const app = await NestFactory.create(AppModule, { logger: new LogJson(), rawBody: true });
+  app.enableShutdownHooks();
   app.enableCors({
     origin: (origem, responder) => responder(null, origemPermitida(origem)),
   });
