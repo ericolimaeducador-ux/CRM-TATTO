@@ -9,18 +9,14 @@ interface RespostaJson {
 }
 
 export function PainelConta({
-  codigo,
-  pendente,
   aoMensagem,
-  aoSegredo,
   aoSair,
 }: {
-  codigo: string;
-  pendente: boolean;
   aoMensagem: (texto: string) => void;
-  aoSegredo: (segredo: string) => void;
   aoSair: () => void;
 }) {
+  const [codigo, setCodigo] = useState('');
+  const [segredo, setSegredo] = useState('');
   const [senhaAtual, setSenhaAtual] = useState('');
   const [senhaNova, setSenhaNova] = useState('');
 
@@ -36,7 +32,7 @@ export function PainelConta({
       return;
     }
     marcarTotpPendente(false);
-    aoSegredo(json.dados.segredoBase32);
+    setSegredo(json.dados.segredoBase32);
     aoMensagem('Guarde este segredo no aplicativo autenticador e confirme o código de 6 dígitos.');
   }
 
@@ -71,6 +67,8 @@ export function PainelConta({
       );
     } finally {
       limparSessao();
+      setCodigo('');
+      setSegredo('');
       aoSair();
     }
   }
@@ -83,40 +81,62 @@ export function PainelConta({
       body: JSON.stringify({ senhaAtual, senhaNova }),
     });
     const json = (await resposta.json()) as RespostaJson;
+    if (resposta.ok) {
+      setSenhaAtual('');
+      setSenhaNova('');
+    }
     aoMensagem(resposta.ok ? 'Senha trocada.' : textoDe(json, 'A senha não mudou.'));
   }
 
   return (
     <div className="flex flex-col gap-3">
-      {pendente ? (
+      <details className="tv-account-details">
+        <summary>Confirmar operações sensíveis</summary>
         <p className="text-base">
-          O administrador precisa inscrever o autenticador antes de usar o restante.
+          O autenticador é usado apenas para operações como exportar, alterar perfis e desativar
+          usuários. Entrar e criar usuários não pedem código.
         </p>
-      ) : null}
-      <button
-        type="button"
-        className="min-h-12 rounded-lg border border-stone-900 px-4"
-        onClick={() =>
-          void inscrever().catch(() =>
-            aoMensagem(
-              'Não consegui conectar. O autenticador não foi confirmado. Tente novamente.',
-            ),
-          )
-        }
-      >
-        Inscrever autenticador
-      </button>
-      <button
-        type="button"
-        className="min-h-12 rounded-lg border border-stone-900 px-4"
-        onClick={() =>
-          void confirmarPasso().catch(() =>
-            aoMensagem('Sem conexão para confirmar o código. Tente novamente.'),
-          )
-        }
-      >
-        Confirmar passo extra
-      </button>
+        <label className="flex flex-col gap-1 text-base">
+          Código do autenticador
+          <input
+            className="min-h-12 rounded border border-stone-400 px-3"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value)}
+          />
+        </label>
+        <button
+          type="button"
+          className="min-h-12 rounded-lg border border-stone-900 px-4"
+          onClick={() =>
+            void inscrever().catch(() =>
+              aoMensagem(
+                'Não consegui conectar. O autenticador não foi confirmado. Tente novamente.',
+              ),
+            )
+          }
+        >
+          Inscrever autenticador
+        </button>
+        <button
+          type="button"
+          className="min-h-12 rounded-lg border border-stone-900 px-4"
+          onClick={() =>
+            void confirmarPasso().catch(() =>
+              aoMensagem('Sem conexão para confirmar o código. Tente novamente.'),
+            )
+          }
+        >
+          Confirmar passo extra
+        </button>
+        {segredo ? (
+          <p className="break-all text-base" data-testid="segredo-totp">
+            {segredo}
+          </p>
+        ) : null}
+      </details>
       <form
         className="flex flex-col gap-2"
         onSubmit={(evento) =>
@@ -127,6 +147,7 @@ export function PainelConta({
           )
         }
       >
+        <h2 className="text-xl font-semibold">Trocar senha</h2>
         <label className="flex flex-col gap-1 text-base">
           Senha atual
           <input
@@ -143,6 +164,7 @@ export function PainelConta({
             className="min-h-12 rounded border border-stone-400 px-3"
             type="password"
             autoComplete="new-password"
+            minLength={12}
             value={senhaNova}
             onChange={(evento) => setSenhaNova(evento.target.value)}
           />

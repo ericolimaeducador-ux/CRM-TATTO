@@ -2585,6 +2585,104 @@ textarea {
   object-position: left center;
   margin-bottom: 8px;
 }
+.tv-login-screen {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: #fbf7f1;
+}
+.tv-login-card {
+  width: min(100%, 420px);
+  min-width: 0;
+  padding: clamp(24px, 6vw, 40px);
+  border: 1px solid #e3d5c3;
+  border-radius: 20px;
+  background: #fffdfa;
+  box-shadow: 0 12px 40px #3d362c0a;
+}
+.tv-login-card h1 {
+  font-size: 1.75rem;
+  margin: 20px 0 8px;
+  color: #16140f;
+}
+.tv-login-card .tv-login-intro {
+  font-size: 1rem;
+  color: #665d52;
+}
+.tv-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+.tv-login-form .tv-field > span {
+  font-size: 1rem;
+}
+.tv-login-form input:not([type='checkbox']) {
+  width: 100%;
+  min-height: 48px;
+  font-size: 1rem;
+}
+.tv-login-show-password {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.tv-login-show-password input {
+  width: 20px;
+  height: 20px;
+  accent-color: #16140f;
+}
+.tv-login-error {
+  font-size: 1rem;
+  color: #8c3128;
+  overflow-wrap: anywhere;
+}
+.tv-login-form .tv-button {
+  width: 100%;
+  min-height: 48px;
+  font-size: 1rem;
+}
+.tv-account-details {
+  border: 1px solid #e3d5c3;
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+.tv-account-details summary {
+  display: list-item;
+  min-height: 48px;
+  padding: 12px 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+.tv-account-details[open] > :not(summary) {
+  margin-top: 12px;
+}
+.tv-account-details > button {
+  width: 100%;
+  min-height: 48px;
+}
+.tv-account-details summary::after {
+  content: '+';
+  margin-left: auto;
+  padding-left: 12px;
+}
+.tv-account-details[open] summary::after {
+  content: '−';
+}
+.tv-users-page,
+.tv-account-page,
+.tv-users-page .text-base,
+.tv-account-page .text-base,
+.tv-users-page .tv-field > span,
+.tv-users-page .tv-field input,
+.tv-users-page .tv-field select {
+  font-size: 1rem;
+}
 .tv-login-intro {
   font-size: 14px;
   color: #746b60;

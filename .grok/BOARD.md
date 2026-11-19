@@ -28,16 +28,27 @@ _(vazio — F3-02 foi para FEITO com a autorização de 26/09/2026)_
 
 ## EM CURSO
 
-_(vazio — WA-03 revisado e instalado; publicação no commit de entrega)_
+- `[AC-10]` Corrigir posição ao trocar seções e validar navegador — **@UI-04** + **@QA-09** — aceite: troca de rota inicia no topo; regressões da lista/rascunhos/sessão e fluxo integrado desktop/mobile aprovados — dep: [AC-09]
+- `[AC-11]` Revisar e aplicar correções de navegação/lista — **@REV-11** + **@OPS-10** — aceite: revisão aprovada, web local aplicada, lista real conferida e dados preservados — dep: [AC-10]
 
 
 
 
 ## EM REVISÃO
 
-_(vazio — TV-16 não permanece em revisão)_
+- `[AC-09]` Mostrar contatos do servidor e manter rascunhos locais — **@UI-04** — aceite: sem contato local a lista exibe registros autorizados pela API existente; paginação/erros explícitos; sem duplicar contatos sincronizados ou sobrescrever pendências; troca de sessão não mantém dados remotos de outra conta — dep: [AC-08] — implementado sem escrita IndexedDB/backend; TypeScript/lint focal aprovados; aguarda QA/REV
+- `[AC-08]` Depurar navegador autenticado e corrigir falhas reproduzíveis — **@ORQ-01** — aceite: verificar console/rede, interface desktop/mobile, navegação, usuários e contatos; documentar causa e submeter correções a QA/REV antes de aplicar — dep: [AC-07] — diagnóstico confirmado: lista lia somente IndexedDB apesar de5 contatos na API; scroll retido entre rotas; sessão/usuários/painel200 e zeros comerciais corretos; causas registradas, correções aguardam QA/REV
 
 ## FEITO
+
+- `[AC-07]` Redefinir e entregar senha do administrador ao proprietário — **@OPS-10** + **@SEC-07** + **@REV-11** — aceite: somente erico.telaviva atualizado, senha aleatória em scrypt, auditoria sem segredo, sessões antigas revogadas, login/criação de equipe autorizada conferidos e sessão de teste encerrada — dep: [AC-06] — FEITO; processo exit0, update condicional modificou1 usuário, auditoria sem senha,1 sessão antiga revogada, login real201/gestão200/logout200; base3 usuários/5contatos preservada, credencial destinada somente ao proprietário na conversa
+- `[AC-06]` Aplicar e conferir acesso local do proprietário — **@OPS-10** — aceite: API/web locais atualizadas, usuário admin identificado, dados preservados e instruções de acesso entregues — dep: [AC-05] — FEITO; compose API/web atualizado e saudável, HTTPS novo bundle e viewport360 confirmados, base3 usuários/5contatos preservada; erico.telaviva admin ativo; autenticação do dono não exercitada por ausência de senha, fluxo real validado somente na base isolada
+- `[AC-05]` Revisão final de acesso — **@REV-11** — aceite: parecer funcional, integridade, segurança e design sem bloqueios — dep: [AC-04] — APROVADO COM RESSALVAS PARA IMPLANTAÇÃO LOCAL; AC-05-R1 corrigido e regressão verde; ressalva baseline de auditoria da gestão de usuários; conferência operacional concluída em AC-06
+- `[AC-04]` Regressão de acesso e equipe — **@QA-09** — aceite: testes de autenticação/RBAC, web, lint/build e fluxo integrado de admin criando usuário validados — dep: [AC-03] — API195/38, web48/19, E2E11/11, lint completo e builds finais aprovados; E2E isolado confirma criação de membro, recusa administrativa e inert móvel
+- `[AC-03]` Simplificar entrada e separar Minha conta — **@UI-04** — aceite: login contém apenas usuário/senha, mostrar senha e Entrar; redireciona ao CRM; conta/planilha em rota separada; gestão de usuários com mensagens de erro e perfis claros — dep: [AC-02] — FEITO; TypeScript/lint e QA/REV aprovados, menu móvel pós-login corrigido
+- `[AC-02]` Entrada com usuário e senha, sem desafio ou bloqueio de inscrição TOTP — **@API-03** — aceite: login com/sem autenticador funciona sem código; admin cria equipe sem inscrição; vendedor não cria; step-up sensível continua obrigatório — dep: [AC-01] — FEITO; API195/195 e fluxo integrado aprovados, sem migração ou step-up automático
+
+- `[AC-01]` Fornecer acesso ao proprietário — **@CC-00** + **@SEC-07** — aceite: administrador novo pelo script existente, usuários atuais preservados, login validado, sessão de conferência encerrada, TOTP mantido — dep: [WA-03] — FEITO em 19/11/2026; credenciais entregues somente ao proprietário, sem registro de senha neste repositório
 
 - `[WA-03]` Revisão e entrega local/GitHub — **@REV-11** + **@OPS-10** — aceite: revisão aprovada, API Docker atualizada com envio `false`, entrega no CRM-TelaViva — dep: [WA-02] — REV final aprovado, API saudável, status protegido403, zero tentativas; URI preexistente preservada aponta Atlas (2 usuários/5 contatos), marco1/fila0. Retry-After corrigido e focal33/33; detalhes em PROGRESS_FASE_WHATSAPP.md
 

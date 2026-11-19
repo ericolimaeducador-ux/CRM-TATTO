@@ -10,7 +10,7 @@ import { AuthModule } from './auth.module';
 import { AuthService } from './auth.service';
 import { codigoNoPasso, passoAtual } from './totp-rfc6238';
 
-describe('sessão, TOTP obrigatório e senha', () => {
+describe('sessão por senha, TOTP para ações sensíveis e senha', () => {
   let app: INestApplication;
   let memoria: MongoMemoryServer;
 
@@ -34,7 +34,7 @@ describe('sessão, TOTP obrigatório e senha', () => {
     await memoria.stop();
   });
 
-  it('pede TOTP no login de quem já inscreveu e libera a inscrição de qualquer papel', async () => {
+  it('entra sem TOTP mesmo após inscrição, sem elevar a sessão, e confirma ações separadamente', async () => {
     const entrada = await request(app.getHttpServer())
       .post('/v1/auth/entrar')
       .send({ login: 'lia', senha: 'senha-bem-longa' });
@@ -49,22 +49,34 @@ describe('sessão, TOTP obrigatório e senha', () => {
     const semCodigo = await request(app.getHttpServer())
       .post('/v1/auth/entrar')
       .send({ login: 'lia', senha: 'senha-bem-longa' });
-    expect(semCodigo.status).toBe(403);
-    expect(semCodigo.body.erros[0].codigo).toBe('TOTP_OBRIGATORIO');
-    expect(semCodigo.body.dados?.token).toBeUndefined();
+    expect(semCodigo.status).toBe(201);
+    expect(semCodigo.body.dados.token).toBeTruthy();
+    expect(semCodigo.body.dados.stepUp).toBe(false);
+    expect(semCodigo.body.dados.precisaInscreverTotp).toBe(false);
     const codigo = codigoNoPasso(inscricao.body.dados.segredoBase32 as string, passoAtual());
     const comCodigo = await request(app.getHttpServer())
       .post('/v1/auth/entrar')
       .send({ login: 'lia', senha: 'senha-bem-longa', codigoTotp: codigo });
     expect(comCodigo.status).toBe(201);
     expect(comCodigo.body.dados.token).toBeTruthy();
+    expect(comCodigo.body.dados.stepUp).toBe(false);
+    const eu = await request(app.getHttpServer())
+      .get('/v1/auth/eu')
+      .set('authorization', `Bearer ${comCodigo.body.dados.token as string}`);
+    expect(eu.body.dados.stepUp).toBe(false);
+    expect(eu.body.dados.totpPendente).toBe(false);
+    const passo = await request(app.getHttpServer())
+      .post('/v1/auth/step-up')
+      .set('authorization', `Bearer ${comCodigo.body.dados.token as string}`)
+      .send({ codigoTotp: codigo });
+    expect(passo.status).toBe(201);
   });
 
   it('encerra a sessão no servidor e troca a senha com auditoria sem gravar a senha', async () => {
     const entrada = await request(app.getHttpServer())
       .post('/v1/auth/entrar')
       .send({ login: 'erico', senha: 'senha-bem-longa' });
-    expect(entrada.body.dados.precisaInscreverTotp).toBe(true);
+    expect(entrada.body.dados.precisaInscreverTotp).toBe(false);
     const token = entrada.body.dados.token as string;
     const curta = await request(app.getHttpServer())
       .post('/v1/auth/senha')

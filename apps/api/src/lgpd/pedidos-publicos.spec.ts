@@ -32,4 +32,15 @@ describe('limite público e prazo do QR', () => {
     expect(() => saltosDeProxyConfiavel('true')).toThrow(/true não é aceito/);
     expect(saltosDeProxyConfiavel('1')).toBe(1);
   });
+
+  it('aceita QR de evento com até 2000 usos e 72 horas', () => {
+    process.env.QR_TOKEN_MAX_USOS = '2000';
+    process.env.QR_TOKEN_TTL_SEGUNDOS = String(72 * 60 * 60);
+    expect(limiteDeUsosDoToken()).toBe(2000);
+    expect(prazoTokenSegundos()).toBe(72 * 60 * 60);
+    process.env.QR_TOKEN_MAX_USOS = '2001';
+    expect(() => limiteDeUsosDoToken()).toThrow(/entre 1 e 2000/);
+    process.env.QR_TOKEN_TTL_SEGUNDOS = String(72 * 60 * 60 + 1);
+    expect(() => prazoTokenSegundos()).toThrow(/entre 60 e 259200/);
+  });
 });

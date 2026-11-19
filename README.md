@@ -4,13 +4,15 @@ CRM da Tela Viva, marca operada pela JSETTE7 e representante Pele Rara® para o 
 
 ## Fluxo de trabalho
 
-1. Entre com seu usuário e conclua a inscrição do autenticador quando solicitado.
+1. Entre com seu usuário e senha. O login não pede código de autenticador.
 2. Cadastre as instituições da carteira: hospitais, clínicas, farmácias, consultórios ou distribuidores.
 3. Planeje visitas e tarefas na agenda, registre o resultado e defina a próxima ação.
 4. Acompanhe oportunidades no funil e prepare propostas com os produtos representados.
 5. Use a captura para guardar um novo contato mesmo sem internet. A fila informa quando ele chega ao servidor.
 
 Os módulos comerciais usam a API e exigem conexão; a captura original mantém fila offline. A instalação começa sem exemplos fictícios. Representantes acessam sua própria carteira; gestão e auditoria seguem os perfis do sistema. Produtos e propostas são registros comerciais internos: não há envio automático ao cliente nem integração regulatória implícita.
+
+Administradores criam os acessos da equipe em **Usuários**. Senha, sessão, planilhas e confirmação de operações sensíveis ficam em **Minha conta**. Veja o [guia de acesso e equipe](docs/ACESSO.md).
 
 O banco, os nomes dos pacotes `@captura7/*`, as variáveis de ambiente e as chaves de armazenamento existentes continuam com seus identificadores para preservar dados e instalação. O nome exibido do produto é **Tela Viva**.
 

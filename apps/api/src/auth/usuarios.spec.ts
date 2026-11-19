@@ -37,19 +37,6 @@ describe('gestão de usuários', () => {
   });
 
   it('cria, recusa papel e login repetido, muda perfil com TOTP e desativa', async () => {
-    const preso = await request(app.getHttpServer())
-      .post('/v1/usuarios')
-      .set(auth())
-      .send({ login: 'ana', senha: 'senha-bem-longa', nome: 'Ana', papel: 'vendedor' });
-    expect(preso.status).toBe(403);
-    expect(JSON.stringify(preso.body)).toContain('TOTP_NAO_INSCRITO');
-    const inscricao = await request(app.getHttpServer())
-      .post('/v1/auth/totp/inscrever')
-      .set(auth())
-      .send({});
-    expect(inscricao.status).toBe(201);
-    const codigo = codigoNoPasso(inscricao.body.dados.segredoBase32 as string, passoAtual());
-
     const criado = await request(app.getHttpServer())
       .post('/v1/usuarios')
       .set(auth())
@@ -57,6 +44,20 @@ describe('gestão de usuários', () => {
     expect(criado.status).toBe(201);
     expect(criado.body.dados.papel).toBe('vendedor');
     const id = criado.body.dados.id as string;
+
+    const entradaMembro = await request(app.getHttpServer())
+      .post('/v1/auth/entrar')
+      .send({ login: 'ana', senha: 'senha-bem-longa' });
+    expect(entradaMembro.status).toBe(201);
+    const acessoMembro = { authorization: `Bearer ${entradaMembro.body.dados.token as string}` };
+    const proibido = await request(app.getHttpServer())
+      .post('/v1/usuarios')
+      .set(acessoMembro)
+      .send({ login: 'intruso', senha: 'senha-bem-longa', nome: 'Intruso', papel: 'admin' });
+    expect(proibido.status).toBe(403);
+    expect(JSON.stringify(proibido.body)).toContain('PAPEL_INSUFICIENTE');
+    const listaMembro = await request(app.getHttpServer()).get('/v1/usuarios').set(acessoMembro);
+    expect(listaMembro.status).toBe(403);
 
     const papelRuim = await request(app.getHttpServer())
       .post('/v1/usuarios')
@@ -78,6 +79,13 @@ describe('gestão de usuários', () => {
       .send({ papel: 'gestor' });
     expect(semPasso.status).toBe(403);
     expect(JSON.stringify(semPasso.body)).toContain('STEP_UP_NECESSARIO');
+
+    const inscricao = await request(app.getHttpServer())
+      .post('/v1/auth/totp/inscrever')
+      .set(auth())
+      .send({});
+    expect(inscricao.status).toBe(201);
+    const codigo = codigoNoPasso(inscricao.body.dados.segredoBase32 as string, passoAtual());
 
     const passo = await request(app.getHttpServer())
       .post('/v1/auth/step-up')

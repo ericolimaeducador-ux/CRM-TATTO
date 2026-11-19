@@ -29,7 +29,7 @@ describe('sessões vigentes e limite de autenticação', () => {
     expect(await service.validar('token')).toBeNull();
   });
 
-  it('senha correta não zera o limite de códigos TOTP incorretos', async () => {
+  it('limita oito senhas incorretas e mantém o bloqueio mesmo com senha correta', async () => {
     const senhaHash = await hashSenha('senha-qa-suficientemente-longa');
     const usuario = { _id: '507f1f77bcf86cd799439012', nome: 'QA', papel: 'vendedor', senhaHash };
     const usuarios = { findOne: jest.fn(() => ({ lean: async () => usuario })) };
@@ -48,19 +48,16 @@ describe('sessões vigentes e limite de autenticação', () => {
       {} as never,
       totp as never,
     );
-    const login = 'qa-limite-totp';
-    await expect(service.entrar(login, 'senha-qa-suficientemente-longa')).rejects.toMatchObject({
-      codigo: 'TOTP_OBRIGATORIO',
-    });
+    const login = 'qa-limite-senha';
     for (let tentativa = 0; tentativa < 8; tentativa += 1) {
-      await expect(
-        service.entrar(login, 'senha-qa-suficientemente-longa', '000000'),
-      ).rejects.toMatchObject({ codigo: 'STEP_UP_NECESSARIO' });
+      await expect(service.entrar(login, 'senha-incorreta')).rejects.toMatchObject({
+        codigo: 'CREDENCIAL_INVALIDA',
+      });
     }
-    await expect(
-      service.entrar(login, 'senha-qa-suficientemente-longa', '000000'),
-    ).rejects.toMatchObject({ codigo: 'LOGIN_BLOQUEADO' });
-    expect(totp.confirmar).toHaveBeenCalledTimes(8);
+    await expect(service.entrar(login, 'senha-qa-suficientemente-longa')).rejects.toMatchObject({
+      codigo: 'LOGIN_BLOQUEADO',
+    });
+    expect(totp.confirmar).not.toHaveBeenCalled();
     expect(sessoes.create).not.toHaveBeenCalled();
   });
 });

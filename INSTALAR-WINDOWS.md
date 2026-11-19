@@ -68,7 +68,7 @@ Há dois caminhos. O primeiro usa o Docker Desktop e é o que instala o aplicati
 
    Troque `erico` e a senha. Se o login já existir, o comando avisa e não troca a senha.
 
-9. No navegador, toque em **Entrar**. Use o usuário e a senha. No primeiro acesso o administrador precisa tocar em **Inscrever autenticador** antes do resto da tela. Copie o segredo para um aplicativo de códigos de 6 dígitos. Nos próximos acessos o código é obrigatório para quem já inscreveu, inclusive vendedor, gestor e auditor. **Sair** encerra a sessão no servidor. **Trocar senha** pede a senha atual e uma nova com 12 ou mais caracteres. A exportação só funciona depois de **Confirmar passo extra**, e o passo vale cinco minutos. Os botões de exportar e importar só aparecem para quem tem essa permissão: exportar é do administrador; importar é de gestor ou administrador.
+9. Abra `https://localhost/entrar` e use o usuário e a senha. O login não pede código de autenticador e abre o painel do CRM. O administrador cria os acessos da equipe em **Usuários**, sem precisar de código. Em **Minha conta**, **Sair** encerra a sessão no servidor e **Trocar senha** pede a senha atual e uma nova com 12 ou mais caracteres. A seção **Confirmar operações sensíveis** permite configurar o autenticador e confirmar o passo extra exigido para exportar, alterar perfis ou desativar usuários; a confirmação vale cinco minutos. As planilhas ficam em **Minha conta**: exportar é do administrador; importar é de gestor ou administrador. Veja o [guia de acesso e equipe](docs/ACESSO.md).
 
 10. Descubra o IP do computador. No PowerShell:
 
@@ -169,11 +169,11 @@ Este caminho abre o site em HTTP. O navegador do celular funciona. O botão de i
 
 ## Planilha do Google
 
-No Google Planilhas: Arquivo, Fazer download, Valores separados por vírgula (.csv) ou planilha Excel (.xlsx). No Tela Viva, entre como gestor ou administrador, cole o texto ou escolha o arquivo em **Arquivo CSV ou XLSX** e toque em **Importar planilha**. Linha com o mesmo e-mail, telefone, CPF ou CNPJ é pulada. Linha só com nome igual a um cadastro que também só tem nome é pulada. O mesmo nome em outra empresa entra como novo. Não há fusão automática. A origem fica `importado`.
+No Google Planilhas: Arquivo, Fazer download, Valores separados por vírgula (.csv) ou planilha Excel (.xlsx). No Tela Viva, entre como gestor ou administrador e abra **Minha conta → Importar e exportar planilhas**. Cole o texto ou escolha o arquivo em **Arquivo CSV ou XLSX** e toque em **Importar planilha**. Linha com o mesmo e-mail, telefone, CPF ou CNPJ é pulada. Linha só com nome igual a um cadastro que também só tem nome é pulada. O mesmo nome em outra empresa entra como novo. Não há fusão automática. A origem fica `importado`.
 
 ## Exportar
 
-Entre como administrador, inscreva o autenticador, confirme o código e toque em **Baixar CSV** ou **Baixar XLSX**. Só saem contatos com consentimento de contato comercial válido e ativo. Revogados, eliminados e sem essa autorização ficam de fora. O sistema registra quem exportou e quando.
+Entre como administrador e abra **Minha conta → Confirmar operações sensíveis**. Inscreva o autenticador se ainda não o configurou, informe o código de 6 dígitos e toque em **Confirmar passo extra**. Depois abra **Importar e exportar planilhas** e toque em **Baixar CSV** ou **Baixar XLSX**. Só saem contatos com consentimento de contato comercial válido e ativo. Revogados, eliminados e sem essa autorização ficam de fora. O sistema registra quem exportou e quando.
 
 ## Cópia do banco
 

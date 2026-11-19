@@ -11,8 +11,8 @@ export class AuthController {
 
   @Post('entrar')
   @Publico()
-  async entrar(@Body() corpo: { login?: string; senha?: string; codigoTotp?: string }) {
-    const dados = await this.auth.entrar(corpo.login ?? '', corpo.senha ?? '', corpo.codigoTotp);
+  async entrar(@Body() corpo: { login?: string; senha?: string }) {
+    const dados = await this.auth.entrar(corpo.login ?? '', corpo.senha ?? '');
     return { dados, avisos: [], erros: [] };
   }
 

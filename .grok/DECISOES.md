@@ -291,3 +291,13 @@ Antes da saída, consultar novamente consentimento ativo de contato comercial, t
 **Consequências.** Não há envio real nesta fase. Reservas atômicas e idempotência local impedem processamento concorrente do mesmo trabalho; resultado ambíguo de rede/5xx ou reserva perdida fica `incerto`, sem retry cego que poderia duplicar a mensagem. Rejeições 429 têm backoff e teto de cinco tentativas. Aceite HTTP não é tratado como entrega; apenas recibos assinados atualizam entrega/leitura. Nuvem, conta Meta, template aprovado, credenciais e webhook HTTPS público ficam para ativação futura; instruções estão em `docs/WHATSAPP.md`.
 
 **Status.** aceito para preparação desativada · 2026-11-18 · autorização expressa do usuário.
+
+## ADR-017 — Login simples e administração da equipe independente de inscrição TOTP
+
+**Contexto.** Em 19/11/2026 o proprietário relatou falha e confusão na entrada e autorizou expressamente remover 2FA da página de login. Solicitou usuário que possa criar outros usuários. O login atual exige TOTP de inscritos; administradores sem inscrição ficam bloqueados em quase todas as rotas, inclusive criação de equipe.
+
+**Decisão.** Autenticar entrada com usuário e senha, preservando scrypt, sessão opaca com prazo, bloqueio de tentativas, usuário ativo e RBAC. Nenhum login concede step-up; inscrição TOTP deixa de bloquear a sessão normal. Administrador pode listar e criar usuários sem TOTP. Operações sensíveis que já exigem confirmação adicional continuam protegidas. Separar login de configurações de conta/segurança/planilha em `/minha-conta`; sucesso leva ao painel. Login usa apenas usuário/senha e opção mostrar senha. Manter usuários, hashes, segredos TOTP, sessões e dados existentes, sem migração destrutiva. Identificar administrador do proprietário na base efetiva e testar gestão em ambiente isolado sem criar membros fictícios na base real.
+
+**Consequências.** Substitui a exigência histórica de TOTP na entrada da ADR-010 e AC-01. TOTP fica restrito à confirmação de operações sensíveis, acessível na conta; não há concessão automática de privilégios. A implantação é local no ambiente já usado, sem nova publicação externa ou envio de mensagens.
+
+**Status.** aceito para implementação e uso local · 2026-11-19 · pedido explícito do proprietário.

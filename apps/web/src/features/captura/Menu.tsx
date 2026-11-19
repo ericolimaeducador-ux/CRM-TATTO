@@ -65,7 +65,7 @@ export function Menu({ aoNavegar }: { aoNavegar?: () => void }) {
           Usuários
         </NavLink>
       ) : null}
-      <NavLink className="tv-nav-link" to="/entrar" onClick={aoNavegar}>
+      <NavLink className="tv-nav-link" to={perfil ? '/minha-conta' : '/entrar'} onClick={aoNavegar}>
         <Icone nome="usuario" />
         {perfil ? 'Minha conta' : 'Entrar'}
       </NavLink>

@@ -50,7 +50,7 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     registrarValidadorDeSessao(null);
   }
 
-  async entrar(loginBruto: string, senha: string, codigoTotp?: string) {
+  async entrar(loginBruto: string, senha: string) {
     const login = loginBruto.trim().toLowerCase();
     if (this.bloqueado(login)) {
       throw new RespostaComErro(
@@ -71,24 +71,6 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       );
     }
     const usuarioId = String(usuario._id);
-    const inscrito = await this.totp.inscrito(usuarioId);
-    let stepUpAte: Date | null = null;
-    if (inscrito) {
-      if (!codigoTotp?.trim()) {
-        throw new RespostaComErro(
-          403,
-          'TOTP_OBRIGATORIO',
-          'Este usuário já inscreveu o autenticador. Informe o código de 6 dígitos. Nada foi aberto.',
-          null,
-        );
-      }
-      const veredito = await this.totp.confirmar(usuarioId, codigoTotp);
-      if (!veredito.aceito) {
-        this.registrarFalha(login);
-        throw new RespostaComErro(403, veredito.codigo, veredito.mensagem, null);
-      }
-      stepUpAte = new Date(Date.now() + 5 * 60_000);
-    }
     FALHAS.delete(login);
     const token = randomBytes(32).toString('base64url');
     const expiraEm = new Date(Date.now() + 12 * 60 * 60 * 1000);
@@ -98,14 +80,14 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
       papel: usuario.papel,
       nome: usuario.nome,
       expiraEm,
-      stepUpAte,
+      stepUpAte: null,
     });
     return {
       token,
       expiraEm,
       usuario: { id: usuarioId, papel: usuario.papel, nome: usuario.nome },
-      stepUp: stepUpAte != null,
-      precisaInscreverTotp: usuario.papel === 'admin' && !inscrito,
+      stepUp: false,
+      precisaInscreverTotp: false,
     };
   }
 
@@ -137,8 +119,13 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     const stepUp = sessao.stepUpAte != null && new Date(sessao.stepUpAte).getTime() > Date.now();
     const usuario = await this.usuarios.findById(sessao.usuarioId).lean<UsuarioDoc | null>();
     if (!usuario || usuario.ativo === false) return null;
-    const totpPendente = usuario.papel === 'admin' && !(await this.totp.inscrito(sessao.usuarioId));
-    return { id: sessao.usuarioId, papel: usuario.papel, nome: usuario.nome, stepUp, totpPendente };
+    return {
+      id: sessao.usuarioId,
+      papel: usuario.papel,
+      nome: usuario.nome,
+      stepUp,
+      totpPendente: false,
+    };
   }
 
   async sair(token: string): Promise<void> {

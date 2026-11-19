@@ -16,7 +16,9 @@ const SECOES: Record<string, string> = {
   propostas: 'Propostas',
   capturar: 'Captura rápida',
   contatos: 'Contatos',
-  entrar: 'Minha conta',
+  entrar: 'Entrar',
+  'minha-conta': 'Minha conta',
+  usuarios: 'Usuários da equipe',
   fila: 'Fila de sincronização',
   busca: 'Busca de contatos',
 };
@@ -37,7 +39,7 @@ export function Layout({ children }: { children: ReactNode }) {
     media.addEventListener('change', atualizar);
     if (aberto && media.matches) sidebar.current?.querySelector<HTMLElement>('button')?.focus();
     return () => media.removeEventListener('change', atualizar);
-  }, [aberto]);
+  }, [aberto, local.pathname]);
   useEffect(() => {
     const atualizar = () => setPerfil(perfilLogado());
     const rede = () => setOnline(navigator.onLine);
@@ -54,6 +56,7 @@ export function Layout({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => {
     setAberto(false);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [local.pathname]);
   useEffect(() => {
     const fechar = (evento: KeyboardEvent) => {
@@ -77,6 +80,7 @@ export function Layout({ children }: { children: ReactNode }) {
     'treinamentos',
     'relatorios',
   ].includes(segmento);
+  if (segmento === 'entrar') return <main className="tv-login-screen">{children}</main>;
   if (segmento === 'p' || segmento === 'inscricao-treinamento')
     return (
       <div className="tv-public">
@@ -181,7 +185,11 @@ export function Layout({ children }: { children: ReactNode }) {
                   : 'Seu espaço de conexões'}
               </small>
             </span>
-            <Link className="tv-avatar" to="/entrar" aria-label="Abrir minha conta">
+            <Link
+              className="tv-avatar"
+              to={perfil ? '/minha-conta' : '/entrar'}
+              aria-label="Abrir minha conta"
+            >
               {(perfil?.nome ?? 'TV')
                 .split(' ')
                 .slice(0, 2)
