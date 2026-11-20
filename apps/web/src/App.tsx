@@ -17,6 +17,7 @@ import { FormularioCaptura } from './features/captura/FormularioCaptura';
 import { ListaContatos } from './features/captura/ListaContatos';
 import { MeuQr } from './features/captura/MeuQr';
 import { PaginaAutocadastro } from './features/captura/PaginaAutocadastro';
+import { PaginaTermoCompleto } from './features/captura/PaginaTermoCompleto';
 import { PaginaEntrar } from './features/captura/PaginaEntrar';
 import { PaginaMinhaConta } from './features/captura/PaginaMinhaConta';
 import { PaginaConsentimento } from './features/captura/PaginaConsentimento';
@@ -75,6 +76,7 @@ export function App() {
           <Route path="/promover/:id" element={<PaginaPromover />} />
           <Route path="/meu-qr" element={<MeuQr />} />
           <Route path="/p/:token" element={<PaginaAutocadastro />} />
+          <Route path="/termo" element={<PaginaTermoCompleto />} />
           <Route path="/contatos/:idLocal/termo" element={<PaginaConsentimento />} />
         </Routes>
       </Layout>

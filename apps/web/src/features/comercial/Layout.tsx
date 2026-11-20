@@ -81,7 +81,7 @@ export function Layout({ children }: { children: ReactNode }) {
     'relatorios',
   ].includes(segmento);
   if (segmento === 'entrar') return <main className="tv-login-screen">{children}</main>;
-  if (segmento === 'p' || segmento === 'inscricao-treinamento')
+  if (segmento === 'p' || segmento === 'termo' || segmento === 'inscricao-treinamento')
     return (
       <div className="tv-public">
         <Link to="/" className="tv-brand-link">

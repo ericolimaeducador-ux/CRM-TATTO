@@ -20,13 +20,12 @@ test('captura segue sem trava e o autocadastro só conclui com a caixa', async (
   expect(qr.ok()).toBeTruthy();
   const corpo = (await qr.json()) as { dados: { caminho: string } };
   await page.goto(corpo.dados.caminho);
-  const destaque = page.getByTestId('destaque-consentimento');
-  await expect(destaque).toBeVisible();
-  const caixa = await destaque.boundingBox();
+  await expect(page.getByRole('link', { name: 'Ler o termo' })).toBeVisible();
+  const caixa = await page.getByRole('checkbox', { name: /contato comercial/i }).boundingBox();
   expect((caixa?.y ?? 999) + (caixa?.height ?? 0)).toBeLessThanOrEqual(800);
   const concluir = page.getByRole('button', { name: 'Concluir cadastro' });
   await expect(concluir).toBeDisabled();
-  await page.getByRole('checkbox', { name: /Contato comercial/ }).check();
+  await page.getByRole('checkbox', { name: /contato comercial/i }).check();
   const pergunta = page.getByTestId('pergunta-captcha');
   await expect(pergunta).toBeVisible();
   const numeros = ((await pergunta.innerText()).match(/\d+/g) ?? []).map(Number);
