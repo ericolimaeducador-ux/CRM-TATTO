@@ -9,7 +9,7 @@ const CURTO = `**Seus dados no Tela Viva**
 ☐ **Contato comercial (necessário para concluir o cadastro).** Autorizo a 7Safe a entrar em contato comigo por **[e-mail / telefone / WhatsApp — A PREENCHER, DECISÃO D5]** para apresentar produtos e serviços.`;
 
 describe('tela do termo', () => {
-  it('mostra o destaque sem caixa marcada e só então habilita concluir', async () => {
+  it('no QR mostra só o formulário, a caixa e o link do termo, e só então habilita concluir', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
@@ -24,18 +24,19 @@ describe('tela do termo', () => {
       })),
     );
     render(<TelaTermo modo="autocadastro" token="abc" />);
-    const destaque = await screen.findByTestId('destaque-consentimento');
-    expect(destaque.textContent).toContain('sem a autorização de contato comercial');
-    expect(screen.getAllByText(/DECISÃO D5/).length).toBeGreaterThan(0);
-    const botao = screen.getByRole('button', { name: 'Concluir cadastro' });
+    const botao = await screen.findByRole('button', { name: 'Concluir cadastro' });
+    expect(screen.queryByTestId('destaque-consentimento')).toBeNull();
+    expect(screen.queryByText(/DECISÃO D5/)).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: /sistema externo/i })).toBeNull();
+    const link = screen.getByRole('link', { name: 'Ler o termo' });
+    expect(link.getAttribute('href')).toMatch(/termo$/);
+    expect(link.getAttribute('target')).toBe('_blank');
     expect((botao as HTMLButtonElement).disabled).toBe(true);
-    const caixa = screen.getByRole('checkbox', { name: /Contato comercial/ });
+    const caixa = screen.getByRole('checkbox', { name: /contato comercial/i });
     expect((caixa as HTMLInputElement).checked).toBe(false);
     fireEvent.click(caixa);
     expect((botao as HTMLButtonElement).disabled).toBe(false);
     expect(screen.queryByText(/sincronizado/i)).toBeNull();
-    expect(document.body.textContent).not.toContain('**');
-    expect(document.body.textContent).not.toContain('☐');
   });
 
   it('mostra a caixa de ERP desligada e o fallback sem a 7Safe', async () => {

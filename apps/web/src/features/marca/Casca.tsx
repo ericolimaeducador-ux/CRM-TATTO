@@ -7,7 +7,7 @@ import { Marca } from './Marca';
 
 export function Casca({ children }: { children: ReactNode }) {
   const local = useLocation();
-  if (local.pathname.startsWith('/p/')) {
+  if (local.pathname.startsWith('/p/') || local.pathname === '/termo') {
     return (
       <div className="min-h-screen">
         <header className="mx-auto w-full max-w-xl px-4 pt-8">

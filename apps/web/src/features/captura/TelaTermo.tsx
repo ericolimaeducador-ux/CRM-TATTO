@@ -178,6 +178,66 @@ export function TelaTermo({
     );
   }
 
+  // Formulário do QR: só os campos, a caixa de autorização e o link para o termo completo,
+  // que abre em outra aba. O envio é o mesmo do modo antigo.
+  if (modo === 'autocadastro') {
+    return (
+      <section className="flex flex-col gap-4">
+        <h1 className="text-2xl font-semibold">Seus dados no Tela Viva</h1>
+        <div className="flex flex-col gap-3">
+          <Campo rotulo="Nome" valor={nome} aoMudar={setNome} />
+          <Campo rotulo="E-mail" valor={email} aoMudar={setEmail} />
+          <Campo rotulo="Telefone" valor={telefone} aoMudar={setTelefone} />
+        </div>
+        <div className="flex min-h-12 items-start gap-3 text-base">
+          <input
+            id="aceite-termo"
+            className="mt-1 h-6 w-6 shrink-0"
+            type="checkbox"
+            checked={marcado}
+            onChange={(evento) => setMarcado(evento.target.checked)}
+          />
+          <span>
+            <label htmlFor="aceite-termo">
+              Li e aceito o termo e autorizo o contato comercial (necessário para concluir o
+              cadastro).
+            </label>{' '}
+            <a
+              className="underline"
+              href={`${import.meta.env.BASE_URL}termo`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Ler o termo
+            </a>
+          </span>
+        </div>
+        <DesafioCaptcha
+          provedor={provedorCaptcha}
+          sitekey={sitekey}
+          pergunta={pergunta}
+          valor={respostaCaptcha}
+          aoMudar={setRespostaCaptcha}
+        />
+        <button
+          type="button"
+          className="btn disabled:opacity-40"
+          disabled={
+            !marcado || enviando || concluido || captchaLocalPendente || captchaExternoPendente
+          }
+          onClick={() => void concluir()}
+        >
+          {enviando ? 'Enviando…' : 'Concluir cadastro'}
+        </button>
+        {mensagem ? (
+          <p className="text-base" role="status">
+            {mensagem}
+          </p>
+        ) : null}
+      </section>
+    );
+  }
+
   return (
     <section className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">Seus dados no Tela Viva</h1>
@@ -209,22 +269,6 @@ export function TelaTermo({
           esta caixa não envia nada.
         </span>
       </label>
-      {modo === 'autocadastro' ? (
-        <div className="flex flex-col gap-3">
-          <Campo rotulo="Nome" valor={nome} aoMudar={setNome} />
-          <Campo rotulo="E-mail" valor={email} aoMudar={setEmail} />
-          <Campo rotulo="Telefone" valor={telefone} aoMudar={setTelefone} />
-        </div>
-      ) : null}
-      {modo === 'autocadastro' ? (
-        <DesafioCaptcha
-          provedor={provedorCaptcha}
-          sitekey={sitekey}
-          pergunta={pergunta}
-          valor={respostaCaptcha}
-          aoMudar={setRespostaCaptcha}
-        />
-      ) : null}
       {curto ? <MarkdownSimples texto={curto} /> : null}
       <div className="flex flex-col gap-3">
         <button
