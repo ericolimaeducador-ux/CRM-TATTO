@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 420" width="1400" height="420" role="img" aria-label="Tela Viva — cuidados para pele tatuada">
+  <g fill="#16140F">
+    <text x="700" y="230" text-anchor="middle"
+          font-family="'Playfair Display','Bodoni Moda','Didot',Georgia,serif"
+          font-weight="400" font-size="190" letter-spacing="16">TELA VIVA</text>
+    <rect x="310" y="268" width="780" height="3"/>
+    <text x="700" y="332" text-anchor="middle"
+          font-family="Inter,'DM Sans','Helvetica Neue',Arial,sans-serif"
+          font-weight="400" font-size="42" letter-spacing="13">CUIDADOS PARA PELE TATUADA</text>
+  </g>
+</svg>

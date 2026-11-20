@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Types, type Model } from 'mongoose';
 import { podeAcessarCarteira } from '../auth/perfil-permissoes';
@@ -37,7 +37,12 @@ export class ContatosService {
   async criar(corpo: CriarContatoDto, usuario: UsuarioSessao): Promise<Escrita> {
     if (corpo.idLocal) {
       const existente = await this.contatos.findOne({ idLocal: corpo.idLocal }).lean();
-      if (existente) return { http: 200, dados: plano(existente), avisos: [] };
+      if (existente)
+        return {
+          http: 200,
+          dados: await this.exigir(String(existente._id), usuario, 'ler_contato'),
+          avisos: [],
+        };
     }
     const montado = montarCriacao(corpo);
     aplicarCompletude(montado.doc, montado.documentoValido);
@@ -57,7 +62,12 @@ export class ContatosService {
     } catch (erro) {
       if (ehIdLocalDuplicado(erro) && corpo.idLocal) {
         const existente = await this.contatos.findOne({ idLocal: corpo.idLocal }).lean();
-        if (existente) return { http: 200, dados: plano(existente), avisos: montado.avisos };
+        if (existente)
+          return {
+            http: 200,
+            dados: await this.exigir(String(existente._id), usuario, 'ler_contato'),
+            avisos: montado.avisos,
+          };
       }
       if (erro instanceof ErroNomeado) {
         contato.set('status', 'rascunho');

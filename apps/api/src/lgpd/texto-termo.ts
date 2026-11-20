@@ -1,13 +1,13 @@
-import { createHash } from 'node:crypto';
+﻿import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { diasDePurgaRevogacao, diasDeRascunho, mesesDeRetencao } from './retencao';
 
-export const VERSAO_TERMO = '2026-09-26-uso-pessoal';
+export const VERSAO_TERMO = '2026-11-16-tela-viva-jsette7';
 
 export function emailDoControlador(): string {
   const email = process.env.CONTROLADOR_EMAIL?.trim() ?? '';
-  if (!email || /preencha/i.test(email)) return 'o e-mail do controlador';
+  if (!email || /preencha/i.test(email)) return 'settedistribuidora0777@gmail.com';
   return email;
 }
 
@@ -29,7 +29,13 @@ export function textoDoTermo(): TextoTermo {
     .replaceAll('{{RETENCAO_MESES}}', String(mesesDeRetencao()))
     .replaceAll('{{PURGA_REVOGACAO_DIAS}}', String(diasDePurgaRevogacao()))
     .replaceAll('{{RASCUNHO_DIAS}}', String(diasDeRascunho()));
-  const textoCurto = entre(minuta, '**Seus dados no TattooArt**', '## PARTE 2').trim();
+  const textoCurto = entre(
+    minuta,
+    minuta.includes('**Seus dados no Tela Viva**')
+      ? '**Seus dados no Tela Viva**'
+      : '**Seus dados no captura7**',
+    '## PARTE 2',
+  ).trim();
   const textoCompleto = entre(minuta, '## PARTE 2 — Versão completa', '## PARTE 3').trim();
   return {
     versao: VERSAO_TERMO,

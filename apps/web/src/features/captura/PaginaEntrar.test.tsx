@@ -1,113 +1,100 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { PaginaEntrar } from './PaginaEntrar';
 
-function montar() {
+function abrir() {
   return render(
-    <MemoryRouter>
-      <PaginaEntrar />
+    <MemoryRouter initialEntries={['/entrar']}>
+      <Routes>
+        <Route path="/entrar" element={<PaginaEntrar />} />
+        <Route path="/" element={<h1>Painel do CRM</h1>} />
+      </Routes>
     </MemoryRouter>,
   );
 }
 
-describe('entrada do administrador', () => {
-  it('guarda o token e pede a exportação com o mesmo token', async () => {
-    localStorage.clear();
-    const fetchMock = vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(entrada);
-      if (url.endsWith('/v1/auth/entrar')) {
-        return {
-          ok: true,
-          json: async () => ({
-            dados: { token: 'tok-admin', usuario: { id: 'abc', papel: 'admin', nome: 'Erico' } },
-          }),
-        };
-      }
-      return {
-        ok: true,
-        blob: async () => new Blob(['nome\nAna']),
-        json: async () => ({}),
-        headers: init?.headers,
-      };
-    });
+function preencher() {
+  fireEvent.change(screen.getByLabelText('Usuário'), { target: { value: 'erico' } });
+  fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'senha-bem-longa' } });
+}
+
+beforeEach(() => localStorage.clear());
+
+describe('entrada simples', () => {
+  it('envia somente usuário/senha, limpa pendência antiga e abre o painel', async () => {
+    localStorage.setItem('captura7.totpPendente', '1');
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        dados: { token: 'tok-admin', usuario: { id: 'abc', papel: 'admin', nome: 'Erico' } },
+      }),
+    }));
     vi.stubGlobal('fetch', fetchMock);
-    URL.createObjectURL = () => 'blob:leads';
-    URL.revokeObjectURL = () => undefined;
-    HTMLAnchorElement.prototype.click = () => undefined;
-    montar();
-    fireEvent.change(screen.getByLabelText('Usuário'), { target: { value: 'erico' } });
-    fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'senha-bem-longa' } });
+    abrir();
+    expect(screen.queryByLabelText(/autenticador/i)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Baixar CSV' })).toBeNull();
+    preencher();
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
-    expect(await screen.findByText('Entrou como Erico.')).toBeTruthy();
+    expect(await screen.findByText('Painel do CRM')).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/v1/auth/entrar'),
+      expect.objectContaining({
+        body: JSON.stringify({ login: 'erico', senha: 'senha-bem-longa' }),
+      }),
+    );
     expect(localStorage.getItem('captura7.token')).toBe('tok-admin');
     expect(JSON.parse(localStorage.getItem('captura7.perfil') ?? '{}').papel).toBe('admin');
-    fireEvent.click(screen.getByRole('button', { name: 'Baixar CSV' }));
-    await screen.findByText('Arquivo CSV baixado.');
-    const chamada = fetchMock.mock.calls.find((item) =>
-      String(item[0]).includes('/v1/exportacoes'),
-    );
-    const cabecalhos = chamada?.[1]?.headers as Record<string, string>;
-    expect(cabecalhos.authorization).toBe('Bearer tok-admin');
+    expect(localStorage.getItem('captura7.totpPendente')).toBeNull();
   });
 
-  it('esconde exportação do vendedor, envia XLSX e encerra a sessão', async () => {
-    localStorage.clear();
-    const fetchMock = vi.fn(async (entrada: RequestInfo | URL, _init?: RequestInit) => {
-      const url = String(entrada);
-      if (url.endsWith('/v1/auth/entrar')) {
-        return {
-          ok: true,
-          json: async () => ({
-            dados: { token: 'tok-vend', usuario: { id: 'v', papel: 'vendedor', nome: 'Lia' } },
-          }),
-        };
-      }
-      if (url.endsWith('/v1/auth/sair')) return { ok: true, json: async () => ({ dados: {} }) };
-      return { ok: true, json: async () => ({ dados: { importados: 0, duplicatas: 0 } }) };
-    });
+  it('mostra e oculta a senha sem submeter o formulário', () => {
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    const { unmount } = montar();
-    fireEvent.change(screen.getByLabelText('Usuário'), { target: { value: 'lia' } });
-    fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'senha-bem-longa' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
-    expect(await screen.findByText('Entrou como Lia.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Baixar CSV' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Inscrever autenticador' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Sair' }));
-    expect(await screen.findByText(/Sessão encerrada/)).toBeTruthy();
-    expect(localStorage.getItem('captura7.token')).toBeNull();
-    unmount();
+    abrir();
+    expect(screen.getByLabelText('Senha').getAttribute('type')).toBe('password');
+    fireEvent.click(screen.getByLabelText('Mostrar senha'));
+    expect(screen.getByLabelText('Senha').getAttribute('type')).toBe('text');
+    fireEvent.click(screen.getByLabelText('Mostrar senha'));
+    expect(screen.getByLabelText('Senha').getAttribute('type')).toBe('password');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 
-    localStorage.clear();
-    fetchMock.mockImplementation(async (entrada: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(entrada);
-      if (url.endsWith('/v1/auth/entrar')) {
+  it.each(['credencial', 'rede'])('explica falha de %s e permite nova tentativa', async (tipo) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        if (tipo === 'rede') throw new Error('offline');
         return {
-          ok: true,
-          json: async () => ({
-            dados: { token: 'tok-gestor', usuario: { id: 'g', papel: 'gestor', nome: 'Guto' } },
-          }),
+          ok: false,
+          json: async () => ({ erros: [{ mensagem: 'Usuário ou senha não conferem.' }] }),
         };
-      }
-      return {
-        ok: true,
-        json: async () => ({ dados: { importados: 1, duplicatas: 0 } }),
-        text: async () => String(init?.body ?? ''),
-      };
-    });
-    montar();
-    fireEvent.change(screen.getByLabelText('Usuário'), { target: { value: 'guto' } });
-    fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'senha-bem-longa' } });
+      }),
+    );
+    abrir();
+    preencher();
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
-    expect(await screen.findByText('Entrou como Guto.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Baixar CSV' })).toBeNull();
-    const arquivo = new File([new Uint8Array([1, 2, 3])], 'leads.xlsx');
-    fireEvent.change(screen.getByLabelText('Arquivo CSV ou XLSX'), {
-      target: { files: [arquivo] },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Importar planilha' }));
-    expect(await screen.findByText(/Novos: 1/)).toBeTruthy();
-    const envio = fetchMock.mock.calls.find((item) => String(item[0]).includes('/v1/importacoes'));
-    expect(String(envio?.[1]?.body)).toContain('xlsxBase64');
+    // Na falha de rede aparece antes o aviso de servidor acordando; espera a mensagem final.
+    await waitFor(
+      () =>
+        expect(screen.getByRole('alert').textContent).toContain(
+          tipo === 'rede' ? 'Confira sua conexão' : 'Usuário ou senha',
+        ),
+      { timeout: 3000 },
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Entrar' }).hasAttribute('disabled')).toBe(false),
+    );
+    expect(localStorage.getItem('captura7.token')).toBeNull();
+  });
+
+  it('impede envio duplicado enquanto aguarda a API', () => {
+    const fetchMock = vi.fn(() => new Promise(() => undefined));
+    vi.stubGlobal('fetch', fetchMock);
+    abrir();
+    preencher();
+    const formulario = screen.getByRole('button', { name: 'Entrar' }).closest('form')!;
+    fireEvent.submit(formulario);
+    fireEvent.submit(formulario);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

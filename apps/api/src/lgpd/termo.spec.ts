@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+﻿import { randomBytes } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { getConnectionToken, getModelToken, MongooseModule } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
@@ -46,12 +46,13 @@ describe('termo de consentimento', () => {
     await memoria.stop();
   });
 
-  it('publica o termo do controlador pessoa física', async () => {
+  it('publica o termo da controladora JSETTE7', async () => {
     const resposta = await request(app.getHttpServer()).get('/v1/publico/termo/atual');
     expect(resposta.status).toBe(200);
-    expect(resposta.body.dados.versao).toBe('2026-09-26-uso-pessoal');
+    expect(resposta.body.dados.versao).toBe('2026-11-16-tela-viva-jsette7');
     const curto = String(resposta.body.dados.textoCurto);
-    expect(curto).toContain('Erico Henrique de Lima Araujo');
+    expect(curto).toContain('JSETTE7 Comércio de Produtos Médicos e Hospitalares LTDA');
+    expect(curto).toContain('54.765.439/0001-34');
     expect(curto).toContain('erico@exemplo.com');
     expect(curto).toMatch(/24 meses[\s\S]*180 dias[\s\S]*30 dias/);
     expect(String(resposta.body.dados.textoCompleto)).not.toContain('quando você pede');
@@ -106,7 +107,7 @@ describe('termo de consentimento', () => {
     const prova = aceito.body.dados.lgpd.consentimentos[0];
     expect(prova.finalidade).toBe('contato_comercial');
     expect(prova.canal).toBe('autocadastro');
-    expect(prova.versaoTermo).toBe('2026-09-26-uso-pessoal');
+    expect(prova.versaoTermo).toBe('2026-11-16-tela-viva-jsette7');
     expect(prova.hashTexto).toBe(textoDoTermo().hash);
     expect(new Date(prova.emDispositivo).toISOString()).toBe(emDispositivo);
     expect(prova.emServidor).toBeTruthy();

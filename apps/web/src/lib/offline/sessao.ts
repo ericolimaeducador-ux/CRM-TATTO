@@ -21,6 +21,7 @@ export function sessaoLocal(): SessaoLocal {
 
 export function guardarToken(token: string): void {
   localStorage.setItem('captura7.token', token);
+  window.dispatchEvent(new Event('tela-viva-sessao'));
 }
 
 export function tokenDaSessao(): string {
@@ -37,6 +38,7 @@ export interface PerfilLogado {
 
 export function guardarPerfil(perfil: PerfilLogado): void {
   localStorage.setItem(PERFIL, JSON.stringify(perfil));
+  window.dispatchEvent(new Event('tela-viva-sessao'));
 }
 
 export function perfilLogado(): PerfilLogado | null {
@@ -83,6 +85,7 @@ export function limparSessao(): void {
   localStorage.removeItem('captura7.token');
   localStorage.removeItem(PERFIL);
   localStorage.removeItem('captura7.totpPendente');
+  window.dispatchEvent(new Event('tela-viva-sessao'));
 }
 
 export function codigoTotpDoCorpo(

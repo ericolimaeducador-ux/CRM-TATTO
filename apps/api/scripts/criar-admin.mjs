@@ -35,5 +35,7 @@ await usuarios.insertOne({
   ativo: true,
   criadoEm: new Date(),
 });
-console.log(`Administrador ${login} criado. Entre em /entrar e inscreva o TOTP antes de exportar.`);
+console.log(
+  `Administrador ${login} criado. Entre em /entrar com usuário e senha; crie a equipe em /usuarios. Configurações e confirmação de operações sensíveis ficam em /minha-conta.`,
+);
 await mongoose.disconnect();

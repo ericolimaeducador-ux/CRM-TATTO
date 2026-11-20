@@ -1,14 +1,16 @@
 import { postarConsentimento, postarResolucao, reportarProfundidade } from './api';
 import {
   apagarContato,
+  apagarOperacao,
   apagarOperacoesDoContato,
   gravarContato,
-  gravarOperacao,
+  gravarContatoComOperacao,
   lerContato,
   listarContatos,
   listarOperacoes,
 } from './db';
 import { emSerie } from './serie';
+import { headersDeTesteNoCliente, tokenDaSessao } from './sessao';
 import { sincronizarContato } from './sincronizar-contato';
 import type { ContatoLocal, EstadoSync, Operacao } from './tipos';
 
@@ -58,8 +60,7 @@ export async function salvarCampo(
     contato.estado = 'local';
     contato.atualizadoEm = Date.now();
     contato.conflito = undefined;
-    await gravarContato(contato);
-    await gravarOperacao({
+    await gravarContatoComOperacao(contato, {
       id: crypto.randomUUID(),
       idLocal,
       tipo: contato.idServidor ? 'patch' : 'criar',
@@ -85,9 +86,11 @@ export async function guardarConsentimento(
   emDispositivo: string,
   envioErp = false,
 ): Promise<void> {
-  const contato = await garantirContato(idLocal);
-  contato.consentimento = { contatoComercial: true, emDispositivo, envioErp, estado: 'local' };
-  await gravarContato(contato);
+  await emSerie(idLocal, async () => {
+    const contato = await garantirContato(idLocal);
+    contato.consentimento = { contatoComercial: true, emDispositivo, envioErp, estado: 'local' };
+    await gravarContato(contato);
+  });
   avisar();
   agendar(0);
 }
@@ -107,55 +110,60 @@ export async function apagarRascunhoLocal(idLocal: string): Promise<boolean> {
 
 export async function resolverConflito(idLocal: string, ficarComLocal: boolean): Promise<void> {
   const contato = await lerContato(idLocal);
-  if (!contato?.conflito) return;
+  const conflito = contato?.conflito;
+  if (!contato || !conflito) return;
+  // A escolha resolve apenas a foto deste campo; os outros campos e edições
+  // feitas enquanto a requisição está em andamento continuam na fila.
+  const resolvidas = (await listarOperacoes()).filter(
+    (item) => item.idLocal === idLocal && item.campo === conflito.campo,
+  );
+  let versao = Number(conflito.valorServidor.versao ?? contato.versaoServidor);
   if (contato.idServidor) {
     const resposta = await postarResolucao(
       contato.idServidor,
       ficarComLocal ? 'local' : 'servidor',
     );
     if (resposta.http >= 400) {
-      contato.mensagem = resposta.erros?.[0]?.mensagem ?? 'A escolha não foi gravada no servidor.';
-      await gravarContato(contato);
+      await emSerie(idLocal, async () => {
+        const fresco = (await lerContato(idLocal)) ?? contato;
+        fresco.mensagem = resposta.erros?.[0]?.mensagem ?? 'A escolha não foi gravada no servidor.';
+        await gravarContato(fresco);
+      });
       avisar();
       return;
     }
-    if (!ficarComLocal) {
-      const valor = contato.conflito.valorServidor[contato.conflito.campo];
-      if (typeof valor === 'string') contato.campos[contato.conflito.campo] = valor;
+    versao = Number(resposta.dados?.versao ?? contato.versaoServidor);
+  }
+  let atualizado = contato;
+  await emSerie(idLocal, async () => {
+    const fresco = (await lerContato(idLocal)) ?? contato;
+    for (const item of resolvidas) await apagarOperacao(item.id);
+    const novas = (await listarOperacoes()).some(
+      (item) => item.idLocal === idLocal && item.campo === conflito.campo,
+    );
+    if (!novas) {
+      const valor = ficarComLocal ? conflito.valorLocal : conflito.valorServidor[conflito.campo];
+      if (typeof valor === 'string') fresco.campos[conflito.campo] = valor;
     }
-    contato.versaoServidor = Number(resposta.dados?.versao ?? contato.versaoServidor);
-    contato.conflito = undefined;
-    contato.mensagem = undefined;
-    await apagarOperacoesDoContato(idLocal);
-    await definirEstado(contato, 'sincronizado', 0);
-    return;
-  }
-  const servidor = contato.conflito.valorServidor;
-  if (!ficarComLocal) {
-    const valor = servidor[contato.conflito.campo];
-    if (typeof valor === 'string') contato.campos[contato.conflito.campo] = valor;
-    contato.versaoServidor = Number(servidor.versao ?? contato.versaoServidor);
-    contato.conflito = undefined;
-    await apagarOperacoesDoContato(idLocal);
-    await definirEstado(contato, 'sincronizado', 0);
-    return;
-  }
-  contato.versaoServidor = Number(servidor.versao ?? contato.versaoServidor);
-  const campo = contato.conflito.campo;
-  const valor = contato.conflito.valorLocal;
-  contato.conflito = undefined;
-  await apagarOperacoesDoContato(idLocal);
-  await gravarOperacao({
-    id: crypto.randomUUID(),
-    idLocal,
-    tipo: 'patch',
-    campo,
-    valor,
-    tentativas: 0,
-    proximaEm: Date.now(),
+    fresco.versaoServidor = versao;
+    fresco.conflito = undefined;
+    fresco.mensagem = undefined;
+    if (!contato.idServidor && ficarComLocal && !novas) {
+      await gravarContatoComOperacao(fresco, {
+        id: crypto.randomUUID(),
+        idLocal,
+        tipo: 'patch',
+        campo: conflito.campo,
+        valor: conflito.valorLocal,
+        tentativas: 0,
+        proximaEm: Date.now(),
+      });
+    } else await gravarContato(fresco);
+    atualizado = fresco;
   });
-  await definirEstado(contato, 'local', 0);
-  agendar(0);
+  const pendentes = (await listarOperacoes()).some((item) => item.idLocal === idLocal);
+  await definirEstado(atualizado, pendentes ? 'local' : 'sincronizado', 0);
+  if (pendentes) agendar(0);
 }
 
 export async function jsonDoContato(idLocal: string): Promise<string> {
@@ -172,6 +180,7 @@ export function iniciarFila(): void {
   if (filaIniciada) return;
   filaIniciada = true;
   window.addEventListener('online', () => agendar(0));
+  window.addEventListener('tela-viva-sessao', () => agendar(0));
   agendar(0);
 }
 
@@ -182,6 +191,7 @@ export function agendar(espera: number): void {
 
 export async function drenar(): Promise<void> {
   if (drenando) return;
+  if (!tokenDaSessao() && !headersDeTesteNoCliente()) return;
   drenando = true;
   try {
     const operacoes = await listarOperacoes();
@@ -200,7 +210,11 @@ export async function drenar(): Promise<void> {
       if (espera !== null) proxima = Math.min(proxima, espera);
     }
     if (navigator.onLine) await enviarConsentimentosLocais();
-    if (porContato.size > 0) agendar(Math.max(proxima, 0));
+    const idsIniciais = new Set(operacoes.map((item) => item.id));
+    const novas = (await listarOperacoes()).filter((item) => !idsIniciais.has(item.id));
+    if (novas.length)
+      proxima = Math.min(proxima, ...novas.map((item) => item.proximaEm - Date.now()));
+    if (porContato.size > 0 || novas.length > 0) agendar(Math.max(proxima, 0));
   } catch {
     // Sem IndexedDB neste ambiente a fila não drena. A tela continua.
   } finally {
@@ -216,7 +230,8 @@ async function definirEstado(
 ): Promise<void> {
   await emSerie(contato.idLocal, async () => {
     const fresco = (await lerContato(contato.idLocal)) ?? contato;
-    fresco.estado = estado;
+    const pendentes = (await listarOperacoes()).some((item) => item.idLocal === contato.idLocal);
+    fresco.estado = estado === 'sincronizado' && pendentes ? 'local' : estado;
     fresco.tentativas = tentativas;
     fresco.atualizadoEm = Date.now();
     if (contato.idServidor) fresco.idServidor = contato.idServidor;
@@ -241,8 +256,17 @@ async function enviarConsentimentosLocais(): Promise<void> {
       escolha.envioErp === true,
     ).catch(() => null);
     if (!resposta || resposta.http >= 400) continue;
-    escolha.estado = 'enviado';
-    await gravarContato(contato);
+    await emSerie(contato.idLocal, async () => {
+      const fresco = await lerContato(contato.idLocal);
+      if (
+        !fresco?.consentimento ||
+        fresco.consentimento.emDispositivo !== escolha.emDispositivo ||
+        fresco.consentimento.envioErp !== escolha.envioErp
+      )
+        return;
+      fresco.consentimento.estado = 'enviado';
+      await gravarContato(fresco);
+    });
   }
 }
 

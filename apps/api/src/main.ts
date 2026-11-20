@@ -16,7 +16,8 @@ import { profundidadeFila } from './observabilidade/fila-sincronizacao';
 async function bootstrap(): Promise<void> {
   exigirSegredosDeProducao();
   carregarRegistradores();
-  const app = await NestFactory.create(AppModule, { logger: new LogJson() });
+  const app = await NestFactory.create(AppModule, { logger: new LogJson(), rawBody: true });
+  app.enableShutdownHooks();
   app.enableCors(opcoesDeCors());
   const expressApp = app.getHttpAdapter().getInstance() as Express;
   const saltos = saltosDeProxyConfiavel();

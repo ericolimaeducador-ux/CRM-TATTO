@@ -1,8 +1,8 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+﻿import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TelaTermo } from './TelaTermo';
 
-const CURTO = `**Seus dados no TattooArt**
+const CURTO = `**Seus dados no Tela Viva**
 
 > **Importante: este cadastro existe para que a 7Safe possa entrar em contato com você para apresentar produtos e serviços. Por isso, sem a autorização de contato comercial abaixo não é possível concluir o cadastro.** Você pode revogar essa autorização depois, a qualquer momento e de graça.
 
@@ -52,7 +52,7 @@ describe('tela do termo', () => {
     );
     expect(await screen.findByText(/Não consegui carregar o termo/)).toBeTruthy();
     const destaque = screen.getByTestId('destaque-consentimento');
-    expect(destaque.textContent).toContain('pessoa física');
+    expect(destaque.textContent).toContain('JSETTE7');
     expect(destaque.textContent).not.toContain('7Safe');
     expect(destaque.textContent).not.toContain('CONTROLADOR_EMAIL');
     expect(screen.getByText(/sistema externo/i).textContent).not.toContain('ERP_WEBHOOK_URL');

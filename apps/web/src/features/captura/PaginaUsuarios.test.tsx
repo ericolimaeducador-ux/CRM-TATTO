@@ -1,51 +1,86 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { PaginaUsuarios } from './PaginaUsuarios';
 
-function respostaJson(ok: boolean, json: unknown) {
-  return { ok, status: ok ? 200 : 422, json: async () => json };
+function abrir(papel = 'admin') {
+  localStorage.setItem('captura7.perfil', JSON.stringify({ id: 'abc', papel, nome: 'Admin QA' }));
+  localStorage.setItem('captura7.token', 'tok-admin');
+  return render(
+    <MemoryRouter>
+      <PaginaUsuarios />
+    </MemoryRouter>,
+  );
 }
 
-describe('página de usuários', () => {
-  it('mostra o resultado logo abaixo de Criar usuário e mantém os campos no erro', async () => {
-    const lista = [{ id: '1', login: 'ana', nome: 'Ana', papel: 'vendedor', ativo: true }];
-    let criacoes = 0;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (_url: string, init?: RequestInit) => {
-        if (init?.method === 'POST') {
-          criacoes += 1;
-          return criacoes === 1
-            ? respostaJson(false, { erros: [{ mensagem: 'Senha curta demais.' }] })
-            : respostaJson(true, { dados: { id: '2' } });
-        }
-        return respostaJson(true, { dados: lista });
+beforeEach(() => localStorage.clear());
+
+describe('administração da equipe', () => {
+  it('cria membro com perfil legível e impede criação duplicada', async () => {
+    let concluir!: (value: unknown) => void;
+    const fetchMock = vi.fn((_url: RequestInfo | URL, init?: RequestInit): Promise<unknown> => {
+      if (init?.method === 'POST')
+        return new Promise((resolve) => {
+          concluir = resolve;
+        });
+      return Promise.resolve({ ok: true, json: async () => ({ dados: [] }) });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    abrir();
+    await screen.findByRole('button', { name: 'Atualizar lista' });
+    fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'Ana QA' } });
+    fireEvent.change(screen.getByLabelText('Usuário'), { target: { value: 'ana-qa' } });
+    fireEvent.change(screen.getByLabelText('Senha de 12 caracteres ou mais'), {
+      target: { value: 'senha-longa-para-qa' },
+    });
+    fireEvent.change(screen.getByLabelText('Perfil', { exact: true }), {
+      target: { value: 'admin' },
+    });
+    expect(screen.getByRole('option', { name: 'Administrador' })).toBeTruthy();
+    const formulario = screen.getByRole('button', { name: 'Criar usuário' }).closest('form')!;
+    fireEvent.submit(formulario);
+    fireEvent.submit(formulario);
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1);
+    concluir({ ok: true, json: async () => ({ dados: { id: 'nova' } }) });
+    await screen.findByText(/Usuário criado\. Entregue/);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/v1/usuarios'),
+      expect.objectContaining({
+        body: JSON.stringify({
+          login: 'ana-qa',
+          senha: 'senha-longa-para-qa',
+          nome: 'Ana QA',
+          papel: 'admin',
+        }),
+        headers: expect.objectContaining({ authorization: 'Bearer tok-admin' }),
       }),
     );
-    render(<PaginaUsuarios />);
-    await screen.findByText(/Ana \(ana\)/);
-    const login = screen.getByLabelText('Login') as HTMLInputElement;
-    const senha = screen.getByLabelText(/Senha/) as HTMLInputElement;
-    const nome = screen.getByLabelText('Nome') as HTMLInputElement;
-    fireEvent.change(login, { target: { value: 'bia' } });
-    fireEvent.change(senha, { target: { value: 'curta' } });
-    fireEvent.change(nome, { target: { value: 'Bia' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Criar usuário' }));
-    const aviso = await screen.findByTestId('mensagem-criacao');
-    expect(aviso.textContent).toBe('Senha curta demais.');
-    const botao = screen.getByRole('button', { name: 'Criar usuário' });
-    expect(botao.compareDocumentPosition(aviso) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const itemLista = screen.getByText(/Ana \(ana\)/);
     expect(
-      aviso.compareDocumentPosition(itemLista) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(login.value).toBe('bia');
-    expect(senha.value).toBe('curta');
-    expect(nome.value).toBe('Bia');
-    fireEvent.click(botao);
-    await waitFor(() =>
-      expect(screen.getByTestId('mensagem-criacao').textContent).toContain('Usuário criado'),
+      (screen.getByLabelText('Senha de 12 caracteres ou mais') as HTMLInputElement).value,
+    ).toBe('');
+  });
+
+  it('explica falha de rede e permite atualizar a lista', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue({ ok: true, json: async () => ({ dados: [] }) });
+    vi.stubGlobal('fetch', fetchMock);
+    abrir();
+    await screen.findByText(
+      'Não consegui carregar os usuários. Confira sua conexão e atualize a lista.',
     );
-    expect(login.value).toBe('');
-    expect(document.body.textContent).not.toMatch(/captura7/i);
+    fireEvent.click(screen.getByRole('button', { name: 'Atualizar lista' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  });
+
+  it('não oferece gestão nem consulta usuários para perfil vendedor', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    abrir('vendedor');
+    expect(
+      screen.getByText('Entre com um perfil de administrador para gerenciar a equipe.'),
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Criar usuário' })).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

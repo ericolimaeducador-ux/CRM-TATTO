@@ -1,0 +1,18 @@
+{
+  "original": "telaviva-lockup-claro.svg",
+  "proporcao": "1400:420",
+  "cor": "#FBF7F1",
+  "fontes": ["Playfair Display 400", "Inter 400"],
+  "png": {
+    "largura": 6000,
+    "altura": 1800,
+    "canalAlfa": true,
+    "dpi": 508,
+    "impressaoCm": [30, 9]
+  },
+  "preview": {
+    "largura": 1000,
+    "altura": 300,
+    "fundo": "#111111"
+  }
+}

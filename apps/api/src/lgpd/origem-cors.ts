@@ -10,7 +10,14 @@ export function opcoesDeCors(): {
   return {
     credentials: false,
     methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      // Cabeçalhos de teste só existem fora de produção; a API os ignora em produção.
+      ...(process.env.NODE_ENV === 'production'
+        ? []
+        : ['x-papel-teste', 'x-usuario-id', 'x-autor-nome', 'x-step-up-teste']),
+    ],
     origin: (origem, responder) => responder(null, origemPermitida(origem)),
   };
 }

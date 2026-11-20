@@ -1,11 +1,11 @@
 const PADRAO_TTL_SEGUNDOS = 2 * 60 * 60;
 
 export function prazoTokenSegundos(): number {
-  return inteiroDeAmbiente('QR_TOKEN_TTL_SEGUNDOS', PADRAO_TTL_SEGUNDOS, 60, 24 * 60 * 60);
+  return inteiroDeAmbiente('QR_TOKEN_TTL_SEGUNDOS', PADRAO_TTL_SEGUNDOS, 60, 72 * 60 * 60);
 }
 
 export function limiteDeUsosDoToken(): number {
-  return inteiroDeAmbiente('QR_TOKEN_MAX_USOS', 1, 1, 20);
+  return inteiroDeAmbiente('QR_TOKEN_MAX_USOS', 1, 1, 2000);
 }
 
 function inteiroDeAmbiente(nome: string, padrao: number, minimo: number, maximo: number): number {

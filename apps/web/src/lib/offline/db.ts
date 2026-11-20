@@ -25,15 +25,50 @@ function transacao<T>(
   modo: IDBTransactionMode,
   run: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> {
+  return executarTransacao([loja], modo, (tx) => run(tx.objectStore(loja)));
+}
+
+function executarTransacao<T>(
+  lojas: ('contatos' | 'operacoes')[],
+  modo: IDBTransactionMode,
+  run: (tx: IDBTransaction) => IDBRequest<T>,
+): Promise<T> {
   return abrir().then(
     (banco) =>
       new Promise<T>((resolve, reject) => {
-        const tx = banco.transaction(loja, modo);
-        const pedido = run(tx.objectStore(loja));
-        pedido.onsuccess = () => resolve(pedido.result);
-        pedido.onerror = () => reject(pedido.error);
+        const tx = banco.transaction(lojas, modo);
+        let resultado: T;
+        tx.oncomplete = () => {
+          banco.close();
+          resolve(resultado);
+        };
+        tx.onerror = () => {
+          banco.close();
+          reject(tx.error ?? new Error('Falha na gravação local.'));
+        };
+        tx.onabort = () => {
+          banco.close();
+          reject(tx.error ?? new Error('Gravação local cancelada.'));
+        };
+        try {
+          const pedido = run(tx);
+          pedido.onsuccess = () => {
+            resultado = pedido.result;
+          };
+        } catch (erro) {
+          tx.abort();
+          banco.close();
+          reject(erro);
+        }
       }),
   );
+}
+
+export function gravarContatoComOperacao(contato: ContatoLocal, operacao: Operacao): Promise<void> {
+  return executarTransacao(['contatos', 'operacoes'], 'readwrite', (tx) => {
+    tx.objectStore('contatos').put(contato);
+    return tx.objectStore('operacoes').put(operacao);
+  }).then(() => undefined);
 }
 
 export function gravarContato(contato: ContatoLocal): Promise<void> {

@@ -15,13 +15,15 @@ export default defineConfig({
     {
       command: 'node e2e/subir-api.cjs',
       cwd: '..',
-      url: 'http://127.0.0.1:3000/v1/saude',
+      url: 'http://127.0.0.1:3101/v1/saude',
       timeout: 120_000,
       reuseExistingServer: false,
     },
     {
-      command: 'pnpm --filter @captura7/web preview --host 127.0.0.1 --port 4173 --strictPort',
+      command:
+        'node apps/web/node_modules/vite/bin/vite.js preview apps/web --host 127.0.0.1 --port 4173 --strictPort',
       cwd: '..',
+      env: { ...process.env, CAPTURA7_API_PROXY: 'http://127.0.0.1:3101' },
       url: 'http://127.0.0.1:4173',
       timeout: 120_000,
       reuseExistingServer: false,

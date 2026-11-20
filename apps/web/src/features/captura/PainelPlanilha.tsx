@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+﻿import { FormEvent, useState } from 'react';
 import { urlDaApi } from '@/lib/api-url';
 import { cabecalhosDaSessao, podeExportar, podeImportar } from '@/lib/offline/sessao';
 
@@ -28,7 +28,7 @@ export function PainelPlanilha({ aoMensagem }: { aoMensagem: (texto: string) => 
     const url = URL.createObjectURL(blob);
     const ancora = document.createElement('a');
     ancora.href = url;
-    ancora.download = `tattooart-leads.${formato}`;
+    ancora.download = `tela-viva-leads.${formato}`;
     ancora.click();
     URL.revokeObjectURL(url);
     aoMensagem(`Arquivo ${formato.toUpperCase()} baixado.`);
@@ -56,16 +56,41 @@ export function PainelPlanilha({ aoMensagem }: { aoMensagem: (texto: string) => 
     <div className="flex flex-col gap-3">
       {exportar ? (
         <>
-          <button type="button" className="btn-secundario" onClick={() => void baixar('csv')}>
+          <button
+            type="button"
+            className="min-h-12 rounded-lg border border-stone-900 px-4"
+            onClick={() =>
+              void baixar('csv').catch(() =>
+                aoMensagem('Não consegui baixar o arquivo. Confira sua conexão e tente novamente.'),
+              )
+            }
+          >
             Baixar CSV
           </button>
-          <button type="button" className="btn-secundario" onClick={() => void baixar('xlsx')}>
+          <button
+            type="button"
+            className="min-h-12 rounded-lg border border-stone-900 px-4"
+            onClick={() =>
+              void baixar('xlsx').catch(() =>
+                aoMensagem('Não consegui baixar o arquivo. Confira sua conexão e tente novamente.'),
+              )
+            }
+          >
             Baixar XLSX
           </button>
         </>
       ) : null}
       {importar ? (
-        <form className="flex flex-col gap-2" onSubmit={(evento) => void enviar(evento)}>
+        <form
+          className="flex flex-col gap-2"
+          onSubmit={(evento) =>
+            void enviar(evento).catch(() =>
+              aoMensagem(
+                'Não consegui confirmar a importação. Confira sua conexão antes de tentar novamente.',
+              ),
+            )
+          }
+        >
           <label className="flex flex-col gap-1 text-base">
             Planilha CSV do Google
             <textarea

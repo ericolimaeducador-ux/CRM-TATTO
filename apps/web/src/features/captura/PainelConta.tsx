@@ -1,111 +1,190 @@
-import { FormEvent, useState } from 'react';
-import { fetchComAcordar } from '@/lib/acordar';
+﻿import { FormEvent, useState } from 'react';
 import { urlDaApi } from '@/lib/api-url';
 import { cabecalhosDaSessao, limparSessao, marcarTotpPendente } from '@/lib/offline/sessao';
 
 interface RespostaJson {
   mensagem?: string;
   erros?: { mensagem?: string }[];
-  dados?: { segredoBase32?: string; pendente?: boolean };
+  dados?: { segredoBase32?: string };
 }
 
 export function PainelConta({
-  codigo,
-  pendente,
   aoMensagem,
-  aoSegredo,
   aoSair,
 }: {
-  codigo: string;
-  pendente: boolean;
   aoMensagem: (texto: string) => void;
-  aoSegredo: (segredo: string) => void;
   aoSair: () => void;
 }) {
+  const [codigo, setCodigo] = useState('');
+  const [segredo, setSegredo] = useState('');
   const [senhaAtual, setSenhaAtual] = useState('');
   const [senhaNova, setSenhaNova] = useState('');
 
   async function inscrever() {
-    const resposta = await chamar('/v1/auth/totp/inscrever', { codigoTotp: codigo || undefined });
-    if (!resposta?.ok || !resposta.json.dados?.segredoBase32) {
-      aoMensagem(textoDe(resposta?.json, 'O autenticador não foi inscrito.'));
+    const resposta = await fetch(urlDaApi('/v1/auth/totp/inscrever'), {
+      method: 'POST',
+      headers: cabecalhosDaSessao(),
+      body: JSON.stringify({ codigoTotp: codigo || undefined }),
+    });
+    const json = (await resposta.json()) as RespostaJson;
+    if (!resposta.ok || !json.dados?.segredoBase32) {
+      aoMensagem(textoDe(json, 'O autenticador não foi inscrito.'));
       return;
     }
-    aoSegredo(resposta.json.dados.segredoBase32);
+    marcarTotpPendente(false);
+    setSegredo(json.dados.segredoBase32);
     aoMensagem(
-      'Segredo pendente. No autenticador, crie a conta TattooArt com este segredo e confirme um código válido para ativar.',
+      'Guarde este segredo no aplicativo autenticador, digite o código de 6 dígitos e toque em Ativar autenticador.',
     );
   }
 
   async function ativar() {
-    const resposta = await chamar('/v1/auth/totp/ativar', { codigoTotp: codigo });
-    if (!resposta?.ok) {
-      aoMensagem(textoDe(resposta?.json, 'O autenticador não foi ativado.'));
-      return;
+    const resposta = await fetch(urlDaApi('/v1/auth/totp/ativar'), {
+      method: 'POST',
+      headers: cabecalhosDaSessao(),
+      body: JSON.stringify({ codigoTotp: codigo }),
+    });
+    const json = (await resposta.json()) as RespostaJson;
+    if (resposta.ok) {
+      setSegredo('');
+      setCodigo('');
     }
-    marcarTotpPendente(false);
-    aoMensagem('Autenticador ativado.');
+    aoMensagem(
+      resposta.ok
+        ? 'Autenticador ativado. Use o próximo código para confirmar operações sensíveis.'
+        : textoDe(json, 'O autenticador não foi ativado.'),
+    );
   }
 
   async function confirmarPasso() {
-    const resposta = await chamar('/v1/auth/step-up', { codigoTotp: codigo });
+    const resposta = await fetch(urlDaApi('/v1/auth/step-up'), {
+      method: 'POST',
+      headers: cabecalhosDaSessao(),
+      body: JSON.stringify({ codigoTotp: codigo }),
+    });
+    const json = (await resposta.json()) as RespostaJson;
     aoMensagem(
-      resposta?.ok
+      resposta.ok
         ? 'Passo extra confirmado por cinco minutos.'
-        : textoDe(resposta?.json, 'Código não aceito.'),
+        : textoDe(json, 'Código não aceito.'),
     );
   }
 
   async function sair() {
-    let aviso = '';
     try {
-      const resposta = await fetchComAcordar(
-        urlDaApi('/v1/auth/sair'),
-        { method: 'POST', headers: cabecalhosDaSessao() },
-        aoMensagem,
+      const resposta = await fetch(urlDaApi('/v1/auth/sair'), {
+        method: 'POST',
+        headers: cabecalhosDaSessao(),
+      });
+      aoMensagem(
+        resposta.ok
+          ? 'Sessão encerrada neste aparelho e no servidor.'
+          : 'Sessão encerrada neste aparelho. Não foi possível confirmar o encerramento no servidor.',
       );
-      if (!resposta.ok) aviso = ' O servidor pode ainda guardar a sessão.';
     } catch {
-      aviso = ' Sem rede, o servidor pode ainda guardar a sessão.';
+      aoMensagem(
+        'Sessão encerrada neste aparelho. Sem conexão para confirmar o encerramento no servidor.',
+      );
+    } finally {
+      limparSessao();
+      setCodigo('');
+      setSegredo('');
+      aoSair();
     }
-    limparSessao();
-    aoSair();
-    aoMensagem(`Sessão encerrada neste aparelho.${aviso}`);
   }
 
   async function trocarSenha(evento: FormEvent) {
     evento.preventDefault();
-    const resposta = await chamar('/v1/auth/senha', { senhaAtual, senhaNova });
-    if (!resposta?.ok) {
-      aoMensagem(textoDe(resposta?.json, 'A senha não mudou.'));
-      return;
+    const resposta = await fetch(urlDaApi('/v1/auth/senha'), {
+      method: 'POST',
+      headers: cabecalhosDaSessao(),
+      body: JSON.stringify({ senhaAtual, senhaNova }),
+    });
+    const json = (await resposta.json()) as RespostaJson;
+    if (resposta.ok) {
+      setSenhaAtual('');
+      setSenhaNova('');
     }
-    setSenhaAtual('');
-    setSenhaNova('');
-    aoMensagem('Senha trocada. As outras sessões foram encerradas.');
+    aoMensagem(resposta.ok ? 'Senha trocada.' : textoDe(json, 'A senha não mudou.'));
   }
 
   return (
     <div className="flex flex-col gap-3">
-      {pendente ? (
+      <details className="tv-account-details">
+        <summary>Confirmar operações sensíveis</summary>
         <p className="text-base">
-          O administrador precisa inscrever o autenticador antes de usar o restante.
+          O autenticador é usado apenas para operações como exportar, alterar perfis e desativar
+          usuários. Entrar e criar usuários não pedem código.
         </p>
-      ) : null}
-      <button type="button" className="btn-secundario" onClick={() => void inscrever()}>
-        Inscrever autenticador
-      </button>
-      <button type="button" className="btn-secundario" onClick={() => void ativar()}>
-        Ativar autenticador
-      </button>
-      <button type="button" className="btn-secundario" onClick={() => void confirmarPasso()}>
-        Confirmar passo extra
-      </button>
-      <form className="flex flex-col gap-2" onSubmit={(evento) => void trocarSenha(evento)}>
+        <label className="flex flex-col gap-1 text-base">
+          Código do autenticador
+          <input
+            className="min-h-12 rounded border border-stone-400 px-3"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value)}
+          />
+        </label>
+        <button
+          type="button"
+          className="min-h-12 rounded-lg border border-stone-900 px-4"
+          onClick={() =>
+            void inscrever().catch(() =>
+              aoMensagem(
+                'Não consegui conectar. O autenticador não foi confirmado. Tente novamente.',
+              ),
+            )
+          }
+        >
+          Inscrever autenticador
+        </button>
+        <button
+          type="button"
+          className="min-h-12 rounded-lg border border-stone-900 px-4"
+          onClick={() =>
+            void confirmarPasso().catch(() =>
+              aoMensagem('Sem conexão para confirmar o código. Tente novamente.'),
+            )
+          }
+        >
+          Confirmar passo extra
+        </button>
+        {segredo ? (
+          <>
+            <p className="break-all text-base" data-testid="segredo-totp">
+              {segredo}
+            </p>
+            <button
+              type="button"
+              className="min-h-12 rounded-lg border border-stone-900 px-4"
+              onClick={() =>
+                void ativar().catch(() =>
+                  aoMensagem('Sem conexão para ativar o autenticador. Tente novamente.'),
+                )
+              }
+            >
+              Ativar autenticador
+            </button>
+          </>
+        ) : null}
+      </details>
+      <form
+        className="flex flex-col gap-2"
+        onSubmit={(evento) =>
+          void trocarSenha(evento).catch(() =>
+            aoMensagem(
+              'Não consegui confirmar a troca de senha. Confira a conexão antes de tentar novamente.',
+            ),
+          )
+        }
+      >
+        <h2 className="text-xl font-semibold">Trocar senha</h2>
         <label className="flex flex-col gap-1 text-base">
           Senha atual
           <input
-            className="campo"
+            className="min-h-12 rounded border border-stone-400 px-3"
             type="password"
             autoComplete="current-password"
             value={senhaAtual}
@@ -115,41 +194,29 @@ export function PainelConta({
         <label className="flex flex-col gap-1 text-base">
           Senha nova
           <input
-            className="campo"
+            className="min-h-12 rounded border border-stone-400 px-3"
             type="password"
             autoComplete="new-password"
+            minLength={12}
             value={senhaNova}
             onChange={(evento) => setSenhaNova(evento.target.value)}
           />
         </label>
-        <button type="submit" className="btn-secundario">
+        <button type="submit" className="min-h-12 rounded-lg border border-stone-900 px-4">
           Trocar senha
         </button>
       </form>
-      <button type="button" className="btn-secundario" onClick={() => void sair()}>
+      <button
+        type="button"
+        className="min-h-12 rounded-lg border border-stone-900 px-4"
+        onClick={() => void sair()}
+      >
         Sair
       </button>
     </div>
   );
 }
 
-async function chamar(
-  caminho: string,
-  corpo: unknown,
-): Promise<{ ok: boolean; json: RespostaJson } | null> {
-  try {
-    const resposta = await fetchComAcordar(urlDaApi(caminho), {
-      method: 'POST',
-      headers: cabecalhosDaSessao(),
-      body: JSON.stringify(corpo),
-    });
-    const json = (await resposta.json()) as RespostaJson;
-    return { ok: resposta.ok, json };
-  } catch {
-    return null;
-  }
-}
-
-function textoDe(json: RespostaJson | undefined, reserva: string): string {
-  return json?.erros?.[0]?.mensagem ?? json?.mensagem ?? reserva;
+function textoDe(json: RespostaJson, reserva: string): string {
+  return json.erros?.[0]?.mensagem ?? json.mensagem ?? reserva;
 }

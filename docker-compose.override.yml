@@ -1,0 +1,4 @@
+services:
+  mongo:
+    ports: !override
+      - '127.0.0.1:27019:27017'

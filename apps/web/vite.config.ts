@@ -1,8 +1,18 @@
-import react from '@vitejs/plugin-react';
+﻿import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 import { VitePWA } from 'vite-plugin-pwa';
 
+function basePublica(): string {
+  const bruto = process.env.PAGES_BASE ?? '/';
+  if (bruto === '/' || bruto === '') return '/';
+  const comBarra = bruto.endsWith('/') ? bruto : `${bruto}/`;
+  return comBarra.startsWith('/') ? comBarra : `/${comBarra}`;
+}
+
+const base = basePublica();
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -11,37 +21,23 @@ export default defineConfig({
       srcDir: 'public',
       filename: 'sw.js',
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,svg,ico,png,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,svg,ico,png,woff2,webmanifest}'],
       },
       manifest: {
-        name: 'TattooArt',
-        short_name: 'TattooArt',
-        description: 'Cuidados para pele tatuada',
+        name: 'Tela Viva — Carteira & visitas',
+        short_name: 'Tela Viva',
         lang: 'pt-BR',
-        id: '/',
+        id: base,
         display: 'standalone',
-        start_url: '/',
-        scope: '/',
-        background_color: '#f6f1ea',
-        theme_color: '#1a5c64',
+        start_url: base,
+        scope: base,
+        background_color: '#FBF7F1',
+        theme_color: '#F2EADF',
         icons: [
-          { src: '/icone-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: '/icone-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          {
-            src: '/icone-maskable-192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'maskable',
-          },
-          {
-            src: '/icone-maskable-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable',
-          },
+          { src: 'brand/icone-pwa.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
       },
-      devOptions: { enabled: true, type: 'module' },
+      devOptions: { enabled: false, type: 'module' },
     }),
   ],
   resolve: {
@@ -51,7 +47,7 @@ export default defineConfig({
     proxy: { '/v1': 'http://127.0.0.1:3000' },
   },
   preview: {
-    proxy: { '/v1': 'http://127.0.0.1:3000' },
+    proxy: { '/v1': process.env.CAPTURA7_API_PROXY ?? 'http://127.0.0.1:3000' },
   },
   test: {
     environment: 'jsdom',

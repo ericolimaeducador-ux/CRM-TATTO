@@ -33,7 +33,16 @@ describe('origem de rede local', () => {
     const opcoes = opcoesDeCors();
     expect(opcoes.credentials).toBe(false);
     expect(opcoes.allowedHeaders).toContain('Authorization');
-    expect(opcoes.allowedHeaders).toEqual(['Content-Type', 'Authorization']);
+  });
+
+  it('em produção libera só Content-Type e Authorization', () => {
+    const anterior = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      expect(opcoesDeCors().allowedHeaders).toEqual(['Content-Type', 'Authorization']);
+    } finally {
+      process.env.NODE_ENV = anterior;
+    }
   });
 
   it('recusa endereço público', () => {

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Types, type Model } from 'mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Connection, Types, type Model } from 'mongoose';
 import { RespostaComErro } from '../contatos/erros-http';
 import { hashSenha } from './senha';
 import { TotpService } from './totp.service';
@@ -20,11 +20,42 @@ export class UsuariosService {
   constructor(
     @InjectModel('Usuario') private readonly usuarios: Model<UsuarioDoc>,
     private readonly totp: TotpService,
+    @InjectModel('SessaoToken') private readonly sessoes: Model<{ usuarioId: string }>,
+    @InjectConnection() private readonly conexao: Connection,
   ) {}
 
   async listar() {
     const itens = await this.usuarios.find().sort({ criadoEm: 1 }).lean<UsuarioDoc[]>();
     return itens.map(vista);
+  }
+
+  async listarEquipe(usuarioId: string) {
+    if (!Types.ObjectId.isValid(usuarioId)) {
+      throw new RespostaComErro(
+        403,
+        'SESSAO_AUSENTE',
+        'Entre novamente para consultar a equipe.',
+        null,
+      );
+    }
+    const itens = await this.usuarios
+      .find({ ativo: { $ne: false } })
+      .select('_id nome papel ativo')
+      .sort({ nome: 1, _id: 1 })
+      .lean<Pick<UsuarioDoc, '_id' | 'nome' | 'papel' | 'ativo'>[]>();
+    await this.conexao.collection('acessos_dados').insertOne({
+      usuario: new Types.ObjectId(usuarioId),
+      acao: 'listagem_equipe',
+      filtro: { ativo: { $ne: false } },
+      quantidadeRetornada: itens.length,
+      em: new Date(),
+    });
+    return itens.map((doc) => ({
+      id: String(doc._id),
+      nome: typeof doc.nome === 'string' ? doc.nome.trim().slice(0, 160) : '',
+      papel: doc.papel,
+      ativo: true,
+    }));
   }
 
   async criar(loginBruto: string, senha: string, nome: string, papelBruto: string) {
@@ -70,6 +101,7 @@ export class UsuariosService {
   async zerarTotp(id: string) {
     await this.exigir(id);
     await this.totp.zerar(id);
+    await this.sessoes.deleteMany({ usuarioId: id });
     return { id, totp: 'zerado' };
   }
 

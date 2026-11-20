@@ -1,143 +1,119 @@
-import { FormEvent, useState } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchComAcordar, FRASE_ACORDANDO } from '@/lib/acordar';
+import { fetchComAcordar } from '@/lib/acordar';
 import { urlDaApi } from '@/lib/api-url';
-import {
-  guardarPerfil,
-  guardarToken,
-  marcarTotpPendente,
-  tokenDaSessao,
-  totpPendenteLocal,
-} from '@/lib/offline/sessao';
-import { Marca } from '../marca/Marca';
-import { PainelConta } from './PainelConta';
-import { PainelPlanilha } from './PainelPlanilha';
+import { guardarPerfil, guardarToken, marcarTotpPendente } from '@/lib/offline/sessao';
+import { textoDaResposta } from '@/lib/texto-resposta';
 
 interface RespostaJson {
   mensagem?: string;
   erros?: { mensagem?: string }[];
-  dados?: {
-    token?: string;
-    precisaInscreverTotp?: boolean;
-    usuario?: { id?: string; papel?: string; nome?: string };
-  };
+  dados?: { token?: string; usuario?: { id?: string; papel?: string; nome?: string } };
 }
 
 export function PaginaEntrar() {
   const navegar = useNavigate();
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
-  const [codigo, setCodigo] = useState('');
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [mensagem, setMensagem] = useState('');
-  const [token, setToken] = useState(tokenDaSessao);
-  const [segredo, setSegredo] = useState('');
+  const [entrando, setEntrando] = useState(false);
+  const envio = useRef(false);
 
   async function entrar(evento: FormEvent) {
     evento.preventDefault();
-    let resposta: Response;
+    if (envio.current) return;
+    envio.current = true;
+    setEntrando(true);
+    setMensagem('');
     try {
-      resposta = await fetchComAcordar(
+      const resposta = await fetchComAcordar(
         urlDaApi('/v1/auth/entrar'),
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ login, senha, codigoTotp: codigo || undefined }),
+          body: JSON.stringify({ login, senha }),
         },
         setMensagem,
       );
-    } catch {
-      setMensagem(`${FRASE_ACORDANDO} Não consegui entrar. Tente de novo.`);
-      return;
-    }
-    const json = (await resposta.json()) as RespostaJson;
-    if (!resposta.ok || !json.dados?.token) {
-      setMensagem(textoDe(json, 'Usuário ou senha não conferem.'));
-      return;
-    }
-    guardarToken(json.dados.token);
-    marcarTotpPendente(json.dados.precisaInscreverTotp === true);
-    const usuario = json.dados.usuario;
-    if (usuario?.id && usuario.papel && usuario.nome) {
+      const json = (await resposta.json()) as RespostaJson;
+      const usuario = json.dados?.usuario;
+      if (!resposta.ok || !json.dados?.token || !usuario?.id || !usuario.papel || !usuario.nome) {
+        setMensagem(textoDaResposta(json, 'Não foi possível entrar. Confira usuário e senha.'));
+        return;
+      }
       guardarPerfil({ id: usuario.id, papel: usuario.papel, nome: usuario.nome });
+      marcarTotpPendente(false);
+      guardarToken(json.dados.token);
+      setSenha('');
+      navegar('/', { replace: true });
+    } catch {
+      setMensagem('Não consegui conectar ao Tela Viva. Confira sua conexão e tente novamente.');
+    } finally {
+      envio.current = false;
+      setEntrando(false);
     }
-    setToken(json.dados.token);
-    setMensagem(`Entrou como ${usuario?.nome ?? login}.`);
-    if (usuario?.papel === 'admin' || usuario?.papel === 'gestor') navegar('/cadastros');
   }
 
   return (
-    <section className="entrar-palco">
-      <aside className="entrar-marca">
-        <Marca grande clara />
-        <span className="fio-ouro" aria-hidden="true" />
-      </aside>
-      <div className="entrar-cartao">
-        <div className="entrar-logo-movel">
-          <Marca grande central />
-        </div>
-        <h1 className="text-3xl font-semibold">Entrar</h1>
-        <form className="flex flex-col gap-4" onSubmit={(evento) => void entrar(evento)}>
-          <label className="flex flex-col gap-1 text-base">
-            Usuário
-            <input
-              className="campo"
-              autoComplete="username"
-              value={login}
-              onChange={(evento) => setLogin(evento.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-base">
-            Senha
-            <input
-              className="campo"
-              type="password"
-              autoComplete="current-password"
-              value={senha}
-              onChange={(evento) => setSenha(evento.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-base">
-            Código do autenticador, obrigatório se você já inscreveu
-            <input
-              className="campo"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              value={codigo}
-              onChange={(evento) => setCodigo(evento.target.value)}
-            />
-          </label>
-          <button type="submit" className="btn">
-            Entrar
-          </button>
-        </form>
-        {token ? (
-          <PainelConta
-            codigo={codigo}
-            pendente={totpPendenteLocal()}
-            aoMensagem={setMensagem}
-            aoSegredo={setSegredo}
-            aoSair={() => {
-              setToken('');
-              setSegredo('');
-            }}
+    <section className="tv-login-card" aria-labelledby="titulo-entrar">
+      <img
+        className="tv-login-logo"
+        src={`${import.meta.env.BASE_URL}brand/telaviva-lockup.svg`}
+        alt="Tela Viva — cuidados para pele tatuada"
+      />
+      <h1 id="titulo-entrar">Entrar no CRM</h1>
+      <p className="tv-login-intro">Use o usuário e a senha fornecidos pelo administrador.</p>
+      <form
+        className="tv-login-form"
+        onSubmit={(evento) => void entrar(evento)}
+        aria-busy={entrando}
+      >
+        <label className="tv-field">
+          <span>Usuário</span>
+          <input
+            name="username"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            required
+            value={login}
+            onChange={(evento) => setLogin(evento.target.value)}
           />
-        ) : null}
-        {token && !totpPendenteLocal() ? <PainelPlanilha aoMensagem={setMensagem} /> : null}
-        {segredo ? (
-          <p className="break-all text-base" data-testid="segredo-totp">
-            {segredo}
-          </p>
-        ) : null}
+        </label>
+        <label className="tv-field">
+          <span>Senha</span>
+          <input
+            name="password"
+            type={mostrarSenha ? 'text' : 'password'}
+            autoComplete="current-password"
+            required
+            value={senha}
+            onChange={(evento) => setSenha(evento.target.value)}
+          />
+        </label>
+        <label className="tv-login-show-password">
+          <input
+            type="checkbox"
+            checked={mostrarSenha}
+            onChange={(e) => setMostrarSenha(e.target.checked)}
+          />
+          Mostrar senha
+        </label>
         {mensagem ? (
-          <p className="toast" role="status">
+          <p className="tv-login-error" role="alert">
             {mensagem}
           </p>
         ) : null}
-      </div>
+        <button type="submit" disabled={entrando} className="tv-button tv-button-primary">
+          {entrando ? 'Entrando…' : 'Entrar'}
+        </button>
+      </form>
+      <footer className="tv-login-company">
+        Tela Viva · JSETTE7
+        <br />
+        CNPJ 54.765.439/0001-34
+      </footer>
     </section>
   );
-}
-
-function textoDe(json: RespostaJson, reserva: string): string {
-  return json.erros?.[0]?.mensagem ?? json.mensagem ?? reserva;
 }

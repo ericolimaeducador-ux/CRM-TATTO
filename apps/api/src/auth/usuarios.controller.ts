@@ -8,6 +8,13 @@ import { UsuariosService } from './usuarios.service';
 export class UsuariosController {
   constructor(private readonly usuarios: UsuariosService) {}
 
+  @Get('equipe')
+  @Papel('vendedor', 'gestor', 'admin')
+  async equipe(@Req() req: RequisicaoComUsuario) {
+    const sessao = exigirEquipe(req);
+    return { dados: await this.usuarios.listarEquipe(sessao.id), avisos: [], erros: [] };
+  }
+
   @Get()
   @Papel('admin')
   async listar(@Req() req: RequisicaoComUsuario) {
@@ -59,6 +66,18 @@ function exigir(req: RequisicaoComUsuario): UsuarioSessao {
       403,
       'PAPEL_INSUFICIENTE',
       'Entre como administrador. Nada foi alterado.',
+      null,
+    );
+  }
+  return req.usuario;
+}
+
+function exigirEquipe(req: RequisicaoComUsuario): UsuarioSessao {
+  if (!req.usuario?.id) {
+    throw new RespostaComErro(
+      403,
+      'PAPEL_INSUFICIENTE',
+      'Entre com um perfil comercial para consultar a equipe ativa.',
       null,
     );
   }

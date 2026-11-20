@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchComAcordar } from '@/lib/acordar';
 import { urlDaApi } from '@/lib/api-url';
@@ -180,13 +180,13 @@ export function TelaTermo({
 
   return (
     <section className="flex flex-col gap-4">
-      <h1 className="text-3xl font-semibold">Seus dados no TattooArt</h1>
+      <h1 className="text-2xl font-semibold">Seus dados no Tela Viva</h1>
       <p
         className="border-2 border-amber-800 bg-amber-50 p-3 text-base font-semibold"
         data-testid="destaque-consentimento"
       >
         {destaque ||
-          'Importante: este cadastro existe para que o controlador, pessoa física, possa entrar em contato com você. O canal é o e-mail do controlador. Por isso, sem a autorização de contato comercial abaixo não é possível concluir o cadastro.'}
+          'Importante: este cadastro existe para que a JSETTE7 Comércio de Produtos Médicos e Hospitalares LTDA, CNPJ 54.765.439/0001-34, possa entrar em contato com você. O canal é settedistribuidora0777@gmail.com. Por isso, sem a autorização de contato comercial abaixo não é possível concluir o cadastro.'}
       </p>
       <label className="flex min-h-12 items-start gap-3 text-base">
         <input

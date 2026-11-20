@@ -216,50 +216,98 @@ reprocessamento da coleção — documentar o procedimento antes de produção.
 
 ---
 
-## ADR-011 — Publicação na nuvem
+## ADR-011 — Tela Viva: CRM para representantes de saúde
 
-**Contexto.** O uso continua pessoal, da pessoa física Erico Henrique de Lima Araujo, sem CNPJ e sem ERP. O caminho no computador (ADR-010 e `INSTALAR-WINDOWS.md`) permanece. Esta ADR prepara a publicação gratuita, sem cartão: telas no Google Firebase Hosting, plano Spark, projeto `captura7-5e1da`, na raiz do domínio (`https://captura7-5e1da.web.app`); API no Render, plano gratuito, região Oregon (Estados Unidos); banco no MongoDB Atlas já criado (`cluster0.tbl9r9u.mongodb.net`), na AWS, região São Paulo (`sa-east-1`), plano gratuito M0. Nada do Nuvita entra aqui. O plano Spark não reescreve `/v1` para o Render, então as telas e a API ficam em origens diferentes.
+**Contexto.** Em 16/11/2026 o usuário pediu a reformulação do CRM como Tela Viva, inspirado no setor farmacêutico e de produtos médicos, e confirmou o foco em representantes comerciais gerenciando carteiras e visitas.
 
-**Decisão.**
+**Decisão.** Preservar React/Vite PWA, NestJS, MongoDB, sessões, contatos e captura permissiva. Acrescentar um módulo comercial aditivo com contas/instituições, produtos representados, oportunidades por etapa, visitas/tarefas e propostas com itens. As entidades comerciais ficam separadas da captura e não migram nem apagam contatos existentes. A conta registra segmento, cidade, UF, especialidade/área, responsável e próxima ação; produtos registram linha, fabricante, categoria, unidade e preço de referência. Campos setoriais são metadados comerciais voluntários, sem alegação de validação regulatória.
 
-- **Telas.** O workflow `firebase` faz o build de `apps/web` com `VITE_API_URL` vinda da variável de repositório `vars.VITE_API_URL` (a URL do Render, sem barra no fim) e publica no Firebase Hosting. Ele roda em push na `main` e quando alguém dispara o workflow. Sem o secret `FIREBASE_SERVICE_ACCOUNT`, o job avisa e pula o deploy, para o CI `verificar` não falhar. O ID do projeto no `.firebaserc` é `captura7-5e1da`. Não há subcaminho nem `404.html`. O único rewrite é o da página inicial da aplicação.
-- **API.** O Blueprint `render.yaml` sobe um Web Service gratuito em Oregon. O build usa pnpm. O start é `pnpm --filter @captura7/api start`, que executa `node dist/main.js`. A saúde é `GET /v1/saude`. A porta vem de `PORT`. `MONGO_URI`, `CIFRA_CHAVE_BASE64`, `CIFRA_PEPPER`, `CONTROLADOR_EMAIL`, `CORS_ORIGENS` e `RETENCAO_TOKEN` são variáveis com `sync: false`. Em `NODE_ENV=production`, se a chave ou o pepper faltarem, a API encerra e não gera segredo novo. Não há `SEGREDOS_ARQUIVO` nesse serviço.
-- **Sessão.** As origens são `https://captura7-5e1da.web.app`, `https://captura7-5e1da.firebaseapp.com` e `https://<serviço>.onrender.com`. `CORS_ORIGENS` leva as duas do Firebase, separadas por vírgula, sem barra no fim. Um cookie entre elas precisaria de `SameSite=None; Secure` e de `credentials` no CORS. Chrome e Safari bloqueiam esse cookie de terceiro, e a sessão sumiria. A escolha é o token opaco no cabeçalho `Authorization`. O cliente guarda em `localStorage` na chave `captura7.token`, envia só para a API e apaga no logout. O CORS fica com `credentials: false` e aceita só `Content-Type` e `Authorization`. As origens do navegador são as de `CORS_ORIGENS`, mais localhost e a rede local. O host do Render não entra sozinho nessa lista.
-- **Retenção.** O plano gratuito do Render dorme, então o relógio de uma hora não dispara todo dia. A API roda a retenção na inicialização. `POST /v1/interno/retencao` exige o cabeçalho `X-Retencao-Token`, comparado com SHA-256 e `timingSafeEqual`. Token ausente, curto ou diferente responde 401 e não apaga. O workflow `retencao` chama esse caminho uma vez por dia com `curl`, usando a variável `RENDER_API_URL` e o secret `RETENCAO_TOKEN`. Sem os dois, avisa e pula. O Docker local mantém o relógio horário enquanto o processo está acordado.
-- **Banco.** O cluster está na AWS, em São Paulo (`sa-east-1`), plano gratuito M0. `MONGO_URI` é variável do Render. O repositório não guarda usuário, senha nem URI com credenciais. O nome do banco na URI é `captura7`. O usuário dessa URI tem só `readWrite` nesse banco. O `atlasAdmin` fica para o painel. O Render não tem IP fixo. O Network Access já está em `0.0.0.0/0` e permanece assim. A senha do usuário do aplicativo fica no gerenciador de senhas.
-- **Termo.** Os operadores são o Google (Firebase Hosting), o Render (servidor nos Estados Unidos) e o MongoDB Atlas (banco em São Paulo, no Brasil). A transferência internacional (art. 33 da LGPD) fica no Render e, eventualmente, no Firebase Hosting, cuja rede de distribuição das telas é global. O texto final do termo precisa da revisão do Jurídico LGPD Dados, só do captura7. Esta ADR não cria outras cláusulas.
+A API aplica autoria do servidor, carteira do representante, leitura de gestão/auditoria conforme perfil e versionamento otimista. Toda mutação comercial guarda evento de auditoria append-only junto ao próprio registro (operação atômica de documento), sem valores pessoais em claro na trilha. Arquivamento é lógico. Valores monetários são calculados em centavos no servidor; propostas são rascunhos internos, com impressão local, sem envio externo automático. O dashboard usa dados reais e estados vazios, sem seed de produção. Sem sessão ou sem rede, as telas comerciais explicam o estado; captura e fila offline permanecem disponíveis. Operações comerciais novas exigem rede, sem simular sincronização offline que não existe.
 
-**Alternativas consideradas.**
+**Alternativas consideradas.** Reescrever todo o armazenamento destruiria compatibilidade; implementar um ERP/estoque/faturamento ou prontuário extrapolaria o pedido. Publicação externa e mudança do controlador/termo não são parte da reformulação local.
 
-- *Cookie `SameSite=None; Secure` entre o Firebase e o Render:* rejeitada — o navegador trata como cookie de terceiro e pode não enviá-lo. O token no cabeçalho continua chegando.
-- *Rewrite do Hosting para a API:* rejeitada — o plano Spark não faz esse rewrite para o Render, e o plano que faria pede cartão.
-- *Gerar chave no boot do Render:* rejeitada — o disco é efêmero e um segredo novo tornaria os documentos cifrados ilegíveis.
-- *Só o relógio interno no Render gratuito:* rejeitada — o serviço dorme. A subida e o workflow diário cobrem o dia.
+**Consequências.** A identidade visual passa a Tela Viva; identificadores internos captura7, banco e chaves existentes são preservados por compatibilidade. O produto organiza atuação de representantes, não substitui sistemas regulatórios, estoque nem prontuário. Integrações existentes permanecem configuráveis sem contas ou credenciais inventadas.
 
-**Consequências.** O Firebase fica no plano Spark, sem cartão. O Render dorme; a primeira chamada pode demorar e a tela mostra que o servidor está acordando. O passo a passo para o controlador está em `PUBLICAR-NUVEM.md`. O QR de autocadastro nesse modo usa `https://captura7-5e1da.web.app` e não pede a CA local, porque o certificado é público. Quem ficar no computador continua no guia do Windows.
-
-**Status.** aceito · 2026-09-27 · texto do termo pendente de revisão do Jurídico LGPD Dados (só do TattooArt)
+**Status.** aceito · 2026-11-16 · escopo autorizado pelo usuário.
 
 ---
 
-## ADR-012 — Nome TattooArt e telas de cadastro
+## ADR-012 — Identidade oficial do repositório Tela Viva
 
-**Contexto.** Quem usa o aplicativo via o nome interno nas telas, no título, no ícone instalado e no termo. A lista chamada Contatos lia só o IndexedDB deste aparelho, então um cadastro gravado no servidor por outro caminho não aparecia. O layout era uma coluna estreita de links. O ID do projeto Firebase `captura7-5e1da` não pode ser renomeado. O nome do banco `captura7` também permanece.
+**Contexto.** O usuário informou em 16/11/2026 que as informações, logo e ícones oficiais estão no repositório local `C:\Users\erico\telaviva`. A leitura de README, CLAUDE.md, index.html, CSS e arquivos de marca confirmou que Tela Viva é a marca de cuidados para pele tatuada, representante Pele Rara® para esse segmento. O modelo comercial continua inspirado em carteiras e visitas de representantes, conforme foco confirmado pelo usuário.
 
-**Decisão.**
+**Decisão.** Usar os assets originais de `public/brand/`, favicon e ícone de instalação por cópia para este CRM, sem editar o repositório fonte. Adotar paleta areia/blush/sálvia e tipografia Playfair Display + Inter; substituir a direção provisória verde petróleo. Acrescentar segmentos estúdio de tatuagem e profissional autônomo e categorias comerciais cosmético/kit. Não preencher preços, registros sanitários, alegações terapêuticas ou credenciais a partir de suposições. O catálogo começa vazio, podendo ser preenchido pelo administrador com dados confirmados do fabricante. Fotografias de fabricante não serão alteradas nem receberão a marca Tela Viva.
 
-- **Nome visível.** Telas, título, manifesto (`name` e `short_name`), ícone instalado, termo, textos do QR, e-mails de arquivo baixado e o emissor do autenticador dizem TattooArt. O slogan é "Cuidados para pele tatuada". O nome interno de pacote, pasta, variável, chave `captura7.token` e o banco `captura7` ficam.
-- **Interface.** O Tailwind que já está no projeto desenha as telas. Não entra biblioteca de componentes, para o pacote instalado continuar leve. Há tokens de cor da marca, modo claro e escuro pelo sistema, menu lateral no computador e barra embaixo no celular. A ADR-005 continua valendo para o modelo desta conversa.
-- **Cadastros.** `GET /v1/contatos` já existia, com papéis e paginação. A tela nova `/cadastros` chama essa rota. Para gestor e administrador ela é o primeiro item do menu e o destino depois do login. A lista aceita busca, status, origem, PF/PJ, consentimento, intervalo de datas e ordem. CPF e CNPJ saem mascarados; o cifrado e o hash não vão na lista. O registro completo continua em `/lead/:id`.
-- **Números.** `GET /v1/contatos/resumo` conta leads de hoje, da semana e por status, no fuso de São Paulo, com o mesmo recorte de carteira do vendedor. O que ainda não saiu deste aparelho é contado na fila local.
-- **Hosting.** O `firebase.json` publica no target `app`. O `.firebaserc` aplica esse target, hoje, ao site `captura7-5e1da`. Um site adicional no mesmo projeto entra com `firebase target:apply hosting app NOME_DO_SITE` quando o nome for confirmado. `CORS_ORIGENS` continua variável do Render.
+O site identifica a operadora JSETTE7 e publica contatos comerciais oficiais. O CRM histórico usa controlador pessoa física; essa diferença foi submetida ao usuário. Até a resposta, não mudar o controlador do consentimento nem os dados legais do emissor por inferência. Marca e produto podem ser atualizados de imediato.
 
-**Alternativas consideradas.**
+**Consequências.** Assets e fontes necessários são locais e preservam funcionamento offline. Nenhuma alteração no site/worker externo nem envio de mensagens a terceiros. Os pacotes, volume Mongo e identificadores internos permanecem compatíveis.
 
-- *Biblioteca de componentes pronta:* rejeitada — o Tailwind já cobre botão, campo, cartão e a barra. Outro pacote aumentaria o que o celular baixa.
-- *Endpoint novo só para a lista:* rejeitada — a listagem já autoriza por papel. Os filtros entraram na mesma rota.
-- *Renomear o projeto Firebase ou o banco:* rejeitada — o ID do projeto não muda e o banco `captura7` quebraria a URI já combinada.
+**Status.** aceito · 2026-11-16 · fonte indicada expressamente pelo usuário.
 
-**Consequências.** O deploy atual continua no site `captura7-5e1da` até o target apontar para o site novo. Quem abrir o aplicativo vê TattooArt. A marca em `apps/web/public/marca` saiu de uma foto e deve ser trocada quando o arquivo original existir.
+---
 
-**Status.** aceito · 2026-09-27
+## ADR-013 — JSETTE7 como operadora/controladora do Tela Viva
+
+**Contexto.** A pergunta sobre a diferença entre a configuração pessoal histórica do CRM e o site foi respondida pelo usuário em 16/11/2026: "JSETTE7, conforme os dados do site". A confirmação vale para consentimento e identificação nas propostas.
+
+**Decisão.** A identidade exibida passa a JSETTE7 Comércio de Produtos Médicos e Hospitalares LTDA, CNPJ 54.765.439/0001-34, Av. Paulo Afonso, 615, Nova Petrópolis, São Bernardo do Campo/SP, CEP 09770-351. Canal público confirmado no repositório fonte: settedistribuidora0777@gmail.com; WhatsApp comercial +55 (11) 91497-7007. O termo recebe versão `2026-11-16-tela-viva-jsette7`, identifica a empresa e o canal, sem inventar um encarregado nominal. A finalidade de organização deixa de ser descrita como uso pessoal da pessoa física. Mantêm-se os controles já existentes de consentimento, retenção, exportação e envio externo opcional. `CONTROLADOR_EMAIL` continua configurável; sem valor, o padrão público é o contato confirmado da empresa.
+
+**Consequências.** Substitui os trechos de identidade pessoal da ADR-010 para novas telas/novos consentimentos. Registros históricos de consentimento e suas versões não são reescritos. A implantação permanece local e preserva volumes/usuários; não há migração de infraestrutura nem ativação de serviços externos.
+
+**Status.** aceito · 2026-11-16 · confirmado expressamente pelo usuário.
+
+## ADR-014 — Paridade comercial local com a referência de treinamento
+
+**Contexto.** Em 16/11/2026 o usuário autorizou ampliar o Tela Viva para acompanhar, localmente, as funções do CRM apresentado no vídeo de treinamento. O CRM atual já cobre carteira, funil, agenda, catálogo e proposta impressa; faltam relacionamento com múltiplos interlocutores, preços negociados, aprovações, treinamentos, participantes/presença e proposta encaminhada ao contato.
+
+**Decisão.** Evoluir por módulos aditivos na coleção `tela_viva_comercial`, sem reescrever nem importar automaticamente a base antiga. Guardar vários contatos no registro da conta e manter alterações na auditoria existente. Registrar preços negociados por conta/produto em entidade própria, com solicitação pelo representante e aprovação/reprovação por gestor/admin com motivo e versão. Registrar treinamentos e participantes como tipos comerciais próprios, vinculados à carteira; o QR abre somente a ficha daquele treinamento/inscrição, nunca dados da conta, oportunidade, paciente ou procedimento. Presença e confirmação são campos de participação auditados. Uma proposta pode ser preparada para o contato escolhido; sem provedor configurado, oferecer abertura de rascunho no cliente de e-mail e registrar apenas que o rascunho foi aberto, sem declarar que foi enviado.
+
+Preservar o escopo de representantes e as permissões por carteira. Dados de paciente, cirurgia, estoque, faturamento, RH e módulos ERP ficam fora do escopo. Dados pessoais de participantes ficam visíveis apenas à carteira correspondente e a gestores/admin, sujeitos aos controles existentes. Nenhuma mensagem é enviada automaticamente; e-mail real depende de integração e configuração aprovadas posteriormente.
+
+**Alternativas consideradas.** Uma coleção relacional nova por entidade: rejeitada para esta fase local, pois o módulo atual já tem envelope versionado/auditado e não requer migração destrutiva. Copiar os módulos médicos/ERP mostrados integralmente: rejeitada por incluir estoque, dados de saúde e operação hospitalar sem necessidade comprovada para representantes da Tela Viva.
+
+**Consequências.** O módulo cresce sem alterar contatos capturados offline nem os dados existentes. A inscrição aberta por QR precisa de token restrito ao evento, limite de uso e proteção contra leitura de dados de clientes. A fase de e-mail não transmite enquanto não houver configuração local e ação explícita do usuário.
+
+**Status.** aceito · 2026-11-16 · execução local autorizada pelo usuário.
+
+## ADR-015 — Janelas dos relatórios no calendário de São Paulo
+
+**Contexto.** A interface envia datas civis escolhidas no calendário local (`AAAA-MM-DD`), enquanto registros são persistidos como instantes UTC. Interpretar as datas como meia-noite UTC excluía registros criados à noite em São Paulo, embora ainda pertencessem ao dia selecionado.
+
+**Decisão.** Interpretar `de` e `ate` como dias inclusivos no fuso `America/Sao_Paulo`. Converter o início de cada dia civil para UTC e consultar até o início do dia seguinte a `ate` (limite exclusivo). Validar datas de calendário e manter o limite de 366 dias contando dias civis. O filtro de auditoria e o período retornado preservam as datas enviadas.
+
+**Consequências.** As agregações por `criadoEm` e data marcada incluem todo o dia local escolhido, inclusive registros após 21h BRT; a duração UTC da janela pode variar com mudanças de fuso. Nenhum dado individual é adicionado ao relatório.
+
+**Status.** aceito para implementação local · 2026-11-16.
+
+## ADR-016 — Boas-vindas WhatsApp em fila persistente, envio inicialmente desligado
+
+**Contexto.** O usuário pediu em 18/11/2026 automação de boas-vindas para cada novo lead pela API do WhatsApp, com as dependências de background prontas e o envio desligado. O termo atual já prevê contato comercial por WhatsApp quando autorizado. A captura deve continuar permissiva e nenhuma credencial real foi fornecida.
+
+**Decisão.** Acrescentar módulo NestJS independente, Cloud API oficial via `fetch` e fila/recibos/bloqueios em coleções Mongo aditivas. Não acrescentar Redis nem novo serviço. O worker reconcilia contatos novos com marco persistido no primeiro início do módulo e janela de elegibilidade de 24 horas; chave única por lead impede novos trabalhos por sincronização repetida ou reinício. A fila pode ser preparada localmente com a flag desligada, mas nunca faz HTTP externo quando `WHATSAPP_ENVIO_ATIVO` não é exatamente `true` ou a configuração está incompleta.
+
+Antes da saída, consultar novamente consentimento ativo de contato comercial, telefone E.164 e situação do lead. Revogado/eliminado/descartado/fundido ou telefone com opt-out não recebe mensagem. O template aprovado é configurado na Meta, sem parâmetros dinâmicos, e a versão Graph é obrigatória no ambiente. O webhook valida HMAC dos bytes originais, verify-token e ID do número; persiste recibos mínimos e bloqueios HMAC para comandos de parada, sem guardar corpo/número em claro.
+
+**Consequências.** Não há envio real nesta fase. Reservas atômicas e idempotência local impedem processamento concorrente do mesmo trabalho; resultado ambíguo de rede/5xx ou reserva perdida fica `incerto`, sem retry cego que poderia duplicar a mensagem. Rejeições 429 têm backoff e teto de cinco tentativas. Aceite HTTP não é tratado como entrega; apenas recibos assinados atualizam entrega/leitura. Nuvem, conta Meta, template aprovado, credenciais e webhook HTTPS público ficam para ativação futura; instruções estão em `docs/WHATSAPP.md`.
+
+**Status.** aceito para preparação desativada · 2026-11-18 · autorização expressa do usuário.
+
+## ADR-017 — Login simples e administração da equipe independente de inscrição TOTP
+
+**Contexto.** Em 19/11/2026 o proprietário relatou falha e confusão na entrada e autorizou expressamente remover 2FA da página de login. Solicitou usuário que possa criar outros usuários. O login atual exige TOTP de inscritos; administradores sem inscrição ficam bloqueados em quase todas as rotas, inclusive criação de equipe.
+
+**Decisão.** Autenticar entrada com usuário e senha, preservando scrypt, sessão opaca com prazo, bloqueio de tentativas, usuário ativo e RBAC. Nenhum login concede step-up; inscrição TOTP deixa de bloquear a sessão normal. Administrador pode listar e criar usuários sem TOTP. Operações sensíveis que já exigem confirmação adicional continuam protegidas. Separar login de configurações de conta/segurança/planilha em `/minha-conta`; sucesso leva ao painel. Login usa apenas usuário/senha e opção mostrar senha. Manter usuários, hashes, segredos TOTP, sessões e dados existentes, sem migração destrutiva. Identificar administrador do proprietário na base efetiva e testar gestão em ambiente isolado sem criar membros fictícios na base real.
+
+**Consequências.** Substitui a exigência histórica de TOTP na entrada da ADR-010 e AC-01. TOTP fica restrito à confirmação de operações sensíveis, acessível na conta; não há concessão automática de privilégios. A implantação é local no ambiente já usado, sem nova publicação externa ou envio de mensagens.
+
+**Status.** aceito para implementação e uso local · 2026-11-19 · pedido explícito do proprietário.
+
+## ADR-018 — Produção na nuvem unificada e QR de evento
+
+**Contexto.** O GitHub (Firebase Hosting + Render + Atlas) e a instalação local (Tela Viva, acesso simples, WhatsApp) divergiram. Para captação de leads em evento, o QR precisa abrir o pré-cadastro em endereço público e aceitar muitas pessoas no mesmo QR impresso. Um único computador não atende a equipe.
+
+**Decisão.** Unificar as duas linhas em `main`: marca, rotas e acesso da versão Tela Viva (ADR-017); infraestrutura Firebase/Render/Atlas, captcha resistente ao sono do Render, autocadastro como capturado, listagem servidor e TOTP em duas etapas (inscrever → ativar) da linha do GitHub. O limite de usos por QR (`QR_TOKEN_MAX_USOS`) passa de 1–20 para 1–2000 e o prazo (`QR_TOKEN_TTL_SEGUNDOS`) de até 24h para até 72h; os padrões continuam 1 uso e 2h. Em produção de evento usa-se 2000 usos e 48h. O QR continua revogável a qualquer momento. O limite público por IP (10/min, captcha após 3) permanece; o nginx local aceita `CF-Connecting-IP` só para identificar o visitante atrás de túnel.
+
+**Consequências.** Um QR impresso vazado permite até 2000 autocadastros dentro do prazo, contidos pelo captcha, pelo limite por IP e pela revogação. A captura continua sem campo obrigatório; a promoção lead → cliente continua exigindo TOTP ativado.
+
+**Status.** aceito · 2026-11-19 · pedido explícito do proprietário (QR impresso único, produção correta sem túnel).

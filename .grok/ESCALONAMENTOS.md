@@ -119,3 +119,13 @@ dados. Redigi-lo por conta própria seria inventar base legal.
 ⚠️ O que já verifiquei: o verificador segue a RFC 6238, o segredo fica cifrado por usuário e o mesmo passo não é aceito de novo. Fora de produção a sessão de teste inscreve e promove com código real. Com a API no ar em `NODE_ENV=production`, o cabeçalho de teste não autentica nem promove.
 ⚠️ Opções conhecidas (sem recomendar): (a) o dono indica um provedor de identidade e o contrato da sessão; (b) um diretório local com senha, em card próprio; (c) o step-up continua utilizável só onde já existe sessão, e em produção fica inalcançável até essa sessão existir.
 → **Resposta do usuário:** diretório local com senha em scrypt e o TOTP já existente. O primeiro administrador nasce com `pnpm criar-admin`. ADR-010.
+
+---
+
+## [RESOLVIDO] 2026-11-16 — SEC-07 — Identidade do controlador no Tela Viva
+
+O usuário indicou o repositório local `C:\Users\erico\telaviva` como fonte oficial. O site/política identificam JSETTE7 Comércio de Produtos Médicos e Hospitalares LTDA (CNPJ 54.765.439/0001-34); a ADR-010 e o consentimento do CRM identificam Erico como pessoa física. Os dados comerciais da empresa são conhecidos, mas mudar quem controla os dados do CRM depende da confirmação de qual operação o usuário quer neste aplicativo.
+
+Pergunta enviada ao usuário durante o trabalho: usar JSETTE7 como no site ou manter pessoa física? Marca, assets e funcionalidades seguem independentes dessa decisão. A troca do controlador/identificação legal nas propostas fica pendente; preservar o estado atual enquanto não houver resposta.
+
+→ Resposta do usuário em 16/11/2026: "JSETTE7, conforme os dados do site". Resolvido pela ADR-013; identidade empresarial autorizada para consentimento e propostas.
