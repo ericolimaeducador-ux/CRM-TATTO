@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { fetchComAcordar } from '@/lib/acordar';
 import { urlDaApi } from '@/lib/api-url';
 import { cabecalhosDaSessao } from '@/lib/offline/sessao';
 import { DesafioCaptcha, tokenDoWidget } from './DesafioCaptcha';
@@ -36,32 +37,51 @@ export function TelaTermo({
   const [respostaCaptcha, setRespostaCaptcha] = useState('');
   const [envioErp, setEnvioErp] = useState(false);
 
+  const [enviando, setEnviando] = useState(false);
+  const [concluido, setConcluido] = useState(false);
+
+  async function carregarDesafio(): Promise<boolean> {
+    try {
+      const resposta = await fetchComAcordar(
+        urlDaApi('/v1/publico/captcha'),
+        undefined,
+        setMensagem,
+      );
+      const json = (await resposta.json()) as {
+        dados?: { id?: string; pergunta?: string; provedor?: string; sitekey?: string };
+      };
+      if (json.dados?.provedor) setProvedorCaptcha(json.dados.provedor);
+      if (json.dados?.sitekey) setSitekey(json.dados.sitekey);
+      if (json.dados?.id && json.dados.pergunta) {
+        setCaptchaId(json.dados.id);
+        setPergunta(json.dados.pergunta);
+      }
+      setRespostaCaptcha('');
+      return true;
+    } catch {
+      setMensagem(
+        'Servidor acordando, aguarde… Não consegui carregar o desafio. Nada foi gravado.',
+      );
+      return false;
+    }
+  }
+
   useEffect(() => {
     if (modo !== 'autocadastro') return;
-    void fetch(urlDaApi('/v1/publico/captcha'))
-      .then((resposta) => resposta.json())
-      .then(
-        (json: {
-          dados?: { id?: string; pergunta?: string; provedor?: string; sitekey?: string };
-        }) => {
-          if (json.dados?.provedor) setProvedorCaptcha(json.dados.provedor);
-          if (json.dados?.sitekey) setSitekey(json.dados.sitekey);
-          if (json.dados?.id && json.dados.pergunta) {
-            setCaptchaId(json.dados.id);
-            setPergunta(json.dados.pergunta);
-          }
-        },
-      )
-      .catch(() => setMensagem('Não consegui carregar o desafio. Nada foi gravado.'));
+    void carregarDesafio();
   }, [modo]);
 
   useEffect(() => {
-    void fetch(urlDaApi('/v1/publico/termo/atual'))
+    void fetchComAcordar(urlDaApi('/v1/publico/termo/atual'), undefined, setMensagem)
       .then((resposta) => resposta.json())
       .then((json: { dados?: TextoTermo }) => {
         if (json.dados?.textoCurto) setTexto(json.dados);
       })
-      .catch(() => setMensagem('Não consegui carregar o termo. Nada foi gravado.'));
+      .catch(() =>
+        setMensagem(
+          'Servidor acordando, aguarde… Não consegui carregar o termo. Nada foi gravado.',
+        ),
+      );
   }, []);
 
   const curto = texto?.textoCurto ?? '';
@@ -75,10 +95,32 @@ export function TelaTermo({
     provedorCaptcha === 'local' &&
     Boolean(captchaId) &&
     !respostaCaptcha.trim();
-  const captchaExternoPendente = captchaExterno && !tokenDoWidget(respostaCaptcha);
+  const captchaExternoPendente = captchaExterno && !respostaCaptcha.trim();
 
   async function concluir() {
-    if (!marcado) return;
+    if (!marcado || enviando || concluido) return;
+    setEnviando(true);
+    try {
+      await enviarConclusao();
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  // Cada desafio vale uma tentativa. Depois de qualquer recusa pede outro na hora e mantém
+  // nome, e-mail e telefone digitados.
+  async function trocarDesafio(motivo: string) {
+    if (modo !== 'autocadastro') {
+      setMensagem(motivo);
+      return;
+    }
+    const trocou = await carregarDesafio();
+    setMensagem(
+      trocou && provedorCaptcha === 'local' ? `${motivo} Responda o novo desafio.` : motivo,
+    );
+  }
+
+  async function enviarConclusao() {
     const emDispositivo = new Date().toISOString();
     if (modo === 'vendedor' && !idServidor) {
       await aoGuardarLocal?.(emDispositivo, envioErp);
@@ -106,20 +148,29 @@ export function TelaTermo({
             captchaToken: provedorCaptcha === 'local' ? undefined : tokenDoWidget(respostaCaptcha),
           }
         : { contatoComercial: true, emDispositivo, envioErp };
-    const resposta = await fetch(urlDaApi(caminho), {
-      method: 'POST',
-      headers:
-        modo === 'autocadastro' ? { 'content-type': 'application/json' } : cabecalhosDaSessao(),
-      body: JSON.stringify(corpo),
-    });
-    const json = (await resposta.json()) as {
+    let resposta: Response;
+    try {
+      resposta = await fetchComAcordar(urlDaApi(caminho), {
+        method: 'POST',
+        headers:
+          modo === 'autocadastro' ? { 'content-type': 'application/json' } : cabecalhosDaSessao(),
+        body: JSON.stringify(corpo),
+      });
+    } catch {
+      await trocarDesafio('Servidor acordando, aguarde… Não concluí. Nada foi gravado.');
+      return;
+    }
+    const json = (await resposta.json().catch(() => ({}))) as {
       mensagem?: string;
       erros?: { mensagem?: string }[];
     };
     if (!resposta.ok) {
-      setMensagem(json.erros?.[0]?.mensagem ?? json.mensagem ?? 'Não concluí. Nada foi gravado.');
+      await trocarDesafio(
+        json.erros?.[0]?.mensagem ?? json.mensagem ?? 'Não concluí. Nada foi gravado.',
+      );
       return;
     }
+    if (modo === 'autocadastro') setConcluido(true);
     setMensagem(
       modo === 'autocadastro'
         ? 'Cadastro concluído. A autorização de contato comercial ficou registrada.'
@@ -154,10 +205,17 @@ export function TelaTermo({
           onChange={(evento) => setEnvioErp(evento.target.checked)}
         />
         <span>
-          Envio a sistema externo, opcional e desligado. Enquanto ERP_WEBHOOK_URL estiver vazio,
+          Envio a um sistema externo, opcional. Enquanto o controlador não configurar esse destino,
           esta caixa não envia nada.
         </span>
       </label>
+      {modo === 'autocadastro' ? (
+        <div className="flex flex-col gap-3">
+          <Campo rotulo="Nome" valor={nome} aoMudar={setNome} />
+          <Campo rotulo="E-mail" valor={email} aoMudar={setEmail} />
+          <Campo rotulo="Telefone" valor={telefone} aoMudar={setTelefone} />
+        </div>
+      ) : null}
       {modo === 'autocadastro' ? (
         <DesafioCaptcha
           provedor={provedorCaptcha}
@@ -167,36 +225,35 @@ export function TelaTermo({
           aoMudar={setRespostaCaptcha}
         />
       ) : null}
-      {modo === 'autocadastro' ? (
-        <div className="flex flex-col gap-3">
-          <Campo rotulo="Nome" valor={nome} aoMudar={setNome} />
-          <Campo rotulo="E-mail" valor={email} aoMudar={setEmail} />
-          <Campo rotulo="Telefone" valor={telefone} aoMudar={setTelefone} />
-        </div>
-      ) : null}
       {curto ? <MarkdownSimples texto={curto} /> : null}
       <div className="flex flex-col gap-3">
         <button
           type="button"
-          className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+          className="btn-secundario"
           onClick={() => setCompleto((atual) => !atual)}
         >
           Ler o termo completo
         </button>
         <button
           type="button"
-          className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white disabled:opacity-40"
-          disabled={!marcado || captchaLocalPendente || captchaExternoPendente}
+          className="btn disabled:opacity-40"
+          disabled={
+            !marcado || enviando || concluido || captchaLocalPendente || captchaExternoPendente
+          }
           onClick={() => void concluir()}
         >
-          Concluir cadastro
+          {enviando ? 'Enviando…' : 'Concluir cadastro'}
         </button>
       </div>
       {completo ? <MarkdownSimples texto={texto?.textoCompleto ?? ''} /> : null}
-      {mensagem ? <p className="text-base">{mensagem}</p> : null}
+      {mensagem ? (
+        <p className="text-base" role="status">
+          {mensagem}
+        </p>
+      ) : null}
       <p className="text-base">Versão do termo: {texto?.versao ?? '2026-09-26-uso-pessoal'}</p>
       {modo === 'vendedor' ? (
-        <Link className="inline-flex min-h-12 items-center text-base underline" to="/capturar">
+        <Link className="atalho" to="/capturar">
           Voltar para capturar
         </Link>
       ) : null}
@@ -226,7 +283,18 @@ function Campo({
     <label className="flex flex-col gap-1 text-base">
       {rotulo}
       <input
-        className="min-h-12 rounded border border-stone-300 px-3"
+        className="campo"
+        type={rotulo === 'E-mail' ? 'email' : 'text'}
+        inputMode={rotulo === 'Telefone' ? 'tel' : rotulo === 'E-mail' ? 'email' : undefined}
+        autoComplete={
+          rotulo === 'E-mail'
+            ? 'email'
+            : rotulo === 'Telefone'
+              ? 'tel'
+              : rotulo === 'Nome'
+                ? 'name'
+                : undefined
+        }
         value={valor}
         onChange={(evento) => aoMudar(evento.target.value)}
       />

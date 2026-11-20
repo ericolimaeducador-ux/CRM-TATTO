@@ -24,7 +24,7 @@ export function PaginaPromover() {
 
   return (
     <section className="flex flex-col gap-4">
-      <Link className="inline-flex min-h-12 items-center text-base underline" to="/contatos">
+      <Link className="atalho" to="/contatos">
         Contatos
       </Link>
       <h1 className="text-2xl font-semibold">Promover a cliente</h1>
@@ -39,10 +39,17 @@ export function PaginaPromover() {
       </p>
       <button
         type="button"
-        className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+        className="btn-secundario"
         onClick={() => void inscrever(setSegredo, setMensagem)}
       >
         Inscrever autenticador deste usuário
+      </button>
+      <button
+        type="button"
+        className="btn-secundario"
+        onClick={() => void ativar(codigo, setMensagem)}
+      >
+        Ativar autenticador
       </button>
       {segredo ? (
         <p className="text-base">
@@ -64,15 +71,12 @@ export function PaginaPromover() {
             required
             inputMode="numeric"
             autoComplete="one-time-code"
-            className="min-h-12 rounded border border-stone-300 px-3 text-base"
+            className="campo"
             value={codigo}
             onChange={(evento) => setCodigo(evento.target.value)}
           />
         </label>
-        <button
-          type="submit"
-          className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white"
-        >
+        <button type="submit" className="btn">
           Promover {nome} a cliente
         </button>
       </form>
@@ -107,7 +111,23 @@ async function inscrever(
     return;
   }
   definirSegredo(json.dados.segredoBase32);
-  definirMensagem('Autenticador inscrito. Use o código de 6 dígitos para promover.');
+  definirMensagem(
+    'Segredo pendente. Confirme um código válido em Ativar autenticador. Só depois a promoção aceita.',
+  );
+}
+
+async function ativar(codigo: string, definirMensagem: (valor: string) => void): Promise<void> {
+  const resposta = await fetch(urlDaApi('/v1/auth/totp/ativar'), {
+    method: 'POST',
+    headers: cabecalhosDaSessao(),
+    body: JSON.stringify({ codigoTotp: codigo }),
+  });
+  const json = (await resposta.json()) as { erros?: { mensagem: string }[]; mensagem?: string };
+  definirMensagem(
+    resposta.ok
+      ? 'Autenticador ativado. O próximo código serve para promover.'
+      : (json.erros?.[0]?.mensagem ?? json.mensagem ?? 'O autenticador não foi ativado.'),
+  );
 }
 
 async function promover(

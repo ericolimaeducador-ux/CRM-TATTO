@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { PaginaEntrar } from './PaginaEntrar';
 
@@ -73,11 +73,17 @@ describe('entrada simples', () => {
     abrir();
     preencher();
     fireEvent.click(screen.getByRole('button', { name: 'Entrar' }));
-    const alerta = await screen.findByRole('alert');
-    expect(alerta.textContent).toContain(
-      tipo === 'rede' ? 'Confira sua conexão' : 'Usuário ou senha',
+    // Na falha de rede aparece antes o aviso de servidor acordando; espera a mensagem final.
+    await waitFor(
+      () =>
+        expect(screen.getByRole('alert').textContent).toContain(
+          tipo === 'rede' ? 'Confira sua conexão' : 'Usuário ou senha',
+        ),
+      { timeout: 3000 },
     );
-    expect(screen.getByRole('button', { name: 'Entrar' }).hasAttribute('disabled')).toBe(false);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Entrar' }).hasAttribute('disabled')).toBe(false),
+    );
     expect(localStorage.getItem('captura7.token')).toBeNull();
   });
 

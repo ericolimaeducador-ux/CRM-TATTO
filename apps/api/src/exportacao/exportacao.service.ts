@@ -82,7 +82,7 @@ export class ExportacaoService {
         formato === 'csv'
           ? 'text/csv; charset=utf-8'
           : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      nome: `captura7-leads-${dia}.${formato}`,
+      nome: `tattooart-leads-${dia}.${formato}`,
     };
   }
 }

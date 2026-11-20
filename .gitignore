@@ -17,3 +17,5 @@ ca.crt
 .graphify/
 .playwright-mcp/
 *.archive.gz
+.firebase/
+*-firebase-adminsdk-*.json

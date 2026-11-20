@@ -8,6 +8,7 @@ import { aplicarSegurancaNoSchema } from '../seguranca/aplicar-no-schema';
 import { AutocadastroService } from './autocadastro.service';
 import { ExpurgoService } from './expurgo.service';
 import { ConsentimentoController, PublicoController, QrController } from './lgpd.controller';
+import { RetencaoInternaController } from './retencao-interna.controller';
 import { ConsentimentoService } from './consentimento.service';
 import { tokenAutocadastroSchema } from './token-autocadastro.schema';
 
@@ -22,7 +23,12 @@ aplicarSegurancaNoSchema(contatoSchema);
       { name: 'TokenAutocadastro', schema: tokenAutocadastroSchema },
     ]),
   ],
-  controllers: [PublicoController, QrController, ConsentimentoController],
+  controllers: [
+    PublicoController,
+    QrController,
+    ConsentimentoController,
+    RetencaoInternaController,
+  ],
   providers: [ConsentimentoService, AutocadastroService, ExpurgoService],
 })
 export class LgpdModule implements NestModule {

@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 if (-not (Get-Command openssl -ErrorAction SilentlyContinue)) {
-  Write-Error "Não achei o openssl. Instale o Git for Windows e abra um PowerShell novo."
+  Write-Error "Não achei o openssl no PATH. Instale o Git for Windows, que inclui o openssl, e abra um PowerShell novo. Se o script nem começar, rode Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass nesta janela."
 }
 
 New-Item -ItemType Directory -Force -Path $Saida | Out-Null

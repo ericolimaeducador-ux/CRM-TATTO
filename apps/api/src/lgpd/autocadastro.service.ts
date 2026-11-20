@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Types, type Model } from 'mongoose';
 import { montarCriacao } from '../contatos/aplicar-campo';
+import { aplicarCompletude } from '../contatos/completude-contato';
 import { RespostaComErro } from '../contatos/erros-http';
 import type { Contato } from '../contatos/schemas/contato.schema';
 import type { UsuarioSessao } from '../contatos/sessao.middleware';
@@ -77,6 +78,9 @@ export class AutocadastroService {
         null,
       );
     }
+    // O QR é conferido antes do desafio: um QR vencido, revogado ou já usado mostra o motivo
+    // real e não gasta o desafio que o titular acabou de responder.
+    await this.conferirToken(corpo.token ?? '');
     const captcha = await conferirCaptcha(corpo);
     if (captcha === 'nao_configurado') {
       throw new RespostaComErro(
@@ -109,6 +113,11 @@ export class AutocadastroService {
       telefone: corpo.telefone,
       origem: { modo: 'qr_proprio' },
     });
+    // Mesma regra da captura pelo vendedor: nome + telefone (ou e-mail) já passam do limiar
+    // e o lead chega como "capturado", com a completude calculada.
+    aplicarCompletude(montado.doc, montado.documentoValido);
+    montado.doc.avisos = montado.avisos;
+    montado.doc.sincronizadoEm = new Date();
     const contato = new this.contatos(montado.doc) as unknown as DocNovo;
     contato.set('origem.modo', 'qr_proprio');
     contato.set('origem.vendedorAtribuido', token.vendedorId);
@@ -126,9 +135,9 @@ export class AutocadastroService {
     return { dados: gravado, avisos: montado.avisos, erros: [] };
   }
 
-  private async reservar(tokenBruto: string): Promise<TokenDoc> {
+  private async conferirToken(tokenBruto: string): Promise<TokenDoc> {
     const token = tokenBruto.trim();
-    const doc = await this.tokens.findOne({ token }).lean<TokenDoc>();
+    const doc = token ? await this.tokens.findOne({ token }).lean<TokenDoc>() : null;
     if (!doc) {
       recusar(
         404,
@@ -146,6 +155,19 @@ export class AutocadastroService {
     if (new Date(doc.expiraEm).getTime() <= Date.now()) {
       recusar(410, 'TOKEN_EXPIRADO', 'Este QR expirou. Peça outro ao vendedor. Nada foi gravado.');
     }
+    if (doc.usos >= doc.limiteUsos) {
+      recusar(
+        410,
+        'TOKEN_ESGOTADO',
+        'Este QR já foi usado. Peça outro ao vendedor. Nada foi gravado.',
+      );
+    }
+    return doc;
+  }
+
+  private async reservar(tokenBruto: string): Promise<TokenDoc> {
+    const token = tokenBruto.trim();
+    const doc = await this.conferirToken(token);
     const reservado = await this.tokens
       .findOneAndUpdate(
         { token, revogadoEm: null, expiraEm: { $gt: new Date() }, usos: { $lt: doc.limiteUsos } },

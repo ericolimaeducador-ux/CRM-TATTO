@@ -1,0 +1,39 @@
+name: retencao
+
+on:
+  schedule:
+    - cron: '15 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  disparar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: chamar a retenção
+        env:
+          URL: ${{ vars.RENDER_API_URL }}
+          TOKEN: ${{ secrets.RETENCAO_TOKEN }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$TOKEN" ]; then
+            echo "::warning::RENDER_API_URL ou RETENCAO_TOKEN ausente. A retenção agendada foi pulada."
+            exit 0
+          fi
+          destino="${URL%/}/v1/interno/retencao"
+          set +e
+          codigo="$(curl --silent --show-error --output /tmp/retencao-corpo.json --write-out '%{http_code}' --max-time 120 -X POST "$destino" -H "X-Retencao-Token: ${TOKEN}" -H "Content-Type: application/json")"
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "::warning::Não consegui falar com a API (curl ${status}). Quando o Render acordar, a retenção da inicialização roda sozinha."
+            exit 0
+          fi
+          if [ "$codigo" = "200" ]; then
+            echo "Retenção executada."
+            exit 0
+          fi
+          echo "::error::A API respondeu HTTP ${codigo}. Nada além do código foi impresso."
+          exit 1

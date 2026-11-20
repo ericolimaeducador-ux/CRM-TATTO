@@ -90,6 +90,8 @@ Há dois caminhos. O primeiro usa o Docker Desktop e é o que instala o aplicati
 
 Se preferir gerar a CA no Windows antes do Docker, com o Git for Windows instalado:
 
+Se o PowerShell disser que a execução de scripts está desabilitada, rode nesta janela, só neste processo: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`. O `openssl` precisa estar no PATH. O Git for Windows traz esse programa. Se o comando não for achado, feche e abra o PowerShell depois de instalar o Git, ou inclua a pasta `C:\Program Files\Git\usr\bin`.
+
 ```
 .\infra\tls\gerar-ca-local.ps1 -Ips 192.168.0.20
 ```

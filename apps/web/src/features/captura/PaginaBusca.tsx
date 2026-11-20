@@ -48,36 +48,27 @@ export function PaginaBusca() {
         <label className="flex flex-col gap-1 text-base">
           Nome, e-mail ou telefone
           <input
-            className="min-h-12 rounded border border-stone-300 px-3"
+            className="campo"
             value={texto}
             onChange={(evento) => setTexto(evento.target.value)}
           />
         </label>
-        <button
-          type="submit"
-          className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white"
-        >
+        <button type="submit" className="btn">
           Buscar no servidor
         </button>
       </form>
       <p className="text-base">{mensagem}</p>
       <ul className="flex flex-col gap-3">
         {itens.map((item) => (
-          <li key={item._id} className="rounded border border-stone-300 p-3">
+          <li key={item._id} className="cartao">
             <p className="text-base">
               {item.nome?.trim() || 'Contato sem nome informado'} · {item.status ?? 'sem status'}
             </p>
-            <Link
-              className="inline-flex min-h-12 items-center text-base underline"
-              to={`/lead/${item._id}`}
-            >
+            <Link className="atalho" to={`/lead/${item._id}`}>
               Abrir lead
             </Link>
             {podeGerir() ? (
-              <Link
-                className="ml-4 inline-flex min-h-12 items-center text-base underline"
-                to={`/promover/${item._id}`}
-              >
+              <Link className="ml-4 atalho" to={`/promover/${item._id}`}>
                 Promover
               </Link>
             ) : null}

@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
 import { PAPEIS } from './perfil-permissoes';
 import { Papel, SemTotp } from './papeis.decorator';
 import { RespostaComErro } from '../contatos/erros-http';
@@ -18,6 +18,16 @@ export class TotpController {
       codigoAtual: corpo?.codigoTotp,
       stepUp: usuario.stepUp === true,
     });
+    return { dados, avisos: [], erros: [] };
+  }
+
+  @Post('ativar')
+  @HttpCode(200)
+  @Papel(...PAPEIS)
+  @SemTotp()
+  async ativar(@Req() req: RequisicaoComUsuario, @Body() corpo: { codigoTotp?: string }) {
+    const usuario = exigirUsuario(req);
+    const dados = await this.totp.ativar(usuario.id, corpo?.codigoTotp ?? '');
     return { dados, avisos: [], erros: [] };
   }
 }

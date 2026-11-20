@@ -114,10 +114,64 @@ export function textoConsentimento(contato: ContatoLocal | null, statusServidor:
 }
 
 export function Campo({ rotulo, registro }: { rotulo: string; registro: UseFormRegisterReturn }) {
+  const teclado = tecladoDe(rotulo);
   return (
     <label className="mt-3 flex flex-col gap-1 text-base">
       {rotulo}
-      <input className="min-h-12 rounded border border-stone-300 px-3" {...registro} />
+      <input
+        className="campo"
+        type={teclado.type}
+        inputMode={teclado.inputMode}
+        autoComplete={teclado.autoComplete}
+        {...registro}
+        onChange={(evento) => {
+          if (teclado.mascara) evento.target.value = teclado.mascara(evento.target.value);
+          void registro.onChange(evento);
+        }}
+      />
     </label>
   );
+}
+
+function tecladoDe(rotulo: string): {
+  type?: string;
+  inputMode?: 'tel' | 'email' | 'numeric';
+  autoComplete?: string;
+  mascara?: (valor: string) => string;
+} {
+  if (rotulo === 'Telefone')
+    return { inputMode: 'tel', autoComplete: 'tel', mascara: mascararTelefone };
+  if (rotulo === 'E-mail') return { type: 'email', inputMode: 'email', autoComplete: 'email' };
+  if (rotulo === 'CPF') return { inputMode: 'numeric', mascara: mascararCpf };
+  if (rotulo === 'CNPJ') return { inputMode: 'numeric', mascara: mascararCnpj };
+  if (rotulo === 'CEP') return { inputMode: 'numeric', mascara: mascararCep };
+  return {};
+}
+
+function mascararCpf(valor: string): string {
+  const d = valor.replace(/\D/g, '').slice(0, 11);
+  return d
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+}
+
+function mascararCnpj(valor: string): string {
+  const d = valor.replace(/\D/g, '').slice(0, 14);
+  return d
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+}
+
+function mascararTelefone(valor: string): string {
+  const d = valor.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 10) return d.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
+  return d.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
+}
+
+function mascararCep(valor: string): string {
+  const d = valor.replace(/\D/g, '').slice(0, 8);
+  return d.replace(/(\d{5})(\d{1,3})/, '$1-$2');
 }

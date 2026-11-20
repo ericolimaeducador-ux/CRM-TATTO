@@ -23,7 +23,7 @@ Você pode **revogar** sua autorização quando quiser, de graça, pelo e-mail {
 
 **JSETTE7 Comércio de Produtos Médicos e Hospitalares LTDA**, CNPJ 54.765.439/0001-34, é a controladora dos dados tratados no aplicativo Tela Viva. Endereço: Av. Paulo Afonso, 615, Nova Petrópolis, São Bernardo do Campo/SP, CEP 09770-351. O canal de solicitações sobre dados pessoais é {{CONTROLADOR_EMAIL}}.
 
-Os dados ficam no **computador local do controlador**. Não há provedor de nuvem nem transferência internacional.
+Os dados ficam em serviços de nuvem contratados pelo controlador: o Google Firebase Hosting guarda as telas, o Render guarda o servidor nos Estados Unidos e o MongoDB Atlas guarda o banco em São Paulo, no Brasil (AWS, região sa-east-1, plano gratuito M0), no host cluster0.tbl9r9u.mongodb.net. A transferência internacional (art. 33 da LGPD) ocorre no Render, nos Estados Unidos, e pode ocorrer no Firebase Hosting, porque a rede de distribuição das telas é global. O banco permanece no Brasil. O caminho no computador do controlador continua disponível para quem não publicar.
 
 | Código | Finalidade | O que acontece | Base legal | Como você controla |
 |---|---|---|---|---|
@@ -32,23 +32,25 @@ Os dados ficam no **computador local do controlador**. Não há provedor de nuve
 | F3 | **Envio a sistema externo** | Se um webhook for configurado e você autorizar, o contato de cliente segue para esse endereço | Consentimento específico `envio_erp`. Sem a caixa, o webhook não envia o registro. Com a variável vazia, o envio fica desligado e não gera erro | Caixa opcional |
 | F4 | **Exportação da base** | O administrador, com TOTP, exporta CSV ou XLSX | Organização comercial da controladora. Só saem contatos com consentimento de contato comercial válido e ativo. Revogados, eliminados e sem essa autorização ficam de fora. A trilha guarda autor, papel, formato, filtros, quantidade e horário | Só o administrador, com passo extra |
 
-| Quem recebe | Para quê | Papel |
-|---|---|---|
-| Computador local do controlador | Guardar o aplicativo e a base | O próprio controlador. Não há operador de nuvem |
-| Webhook que o controlador configurar | Enviar contato de cliente, se você autorizar | Destino opcional. Desligado quando `ERP_WEBHOOK_URL` está vazio |
+| Quem recebe                                  | Para quê                                                                                   | Papel                                                                          |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| Google Firebase Hosting                      | Guardar as telas do aplicativo                                                             | Operador contratado pelo controlador                                           |
+| Render                                       | Guardar o servidor nos Estados Unidos                                                      | Operador contratado pelo controlador                                           |
+| MongoDB Atlas                                | Guardar o banco em São Paulo, no Brasil (AWS sa-east-1, host cluster0.tbl9r9u.mongodb.net) | Operador contratado pelo controlador                                           |
+| Sistema externo que o controlador configurar | Enviar contato de cliente, se você autorizar                                               | Destino opcional. Desligado enquanto o controlador não configurar esse destino |
 
-Não há destinatário no exterior. Os Arts. 33 a 36 não se aplicam a este uso.
+A transferência internacional (art. 33 da LGPD) fica no servidor do Render, nos Estados Unidos, e pode ocorrer nas telas do Firebase Hosting, porque a rede de distribuição é global. O banco do MongoDB Atlas fica em São Paulo, no Brasil.
 
 Medidas do Art. 46: cifragem em repouso dos documentos; exportação só do administrador, com verificação em duas etapas; trilha de auditoria com identificadores pseudonimizados para nome, e-mail e telefone. No aparelho, o rascunho fica no IndexedDB e no armazenamento local do navegador até a sincronização, protegido pela sessão do aparelho.
 
-| Situação | Prazo |
-|---|---|
-| Lead sem interação | {{RETENCAO_MESES}} meses a partir da última alteração; depois o cadastro é eliminado |
-| Rascunho parado | {{RASCUNHO_DIAS}} dias sem alteração; depois o cadastro é eliminado |
-| Lead que revogou o consentimento | Eliminação automática {{PURGA_REVOGACAO_DIAS}} dias após a revogação. Até lá, contato comercial, envio externo e exportação ficam bloqueados. O pedido do titular (Art. 18, VI) também elimina na hora, depois de confirmar o nome ou a palavra ELIMINAR |
-| Documento já eliminado | Apagado {{PURGA_REVOGACAO_DIAS}} dias depois da eliminação. A trilha de auditoria permanece |
-| Registro de consentimento e revogação | O mesmo prazo de {{RETENCAO_MESES}} meses, junto do cadastro |
-| Trilha de auditoria pseudonimizada | Não é apagada por este prazo. Ela não guarda nome, e-mail nem telefone em claro (Art. 16) |
+| Situação                              | Prazo                                                                                                                                                                                                                                                    |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lead sem interação                    | {{RETENCAO_MESES}} meses a partir da última alteração; depois o cadastro é eliminado                                                                                                                                                                     |
+| Rascunho parado                       | {{RASCUNHO_DIAS}} dias sem alteração; depois o cadastro é eliminado                                                                                                                                                                                      |
+| Lead que revogou o consentimento      | Eliminação automática {{PURGA_REVOGACAO_DIAS}} dias após a revogação. Até lá, contato comercial, envio externo e exportação ficam bloqueados. O pedido do titular (Art. 18, VI) também elimina na hora, depois de confirmar o nome ou a palavra ELIMINAR |
+| Documento já eliminado                | Apagado {{PURGA_REVOGACAO_DIAS}} dias depois da eliminação. A trilha de auditoria permanece                                                                                                                                                              |
+| Registro de consentimento e revogação | O mesmo prazo de {{RETENCAO_MESES}} meses, junto do cadastro                                                                                                                                                                                             |
+| Trilha de auditoria pseudonimizada    | Não é apagada por este prazo. Ela não guarda nome, e-mail nem telefone em claro (Art. 16)                                                                                                                                                                |
 
 **Seus direitos (Art. 18).** Confirmação e acesso, correção, anonimização, bloqueio ou eliminação, informação sobre compartilhamento, e revogação do consentimento. A eliminação (Art. 18, VI) apaga os dados do cadastro e não reescreve a trilha antiga.
 

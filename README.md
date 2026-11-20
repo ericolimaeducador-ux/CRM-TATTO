@@ -70,7 +70,7 @@ Para abrir a cópia numa base vazia:
 mongorestore --uri="mongodb://127.0.0.1:27017" --archive=captura7.archive.gz --gzip --nsInclude="captura7.*"
 ```
 
-## Site no GitHub Pages
+## Publicar na nuvem
 
 O workflow `.github/workflows/pages.yml` só publica mediante acionamento manual. Enviar código ao GitHub não publica o CRM. A instalação atual funciona localmente; API e MongoDB continuam no computador da operação.
 

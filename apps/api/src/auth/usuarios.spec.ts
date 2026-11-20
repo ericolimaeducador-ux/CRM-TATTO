@@ -85,7 +85,14 @@ describe('gestão de usuários', () => {
       .set(auth())
       .send({});
     expect(inscricao.status).toBe(201);
-    const codigo = codigoNoPasso(inscricao.body.dados.segredoBase32 as string, passoAtual());
+    expect(inscricao.body.dados.pendente).toBe(true);
+    const segredo = inscricao.body.dados.segredoBase32 as string;
+    const ativado = await request(app.getHttpServer())
+      .post('/v1/auth/totp/ativar')
+      .set(auth())
+      .send({ codigoTotp: codigoNoPasso(segredo, passoAtual() - 1) });
+    expect(ativado.status).toBe(200);
+    const codigo = codigoNoPasso(segredo, passoAtual());
 
     const passo = await request(app.getHttpServer())
       .post('/v1/auth/step-up')

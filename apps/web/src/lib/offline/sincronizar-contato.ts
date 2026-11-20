@@ -1,3 +1,4 @@
+import { marcarServidorAcordando } from '../acordar';
 import { patchCampo, postarContato } from './api';
 import { atrasoMs } from './atraso';
 import { apagarOperacao, gravarOperacao, lerContato, listarOperacoes } from './db';
@@ -59,6 +60,7 @@ export async function sincronizarContato(
     }
     return await concluir(contato, definirEstado);
   } catch {
+    marcarServidorAcordando(true);
     const tentativas = contato.tentativas + 1;
     const estado: EstadoSync = tentativas >= 10 ? 'preso' : 'local';
     await definirEstado(contato, estado, tentativas);
@@ -102,6 +104,7 @@ async function concluir(
   contato: ContatoLocal,
   definirEstado: DefinirEstado,
 ): Promise<number | null> {
+  marcarServidorAcordando(false);
   const pendentes = (await listarOperacoes()).filter((item) => item.idLocal === contato.idLocal);
   await definirEstado(contato, pendentes.length ? 'local' : 'sincronizado', 0);
   return pendentes.length

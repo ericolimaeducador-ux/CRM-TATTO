@@ -83,6 +83,7 @@ describe('promoção com TOTP', () => {
       .send({ para: 'cliente', codigoTotp: fora });
     expect(resposta.status).toBe(403);
     expect(JSON.stringify(resposta.body)).toContain('STEP_UP_NECESSARIO');
+    expect(JSON.stringify(resposta.body)).toContain('promo');
     const errado = await request(app.getHttpServer())
       .post(`/v1/contatos/${id}/transicao`)
       .set(cabecalho())
@@ -129,8 +130,22 @@ describe('promoção com TOTP', () => {
       .set(cabecalho())
       .send({ codigoTotp: codigoNoPasso(segredo, passoAtual()) });
     expect(trocado.status).toBe(201);
+    expect(trocado.body.dados.pendente).toBe(true);
     expect(trocado.body.dados.segredoBase32).not.toBe(segredo);
-    expect(await segredoGuardado()).toBe(trocado.body.dados.segredoBase32);
+    expect(await segredoGuardado()).toBe(segredo);
+    const atalho = await request(app.getHttpServer())
+      .post('/v1/auth/totp/inscrever')
+      .set({ ...cabecalho(), 'x-step-up-teste': '1' })
+      .send({});
+    expect(atalho.status).toBe(403);
+    expect(await segredoGuardado()).toBe(segredo);
+    const novo = trocado.body.dados.segredoBase32 as string;
+    const ativado = await request(app.getHttpServer())
+      .post('/v1/auth/totp/ativar')
+      .set(cabecalho())
+      .send({ codigoTotp: codigoNoPasso(novo, passoAtual()) });
+    expect(ativado.status).toBe(200);
+    expect(await segredoGuardado()).toBe(novo);
   });
 
   it('aceita o atalho de cabeçalho com NODE_ENV=test', async () => {
@@ -144,11 +159,21 @@ describe('promoção com TOTP', () => {
   });
 
   async function inscrever(): Promise<string> {
+    await app.get<Model<{ usuarioId: string }>>(getModelToken('UsuarioTotp')).deleteOne({
+      usuarioId: GESTOR,
+    });
     const resposta = await request(app.getHttpServer())
       .post('/v1/auth/totp/inscrever')
       .set({ ...cabecalho(), 'x-step-up-teste': '1' });
     expect(resposta.status).toBe(201);
-    return resposta.body.dados.segredoBase32 as string;
+    expect(resposta.body.dados.pendente).toBe(true);
+    const segredo = resposta.body.dados.segredoBase32 as string;
+    const ativado = await request(app.getHttpServer())
+      .post('/v1/auth/totp/ativar')
+      .set(cabecalho())
+      .send({ codigoTotp: codigoNoPasso(segredo, passoAtual() - 1) });
+    expect(ativado.status).toBe(200);
+    return segredo;
   }
 
   async function segredoGuardado(): Promise<string> {

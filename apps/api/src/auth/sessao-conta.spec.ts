@@ -46,6 +46,17 @@ describe('sessão por senha, TOTP para ações sensíveis e senha', () => {
       .set('authorization', `Bearer ${token}`)
       .send({});
     expect(inscricao.status).toBe(201);
+    expect(inscricao.body.dados.pendente).toBe(true);
+    const segredo = inscricao.body.dados.segredoBase32 as string;
+    const ainda = await request(app.getHttpServer())
+      .post('/v1/auth/entrar')
+      .send({ login: 'lia', senha: 'senha-bem-longa' });
+    expect(ainda.status).toBe(201);
+    const ativado = await request(app.getHttpServer())
+      .post('/v1/auth/totp/ativar')
+      .set('authorization', `Bearer ${token}`)
+      .send({ codigoTotp: codigoNoPasso(segredo, passoAtual() - 1) });
+    expect(ativado.status).toBe(200);
     const semCodigo = await request(app.getHttpServer())
       .post('/v1/auth/entrar')
       .send({ login: 'lia', senha: 'senha-bem-longa' });
@@ -78,6 +89,10 @@ describe('sessão por senha, TOTP para ações sensíveis e senha', () => {
       .send({ login: 'erico', senha: 'senha-bem-longa' });
     expect(entrada.body.dados.precisaInscreverTotp).toBe(false);
     const token = entrada.body.dados.token as string;
+    const segunda = await request(app.getHttpServer())
+      .post('/v1/auth/entrar')
+      .send({ login: 'erico', senha: 'senha-bem-longa' });
+    const token2 = segunda.body.dados.token as string;
     const curta = await request(app.getHttpServer())
       .post('/v1/auth/senha')
       .set('authorization', `Bearer ${token}`)
@@ -88,6 +103,15 @@ describe('sessão por senha, TOTP para ações sensíveis e senha', () => {
       .set('authorization', `Bearer ${token}`)
       .send({ senhaAtual: 'senha-bem-longa', senhaNova: 'senha-ainda-maior' });
     expect(trocada.status).toBe(200);
+    expect(trocada.body.dados.outrasSessoesEncerradas).toBeGreaterThan(0);
+    const outra = await request(app.getHttpServer())
+      .get('/v1/auth/eu')
+      .set('authorization', `Bearer ${token2}`);
+    expect(outra.status).toBe(403);
+    const atual = await request(app.getHttpServer())
+      .get('/v1/auth/eu')
+      .set('authorization', `Bearer ${token}`);
+    expect(atual.status).toBe(200);
     const trilha = app.get<Model<{ evento: string }>>(getModelToken('AuthAuditoria'));
     const linha = await trilha.findOne({ evento: 'troca_senha' }).lean();
     expect(linha?.evento).toBe('troca_senha');

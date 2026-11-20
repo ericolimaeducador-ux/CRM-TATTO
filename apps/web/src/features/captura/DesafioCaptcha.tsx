@@ -27,6 +27,15 @@ export function DesafioCaptcha({
     document.body.appendChild(script);
   }, [provedor, sitekey]);
 
+  useEffect(() => {
+    if ((provedor !== 'hcaptcha' && provedor !== 'turnstile') || !sitekey) return;
+    const id = window.setInterval(() => {
+      const token = tokenDoWidget('');
+      if (token && token !== valor) aoMudar(token);
+    }, 400);
+    return () => window.clearInterval(id);
+  }, [provedor, sitekey, valor, aoMudar]);
+
   if (provedor === 'local' || !provedor) {
     if (!pergunta) return null;
     return (
@@ -34,7 +43,13 @@ export function DesafioCaptcha({
         Resposta do desafio
         <span data-testid="pergunta-captcha">{pergunta}</span>
         <input
-          className="min-h-12 rounded border border-stone-300 px-3"
+          className="campo"
+          name="captcha-resposta"
+          autoComplete="off"
+          autoCorrect="off"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={3}
           value={valor}
           onChange={(evento) => aoMudar(evento.target.value)}
         />
@@ -45,28 +60,18 @@ export function DesafioCaptcha({
   if (!sitekey) {
     return (
       <p className="text-base">
-        O captcha externo está sem a chave pública. Defina HCAPTCHA_SITEKEY ou TURNSTILE_SITEKEY.
-        Nada será gravado até isso.
+        O captcha deste site ainda não foi configurado pelo controlador. O cadastro não conclui até
+        isso.
       </p>
     );
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div
-        className={provedor === 'hcaptcha' ? 'h-captcha' : 'cf-turnstile'}
-        data-sitekey={sitekey}
-        data-testid="widget-captcha"
-      />
-      <label className="flex flex-col gap-1 text-base">
-        Token do captcha
-        <input
-          className="min-h-12 rounded border border-stone-300 px-3"
-          value={valor}
-          onChange={(evento) => aoMudar(evento.target.value)}
-        />
-      </label>
-    </div>
+    <div
+      className={provedor === 'hcaptcha' ? 'h-captcha' : 'cf-turnstile'}
+      data-sitekey={sitekey}
+      data-testid="widget-captcha"
+    />
   );
 }
 

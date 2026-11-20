@@ -10,7 +10,7 @@ Na raiz do repositório, com Docker instalado:
 docker compose up --build
 ```
 
-Sobe `mongo` (MongoDB 7, só em `127.0.0.1:27017`), `api` (`NODE_ENV=production`, só em `127.0.0.1:3000`) e `web` nas portas 80 e 443. O primeiro boot grava chave e pepper no volume `segredos` e não imprime os valores. Um `.env` ao lado do Compose só é necessário para `CONTROLADOR_EMAIL` e, se um dia existir, para a URL do webhook.
+Sobe `mongo` (MongoDB 7, só na rede interna do Compose, sem porta publicada no computador, para não colidir com outro Mongo na máquina), `api` (`NODE_ENV=production`, só em `127.0.0.1:3000`) e `web` nas portas 80 e 443. A API usa `mongodb://mongo:27017/captura7`. O primeiro boot grava chave e pepper no volume `segredos` e não imprime os valores. Um `.env` ao lado do Compose só é necessário para `CONTROLADOR_EMAIL` e, se um dia existir, para a URL do webhook.
 
 ## TLS
 

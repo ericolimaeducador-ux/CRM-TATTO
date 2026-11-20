@@ -47,7 +47,7 @@ export function PaginaDuplicatas() {
 
   return (
     <section className="flex flex-col gap-4">
-      <Link className="inline-flex min-h-12 items-center text-base underline" to="/capturar">
+      <Link className="atalho" to="/capturar">
         Captura
       </Link>
       <h1 className="text-2xl font-semibold">Duplicatas</h1>
@@ -56,7 +56,7 @@ export function PaginaDuplicatas() {
         (item.duplicataSuspeita ?? []).map((suspeita) => (
           <Link
             key={`${item._id}-${suspeita.contatoId}`}
-            className="inline-flex min-h-12 items-center text-base underline"
+            className="atalho"
             to={`/merge/${item._id}/${suspeita.contatoId}`}
           >
             {item.nome ?? 'Contato sem nome informado'} parece o contato {suspeita.contatoId} (

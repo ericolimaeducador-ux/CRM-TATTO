@@ -63,6 +63,7 @@ export class AuthController {
       usuario.id,
       corpo.senhaAtual ?? '',
       corpo.senhaNova ?? '',
+      (req.headers.authorization ?? '').replace(/^Bearer\s+/i, '').trim(),
     );
     return { dados, avisos: [], erros: [] };
   }

@@ -10,6 +10,7 @@ import { ContatosModule } from '../contatos/contatos.module';
 import { AuditoriaImutavel } from '../contatos/schemas/erro-nomeado';
 import { garantirIndices } from '../contatos/schemas/registrar-modelos';
 import { LgpdModule } from './lgpd.module';
+import { zerarDesafios } from './captcha';
 import { zerarPedidosPublicos } from './pedidos-publicos';
 import { textoDoTermo } from './texto-termo';
 
@@ -55,7 +56,8 @@ describe('termo de consentimento', () => {
     expect(curto).toContain('erico@exemplo.com');
     expect(curto).toMatch(/24 meses[\s\S]*180 dias[\s\S]*30 dias/);
     expect(String(resposta.body.dados.textoCompleto)).not.toContain('quando você pede');
-    expect(resposta.body.dados.textoCompleto).toContain('computador local do controlador');
+    expect(resposta.body.dados.textoCompleto).toContain('MongoDB Atlas');
+    expect(resposta.body.dados.textoCompleto).toContain('art. 33');
     expect(curto).not.toContain('[A PREENCHER');
     expect(resposta.body.dados.hash).toBe(textoDoTermo().hash);
     expect(resposta.body.dados.textoCompleto).toContain('Art. 18, VI');
@@ -160,6 +162,75 @@ describe('termo de consentimento', () => {
     const depois = await concluir(fresco, 'Revogado');
     expect(depois.status).toBe(410);
     expect(depois.body.erros[0].codigo).toBe('TOKEN_REVOGADO');
+  });
+
+  it('QR vencido diz que venceu e não gasta o desafio respondido', async () => {
+    const token = await emitirQr();
+    const modelo = app.get<Model<{ expiraEm: Date }>>(getModelToken('TokenAutocadastro'));
+    await modelo.updateOne({ token }, { $set: { expiraEm: new Date(Date.now() - 1000) } });
+    const corpo = await comCaptcha(app, { token, nome: 'Vencido', contatoComercial: true });
+    const vencido = await request(app.getHttpServer()).post('/v1/publico/autocadastro').send(corpo);
+    expect(vencido.status).toBe(410);
+    expect(vencido.body.erros[0].codigo).toBe('TOKEN_EXPIRADO');
+    const fresco = await emitirQr();
+    const ok = await request(app.getHttpServer())
+      .post('/v1/publico/autocadastro')
+      .send({ ...corpo, token: fresco });
+    expect(ok.status).toBe(201);
+  });
+
+  it('o desafio respondido vale mesmo se a memória da API sumir no meio do formulário', async () => {
+    const token = await emitirQr();
+    const corpo = await comCaptcha(app, { token, nome: 'Depois Do Sono', contatoComercial: true });
+    zerarDesafios();
+    const ok = await request(app.getHttpServer()).post('/v1/publico/autocadastro').send(corpo);
+    expect(ok.status).toBe(201);
+  });
+
+  it('autocadastro com nome e telefone chega como capturado, com completude, e não volta a rascunho', async () => {
+    const token = await emitirQr();
+    const ok = await postarPublico(app, {
+      token,
+      nome: 'Gabriel Teste',
+      email: 'gabriel@exemplo.com',
+      telefone: '11987654321',
+      contatoComercial: true,
+    });
+    expect(ok.status).toBe(201);
+    expect(ok.body.dados.status).toBe('capturado');
+    expect(ok.body.dados.completude.score).toBeGreaterThanOrEqual(25);
+    const pular = await request(app.getHttpServer())
+      .post(`/v1/contatos/${ok.body.dados._id}/transicao`)
+      .set(cabecalho('gestor', GESTOR))
+      .send({ para: 'rascunho' });
+    expect(pular.status).toBe(422);
+    expect(pular.body.erros[0].codigo).toBe('TRANSICAO_INVALIDA');
+  });
+
+  it('rascunho antigo do autocadastro, sem completude gravada, passa a capturado', async () => {
+    const token = await emitirQr();
+    const ok = await postarPublico(app, {
+      token,
+      nome: 'Legado Autocadastro',
+      telefone: '11912345678',
+      contatoComercial: true,
+    });
+    const modelo = app.get<Model<unknown>>(getModelToken('Contato'));
+    await modelo.collection.updateOne(
+      { _id: new Types.ObjectId(String(ok.body.dados._id)) },
+      { $set: { status: 'rascunho' }, $unset: { completude: '' } },
+    );
+    const lido = await request(app.getHttpServer())
+      .get(`/v1/contatos/${ok.body.dados._id}`)
+      .set(cabecalho('admin', GESTOR));
+    expect(lido.status).toBe(200);
+    expect(lido.body.dados.status).toBe('rascunho');
+    const capturado = await request(app.getHttpServer())
+      .post(`/v1/contatos/${ok.body.dados._id}/transicao`)
+      .set(cabecalho('gestor', GESTOR))
+      .send({ para: 'capturado' });
+    expect(capturado.status).toBe(201);
+    expect(capturado.body.dados.status).toBe('capturado');
   });
 
   it('não soma o limite de visitantes diferentes atrás do proxy', async () => {

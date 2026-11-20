@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { fetchComAcordar } from '@/lib/acordar';
 import { urlDaApi } from '@/lib/api-url';
 import { guardarPerfil, guardarToken, marcarTotpPendente } from '@/lib/offline/sessao';
 import { textoDaResposta } from '@/lib/texto-resposta';
@@ -26,11 +27,15 @@ export function PaginaEntrar() {
     setEntrando(true);
     setMensagem('');
     try {
-      const resposta = await fetch(urlDaApi('/v1/auth/entrar'), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ login, senha }),
-      });
+      const resposta = await fetchComAcordar(
+        urlDaApi('/v1/auth/entrar'),
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ login, senha }),
+        },
+        setMensagem,
+      );
       const json = (await resposta.json()) as RespostaJson;
       const usuario = json.dados?.usuario;
       if (!resposta.ok || !json.dados?.token || !usuario?.id || !usuario.papel || !usuario.nome) {

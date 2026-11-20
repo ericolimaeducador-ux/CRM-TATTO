@@ -222,6 +222,35 @@ describe('API de contatos', () => {
     expect(lote.body.dados).toHaveLength(2);
     expect(lote.body.dados[0].dados._id).toBe(lote.body.dados[1].dados._id);
   });
+
+  it('lista o cadastro com documento mascarado e resume a base', async () => {
+    const criado = await request(app.getHttpServer())
+      .post('/v1/contatos')
+      .set(cabecalho())
+      .send({ nome: 'Lista Mascara', cpf: '15350946056', telefone: '11933334444' });
+    expect(criado.status).toBe(201);
+    const lista = await request(app.getHttpServer())
+      .get('/v1/contatos')
+      .query({ q: 'Lista Mascara', status: 'capturado' })
+      .set(cabecalho('gestor'));
+    expect(lista.status).toBe(200);
+    expect(lista.body.dados).toHaveLength(1);
+    const texto = JSON.stringify(lista.body.dados);
+    expect(texto).not.toContain('cpfCifrado');
+    expect(texto).not.toContain('cpfHash');
+    expect(lista.body.dados[0].pf.cpfMascarado).toMatch(/\*/);
+    const vazio = await request(app.getHttpServer())
+      .get('/v1/contatos')
+      .query({ q: 'Lista Mascara', status: 'cliente' })
+      .set(cabecalho('gestor'));
+    expect(vazio.body.dados).toHaveLength(0);
+    const resumo = await request(app.getHttpServer())
+      .get('/v1/contatos/resumo')
+      .set(cabecalho('gestor'));
+    expect(resumo.status).toBe(200);
+    expect(resumo.body.dados.hoje).toBeGreaterThanOrEqual(1);
+    expect(resumo.body.dados.porStatus.capturado).toBeGreaterThanOrEqual(1);
+  });
 });
 
 function cabecalho(papel = 'vendedor', id = USUARIO): Record<string, string> {

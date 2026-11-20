@@ -22,6 +22,17 @@ describe('carregar .env', () => {
     log.mockRestore();
   });
 
+  it('lê o .env da pasta e o da raiz, e a pasta mais próxima prevalece', () => {
+    const raiz = mkdtempSync(join(tmpdir(), 'captura7-dois-'));
+    const aninhada = join(raiz, 'apps', 'api');
+    mkdirSync(aninhada, { recursive: true });
+    writeFileSync(join(aninhada, '.env'), 'CAPTURA7_ENV_TESTE=perto\n');
+    writeFileSync(join(raiz, '.env'), 'CAPTURA7_ENV_TESTE=longe\nCAPTURA7_ENV_RAIZ=1\n');
+    carregarEnv(aninhada);
+    expect(process.env.CAPTURA7_ENV_TESTE).toBe('perto');
+    expect(process.env.CAPTURA7_ENV_RAIZ).toBe('1');
+  });
+
   it('sobe dois níveis quando o diretório atual não tem .env', () => {
     const raiz = mkdtempSync(join(tmpdir(), 'captura7-raiz-'));
     const aninhada = join(raiz, 'apps', 'api');

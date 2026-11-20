@@ -176,6 +176,9 @@ describe('dedup e merge', () => {
     const a = await criar({ nome: 'Totp A', email: 'totp-a@exemplo.com', telefone: '11955556666' });
     const b = await criar({ nome: 'Totp B', email: 'totp-b@exemplo.com', telefone: '11955557777' });
     const inscricao = await app.get(TotpService).inscrever(GESTOR);
+    await app
+      .get(TotpService)
+      .ativar(GESTOR, codigoNoPasso(inscricao.segredoBase32, passoAtual() - 1));
     const ruim = await request(app.getHttpServer())
       .post(`/v1/contatos/${a}/merge`)
       .set(cabecalho())

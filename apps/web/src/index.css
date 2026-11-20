@@ -3620,3 +3620,43 @@ textarea {
     display: none;
   }
 }
+
+/* Componentes compartilhados pelas telas de captura (ADR-018), na paleta Tela Viva. */
+@layer components {
+  .btn {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-4 text-base font-semibold;
+    background: var(--tv-primary);
+    color: #fffdfb;
+  }
+  .btn-grande {
+    min-height: 4.75rem;
+    width: 100%;
+    font-size: 1.35rem;
+  }
+  .btn-secundario {
+    @apply inline-flex min-h-12 items-center justify-center rounded-2xl border px-4 text-base font-semibold;
+    border-color: var(--tv-ink);
+    color: var(--tv-ink);
+    background: transparent;
+  }
+  .campo {
+    @apply min-h-12 rounded-xl border px-3 text-base;
+    border-color: var(--tv-line);
+    background: #fffdfb;
+    color: var(--tv-ink);
+  }
+  .cartao {
+    @apply rounded-2xl border p-4;
+    border-color: var(--tv-line);
+    background: #fffdfb;
+  }
+  .atalho {
+    @apply inline-flex min-h-12 items-center text-base font-semibold underline;
+    color: var(--tv-ink);
+  }
+  .chip {
+    @apply inline-flex min-h-8 items-center rounded-full px-3 text-sm font-semibold;
+    background: rgba(22, 20, 15, 0.08);
+    color: var(--tv-ink);
+  }
+}

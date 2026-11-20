@@ -26,6 +26,8 @@ import { PaginaMerge } from './features/captura/PaginaMerge';
 import { PaginaPromover } from './features/captura/PaginaPromover';
 import { PaginaQr } from './features/captura/PaginaQr';
 import { TelaCaptura } from './features/captura/TelaCaptura';
+import { PaginaCadastros } from './features/captura/PaginaCadastros';
+import { PaginaPlanilha } from './features/captura/PaginaPlanilha';
 import { iniciarFila } from './lib/offline/fila';
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -60,6 +62,8 @@ export function App() {
           <Route path="/minha-conta" element={<PaginaMinhaConta />} />
           <Route path="/capturar" element={<TelaCaptura />} />
           <Route path="/capturar/qr" element={<PaginaQr />} />
+          <Route path="/cadastros" element={<PaginaCadastros />} />
+          <Route path="/planilha" element={<PaginaPlanilha />} />
           <Route path="/contatos" element={<ListaContatos />} />
           <Route path="/contatos/:idLocal" element={<FormularioCaptura />} />
           <Route path="/fila" element={<PaginaFila />} />

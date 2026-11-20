@@ -19,24 +19,20 @@ export function PaginaFila() {
 
   return (
     <section className="flex flex-col gap-4">
-      <Link className="inline-flex min-h-12 items-center text-base underline" to="/capturar">
+      <Link className="atalho" to="/capturar">
         Captura
       </Link>
       <h1 className="text-2xl font-semibold">Fila</h1>
       {itens.length === 0 ? <p className="text-base">Nada pendente.</p> : null}
       {itens.map((item) => (
-        <article key={item.idLocal} className="rounded border border-stone-300 p-3">
+        <article key={item.idLocal} className="cartao">
           <p className="text-base">{item.campos.nome?.trim() || 'Rascunho local'}</p>
           <IndicadorSincronizacao estado={item.estado} />
           {item.mensagem ? <p className="text-base text-amber-900">{item.mensagem}</p> : null}
           {item.estado === 'preso' ? (
             <>
               <p className="text-base text-amber-900">Este registro está preso na fila.</p>
-              <button
-                type="button"
-                className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white"
-                onClick={() => void exportar(item.idLocal)}
-              >
+              <button type="button" className="btn" onClick={() => void exportar(item.idLocal)}>
                 Exportar este registro como JSON
               </button>
             </>
@@ -50,14 +46,14 @@ export function PaginaFila() {
               </p>
               <button
                 type="button"
-                className="min-h-12 rounded-lg bg-stone-900 px-4 text-base text-white"
+                className="btn"
                 onClick={() => void resolverConflito(item.idLocal, true)}
               >
                 Ficar com o que digitei
               </button>
               <button
                 type="button"
-                className="min-h-12 rounded-lg border border-stone-900 px-4 text-base"
+                className="btn-secundario"
                 onClick={() => void resolverConflito(item.idLocal, false)}
               >
                 Ficar com o do servidor

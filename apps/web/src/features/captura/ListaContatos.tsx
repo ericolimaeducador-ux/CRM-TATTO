@@ -209,7 +209,7 @@ export function ListaContatos() {
 
   return (
     <section className="flex flex-col gap-4">
-      <Link className="inline-flex min-h-12 items-center text-base underline" to="/capturar">
+      <Link className="atalho" to="/capturar">
         Captura
       </Link>
       <h1 className="text-2xl font-semibold">Contatos</h1>
@@ -250,18 +250,12 @@ export function ListaContatos() {
             </Link>
             <IndicadorSincronizacao estado={item.estado} />
             {item.idServidor && podeGerir() ? (
-              <Link
-                className="mt-2 inline-flex min-h-12 items-center text-base underline"
-                to={`/promover/${item.idServidor}`}
-              >
+              <Link className="mt-2 atalho" to={`/promover/${item.idServidor}`}>
                 Promover
               </Link>
             ) : null}
             {item.idServidor && podeAuditar() ? (
-              <Link
-                className="mt-2 inline-flex min-h-12 items-center text-base underline"
-                to={`/lead/${item.idServidor}`}
-              >
+              <Link className="mt-2 atalho" to={`/lead/${item.idServidor}`}>
                 Abrir lead
               </Link>
             ) : null}

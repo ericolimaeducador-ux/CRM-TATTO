@@ -1,4 +1,4 @@
-import { ExpurgoService } from './expurgo.service';
+import { ExpurgoService, relogioDeRetencaoAtivo, retencaoNaSubida } from './expurgo.service';
 
 describe('expurgo por inatividade', () => {
   it('elimina inatividade, revogação antiga e rascunho parado, e apaga o já eliminado', async () => {
@@ -53,5 +53,13 @@ describe('expurgo por inatividade', () => {
     });
     expect(chamadas).toEqual(['antigo', 'revogado', 'rascunho']);
     expect(deleteMany).toHaveBeenCalled();
+  });
+
+  it('na subida roda a retenção fora do teste e o relógio fica para o processo acordado', () => {
+    expect(retencaoNaSubida({ NODE_ENV: 'test' })).toBe(false);
+    expect(retencaoNaSubida({ NODE_ENV: 'production' })).toBe(true);
+    expect(relogioDeRetencaoAtivo({ NODE_ENV: 'test' })).toBe(false);
+    expect(relogioDeRetencaoAtivo({ NODE_ENV: 'production', RETENCAO_TIMER: '0' })).toBe(false);
+    expect(relogioDeRetencaoAtivo({ NODE_ENV: 'production' })).toBe(true);
   });
 });

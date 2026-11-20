@@ -94,7 +94,7 @@ export function PainelPlanilha({ aoMensagem }: { aoMensagem: (texto: string) => 
           <label className="flex flex-col gap-1 text-base">
             Planilha CSV do Google
             <textarea
-              className="min-h-24 rounded border border-stone-400 px-3 py-2"
+              className="campo min-h-24 py-2"
               value={planilha}
               onChange={(evento) => setPlanilha(evento.target.value)}
             />
@@ -108,7 +108,7 @@ export function PainelPlanilha({ aoMensagem }: { aoMensagem: (texto: string) => 
               onChange={(evento) => setArquivo(evento.target.files?.[0] ?? null)}
             />
           </label>
-          <button type="submit" className="min-h-12 rounded-lg border border-stone-900 px-4">
+          <button type="submit" className="btn-secundario">
             Importar planilha
           </button>
         </form>

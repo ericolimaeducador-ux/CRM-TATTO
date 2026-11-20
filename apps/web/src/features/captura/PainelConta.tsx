@@ -33,7 +33,27 @@ export function PainelConta({
     }
     marcarTotpPendente(false);
     setSegredo(json.dados.segredoBase32);
-    aoMensagem('Guarde este segredo no aplicativo autenticador e confirme o código de 6 dígitos.');
+    aoMensagem(
+      'Guarde este segredo no aplicativo autenticador, digite o código de 6 dígitos e toque em Ativar autenticador.',
+    );
+  }
+
+  async function ativar() {
+    const resposta = await fetch(urlDaApi('/v1/auth/totp/ativar'), {
+      method: 'POST',
+      headers: cabecalhosDaSessao(),
+      body: JSON.stringify({ codigoTotp: codigo }),
+    });
+    const json = (await resposta.json()) as RespostaJson;
+    if (resposta.ok) {
+      setSegredo('');
+      setCodigo('');
+    }
+    aoMensagem(
+      resposta.ok
+        ? 'Autenticador ativado. Use o próximo código para confirmar operações sensíveis.'
+        : textoDe(json, 'O autenticador não foi ativado.'),
+    );
   }
 
   async function confirmarPasso() {
@@ -132,9 +152,22 @@ export function PainelConta({
           Confirmar passo extra
         </button>
         {segredo ? (
-          <p className="break-all text-base" data-testid="segredo-totp">
-            {segredo}
-          </p>
+          <>
+            <p className="break-all text-base" data-testid="segredo-totp">
+              {segredo}
+            </p>
+            <button
+              type="button"
+              className="min-h-12 rounded-lg border border-stone-900 px-4"
+              onClick={() =>
+                void ativar().catch(() =>
+                  aoMensagem('Sem conexão para ativar o autenticador. Tente novamente.'),
+                )
+              }
+            >
+              Ativar autenticador
+            </button>
+          </>
         ) : null}
       </details>
       <form

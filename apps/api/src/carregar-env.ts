@@ -6,7 +6,6 @@ export function carregarEnv(diretorio = process.cwd()): void {
   for (const caminho of candidatos) {
     if (!existsSync(caminho)) continue;
     aplicar(readFileSync(caminho, 'utf8'));
-    return;
   }
 }
 

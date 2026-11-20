@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "captura7-5e1da"
+  },
+  "targets": {
+    "captura7-5e1da": {
+      "hosting": {
+        "app": [
+          "tattooart"
+        ]
+      }
+    }
+  }
+}
