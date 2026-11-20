@@ -221,15 +221,30 @@ export function TelaTermo({
         />
         <button
           type="button"
-          className="btn disabled:opacity-40"
+          className={concluido ? 'btn' : 'btn disabled:opacity-40'}
+          style={
+            concluido
+              ? { backgroundColor: '#1d4ed8', borderColor: '#1d4ed8', color: '#fff', opacity: 1 }
+              : undefined
+          }
           disabled={
             !marcado || enviando || concluido || captchaLocalPendente || captchaExternoPendente
           }
           onClick={() => void concluir()}
         >
-          {enviando ? 'Enviando…' : 'Concluir cadastro'}
+          {enviando ? 'Enviando…' : concluido ? '✓ Cadastro concluído' : 'Concluir cadastro'}
         </button>
-        {mensagem ? (
+        {concluido ? (
+          <div
+            role="status"
+            data-testid="cadastro-concluido"
+            className="rounded-lg p-6 text-center"
+            style={{ backgroundColor: '#1d4ed8', color: '#fff' }}
+          >
+            <p className="text-3xl font-bold leading-tight">CADASTRO CONCLUÍDO</p>
+            <p className="mt-2 text-2xl font-semibold">SEJA BEM-VINDO!</p>
+          </div>
+        ) : mensagem ? (
           <p className="text-base" role="status">
             {mensagem}
           </p>

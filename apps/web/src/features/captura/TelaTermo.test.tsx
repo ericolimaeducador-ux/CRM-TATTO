@@ -146,4 +146,31 @@ describe('tela do termo', () => {
     expect(envios[1]?.captchaId).toBe('id-2');
     expect(envios[1]?.nome).toBe('Ana Tattoo');
   });
+
+  it('depois do envio aceito mostra CADASTRO CONCLUÍDO grande e o botão azul', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => ({
+        ok: true,
+        status: 200,
+        json: async () =>
+          String(url).includes('captcha')
+            ? { dados: { provedor: 'local', id: 'id-1', pergunta: 'Quanto é 1 + 1?' } }
+            : String(url).includes('autocadastro')
+              ? { dados: {} }
+              : { dados: { versao: 'v', textoCurto: 'Curto', textoCompleto: 'C' } },
+      })),
+    );
+    render(<TelaTermo modo="autocadastro" token="abc" />);
+    await screen.findByTestId('pergunta-captcha');
+    fireEvent.change(screen.getByLabelText(/Resposta do desafio/), { target: { value: '2' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: /contato comercial/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Concluir cadastro' }));
+    const aviso = await screen.findByTestId('cadastro-concluido');
+    expect(aviso.textContent).toContain('CADASTRO CONCLUÍDO');
+    expect(aviso.textContent).toContain('SEJA BEM-VINDO');
+    const botao = screen.getByRole('button', { name: /Cadastro concluído/ }) as HTMLButtonElement;
+    expect(botao.disabled).toBe(true);
+    expect(botao.style.backgroundColor).toBe('rgb(29, 78, 216)');
+  });
 });
