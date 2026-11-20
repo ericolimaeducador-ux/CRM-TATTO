@@ -32,6 +32,6 @@ test('captura segue sem trava e o autocadastro só conclui com a caixa', async (
   await page.getByLabel('Resposta do desafio').fill(String((numeros[0] ?? 0) + (numeros[1] ?? 0)));
   await expect(concluir).toBeEnabled();
   await concluir.click();
-  await expect(page.getByText('Cadastro concluído.')).toBeVisible();
+  await expect(page.getByTestId('cadastro-concluido')).toContainText('CADASTRO CONCLUÍDO');
   await expect(page.getByText('Sincronizado')).toHaveCount(0);
 });
