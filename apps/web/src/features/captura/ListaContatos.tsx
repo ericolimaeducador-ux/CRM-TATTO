@@ -18,11 +18,13 @@ interface ContatoRemoto {
   idLocal?: string;
   nome?: string;
   status?: string;
+  criadoEm?: string;
 }
 
 interface PaginaRemota {
   sessao: string;
   itens: ContatoRemoto[];
+  total: number | null;
   cursor: string | null;
   carregando: boolean;
   consultado: boolean;
@@ -36,7 +38,15 @@ function chaveDaSessao(): string {
 }
 
 function paginaVazia(sessao: string): PaginaRemota {
-  return { sessao, itens: [], cursor: null, carregando: false, consultado: false, erro: '' };
+  return {
+    sessao,
+    itens: [],
+    total: null,
+    cursor: null,
+    carregando: false,
+    consultado: false,
+    erro: '',
+  };
 }
 
 export function ListaContatos() {
@@ -72,6 +82,7 @@ export function ListaContatos() {
         const json = (await resposta.json()) as {
           dados?: ContatoRemoto[];
           proximoCursor?: string | null;
+          total?: number;
           mensagem?: string;
           erros?: { mensagem?: string }[];
         };
@@ -85,11 +96,12 @@ export function ListaContatos() {
         if (!Array.isArray(json.dados))
           throw new Error('Não consegui ler a lista do CRM. Tente atualizar.');
         if (!vigente()) return;
-        const recebidos = json.dados.map(({ _id, idLocal, nome, status }) => ({
+        const recebidos = json.dados.map(({ _id, idLocal, nome, status, criadoEm }) => ({
           _id,
           idLocal,
           nome,
           status,
+          criadoEm,
         }));
         setPagina((anterior) => {
           const acumulados = cursor ? [...anterior.itens, ...recebidos] : recebidos;
@@ -105,6 +117,7 @@ export function ListaContatos() {
           return {
             sessao,
             itens: unicos,
+            total: typeof json.total === 'number' ? json.total : anterior.total,
             cursor:
               typeof json.proximoCursor === 'string' && json.proximoCursor !== cursor
                 ? json.proximoCursor
@@ -203,6 +216,7 @@ export function ListaContatos() {
     });
   const remota =
     pagina.sessao === sessao && sessao === chaveDaSessao() ? pagina : paginaVazia(sessao);
+  const pendentes = locais.filter((item) => !item.idServidor).length;
   const remotos = remota.itens.filter(
     (item) => !idsServidor.has(item._id) && (!item.idLocal || !idsLocais.has(item.idLocal)),
   );
@@ -213,6 +227,12 @@ export function ListaContatos() {
         Captura
       </Link>
       <h1 className="text-2xl font-semibold">Contatos</h1>
+      {sessao && remota.total !== null ? (
+        <p className="text-lg font-semibold" data-testid="total-contatos">
+          {formatarNumero(remota.total)} {remota.total === 1 ? 'contato' : 'contatos'} no CRM
+          {pendentes ? ` · ${formatarNumero(pendentes)} neste aparelho aguardando envio` : ''}
+        </p>
+      ) : null}
       {erroLocal ? <p role="alert">{erroLocal}</p> : null}
       {!sessao ? (
         <p className="text-base">
@@ -249,6 +269,9 @@ export function ListaContatos() {
               {rotulo(item)}
             </Link>
             <IndicadorSincronizacao estado={item.estado} />
+            <p className="text-sm text-stone-600">
+              Salvo neste aparelho em {dataDeEntrada(new Date(item.atualizadoEm).toISOString())}
+            </p>
             {item.idServidor && podeGerir() ? (
               <Link className="mt-2 atalho" to={`/promover/${item.idServidor}`}>
                 Promover
@@ -270,6 +293,9 @@ export function ListaContatos() {
               {item.nome?.trim() || 'Contato sem nome informado'}
             </Link>
             <p className="text-base">Salvo no CRM{item.status ? ` · ${item.status}` : ''}</p>
+            {item.criadoEm ? (
+              <p className="text-sm text-stone-600">Entrou em {dataDeEntrada(item.criadoEm)}</p>
+            ) : null}
             {podeGerir() ? (
               <Link
                 className="mt-2 inline-flex min-h-12 items-center text-base underline"
@@ -298,4 +324,21 @@ export function ListaContatos() {
 function rotulo(item: ContatoLocal): string {
   const nome = item.campos.nome?.trim();
   return nome || 'Rascunho local';
+}
+
+function formatarNumero(n: number): string {
+  return new Intl.NumberFormat('pt-BR').format(n);
+}
+
+function dataDeEntrada(valor: string): string {
+  const data = new Date(valor);
+  if (!Number.isFinite(data.getTime())) return 'data não informada';
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo',
+  }).format(data);
 }

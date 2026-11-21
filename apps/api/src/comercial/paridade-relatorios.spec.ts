@@ -106,6 +106,57 @@ describe('TV-18 — relatórios por dia civil de São Paulo', () => {
     expect(dia17.participantes).toEqual({ inscricoes: 1, confirmados: 1, presentes: 1 });
   });
 
+  it('soma os contatos capturados por dia civil de São Paulo, só da carteira do vendedor', async () => {
+    const { Types } = await import('mongoose');
+    const contatos = registros.db.collection('contatos');
+    await contatos.deleteMany({});
+    const ana = new Types.ObjectId(ANA);
+    const bia = new Types.ObjectId(BIA);
+    await contatos.insertMany([
+      {
+        idLocal: 'loc-1',
+        codigo: 'cod-1',
+        nome: 'C1',
+        criadoEm: new Date(NOITE_16),
+        origem: { vendedorAtribuido: ana },
+      },
+      {
+        idLocal: 'loc-2',
+        codigo: 'cod-2',
+        nome: 'C2',
+        criadoEm: new Date(NOITE_16),
+        origem: { vendedorAtribuido: ana },
+      },
+      {
+        idLocal: 'loc-3',
+        codigo: 'cod-3',
+        nome: 'C3',
+        criadoEm: new Date(INICIO_17),
+        origem: { vendedorAtribuido: ana },
+      },
+      {
+        idLocal: 'loc-4',
+        codigo: 'cod-4',
+        nome: 'C4',
+        criadoEm: new Date(NOITE_16),
+        origem: { vendedorAtribuido: bia },
+      },
+    ]);
+    const resposta = await request(app.getHttpServer())
+      .get('/v1/comercial/relatorios?de=2026-11-16&ate=2026-11-17')
+      .set(headers);
+    expect(resposta.status).toBe(200);
+    expect(resposta.body.contatos).toEqual({
+      total: 3,
+      porDia: [
+        { dia: '2026-11-16', quantidade: 2 },
+        { dia: '2026-11-17', quantidade: 1 },
+      ],
+    });
+    expect(JSON.stringify(resposta.body)).not.toContain('C1');
+    await contatos.deleteMany({});
+  });
+
   it('aplica a mesma fronteira à data marcada da atividade, independentemente da criação', async () => {
     await registros.insertMany([
       documento(

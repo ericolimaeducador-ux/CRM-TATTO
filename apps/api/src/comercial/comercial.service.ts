@@ -558,6 +558,36 @@ export class ComercialService {
           },
         ]),
       ]);
+    // Contatos capturados (QR, digitação, importação) por dia civil de São Paulo.
+    // Vendedor vê só a própria carteira; gestor/admin pode filtrar por representante.
+    const contatosPorDiaBrutos = await this.conexao
+      .collection('contatos')
+      .aggregate<{ _id: string; quantidade: number }>([
+        {
+          $match: {
+            criadoEm: criadosNoPeriodo,
+            ...(dono ? { 'origem.vendedorAtribuido': new Types.ObjectId(dono) } : {}),
+          },
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: {
+                format: '%Y-%m-%d',
+                date: '$criadoEm',
+                timezone: 'America/Sao_Paulo',
+              },
+            },
+            quantidade: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ])
+      .toArray();
+    const contatosPorDia = contatosPorDiaBrutos.map((grupo) => ({
+      dia: grupo._id,
+      quantidade: grupo.quantidade,
+    }));
     const porTipo = new Map<string, number>();
     const porStatusAtividade = new Map<string, number>();
     for (const grupo of atividadesBrutas) {
@@ -621,6 +651,10 @@ export class ComercialService {
         porStatus: porStatusProposta,
       },
       treinamentos: { quantidade: treinamentos },
+      contatos: {
+        total: contatosPorDia.reduce((n, item) => n + item.quantidade, 0),
+        porDia: contatosPorDia,
+      },
       participantes: {
         inscricoes: participantes[0]?.inscricoes ?? 0,
         confirmados: participantes[0]?.confirmados ?? 0,
