@@ -31,6 +31,7 @@ interface RelatorioComercial {
     porStatus: { status: string; quantidade: number; totalCentavos: number }[];
   };
   treinamentos: { quantidade: number };
+  contatos?: { total: number; porDia: { dia: string; quantidade: number }[] };
   participantes: { inscricoes: number; confirmados: number; presentes: number };
 }
 const quantidade = (n: number) => new Intl.NumberFormat('pt-BR').format(n);
@@ -108,7 +109,8 @@ export function PaginaRelatorios() {
       r.oportunidades.total +
       r.propostas.total +
       r.treinamentos.quantidade +
-      r.participantes.inscricoes ===
+      r.participantes.inscricoes +
+      (r.contatos?.total ?? 0) ===
       0,
   );
   const escopo =
@@ -122,6 +124,13 @@ export function PaginaRelatorios() {
             : 'Carteiras consolidadas'
           : 'Dados autorizados pela sessão';
   const cards = [
+    {
+      titulo: 'Contatos capturados',
+      valor: r?.contatos?.total,
+      icone: 'contatos',
+      cor: 'azul',
+      detalhe: 'Soma dos contatos que entraram no período',
+    },
     {
       titulo: 'Atividades agendadas',
       valor: r?.atividades.total,
@@ -280,6 +289,7 @@ export function PaginaRelatorios() {
               />
             </section>
           ) : null}
+          <ContatosPorDia contatos={r.contatos} />
           <div className="tv-dashboard-grid tv-report-grid">
             <ResumoContagens
               titulo="Atividades por tipo"
@@ -460,6 +470,52 @@ function ResumoContagens({
         </div>
       ) : (
         <p className="tv-report-no-data">Nenhuma atividade agendada no período.</p>
+      )}
+    </section>
+  );
+}
+function ContatosPorDia({ contatos }: { contatos: RelatorioComercial['contatos'] }) {
+  if (!contatos) return null;
+  return (
+    <section className="tv-panel" data-testid="contatos-por-dia">
+      <div className="tv-panel-heading">
+        <div>
+          <h2>Contatos capturados por dia</h2>
+          <p>
+            {quantidade(contatos.total)} contatos entraram no período (QR, digitação e importação),
+            pela data de entrada.
+          </p>
+        </div>
+      </div>
+      {contatos.porDia.length ? (
+        <div className="tv-table-scroll">
+          <table className="tv-table">
+            <thead>
+              <tr>
+                <th>Dia</th>
+                <th>Contatos capturados</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...contatos.porDia].reverse().map((l) => (
+                <tr key={l.dia}>
+                  <td>{dataFormatada(l.dia)}</td>
+                  <td>
+                    <strong>{quantidade(l.quantidade)}</strong>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th>Total do período</th>
+                <th>{quantidade(contatos.total)}</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      ) : (
+        <p className="tv-report-no-data">Nenhum contato capturado no período.</p>
       )}
     </section>
   );
