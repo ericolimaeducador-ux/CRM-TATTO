@@ -60,9 +60,10 @@ for (const viewport of [
     await page.getByRole('button', { name: 'Buscar contatos' }).click();
     // O CRM normaliza o nome (iniciais maiúsculas) ao gravar o contato.
     await expect(page.getByLabel(new RegExp(`^Selecionar ${nome}$`, 'i'))).toBeDisabled();
+    // Confere só a linha deste contato: a base do CI tem outros contatos sem autorização.
     await expect(
-      page.getByText('Sem autorização comercial documentada', { exact: true }),
-    ).toBeVisible();
+      page.locator('label.tv-campaign-candidate', { hasText: new RegExp(nome, 'i') }),
+    ).toContainText('Sem autorização comercial documentada');
     await page.getByRole('button', { name: 'Consultar prévia salva' }).click();
     await expect(
       page.getByText(
