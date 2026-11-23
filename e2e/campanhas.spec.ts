@@ -89,3 +89,60 @@ for (const viewport of [
     expect(negado.status()).toBe(403);
   });
 }
+
+// Prova da cadeia do aceite: o que o titular marca precisa chegar elegível à campanha.
+test('aceite do QR e do vendedor chegam elegíveis à campanha', async ({ page, request }) => {
+  const VENDEDOR = '507f1f77bcf86cd799439011';
+  const vendedor = {
+    'content-type': 'application/json',
+    'x-papel-teste': 'vendedor',
+    'x-usuario-id': VENDEDOR,
+    'x-autor-nome': 'Vendedor do ensaio',
+  };
+  const sufixo = String(Date.now()).slice(-6);
+
+  // 1) Autocadastro pelo QR, como na feira.
+  const qr = await page.request.post('/v1/qr', { headers: vendedor, data: {} });
+  expect(qr.ok()).toBeTruthy();
+  const { dados } = (await qr.json()) as { dados: { caminho: string } };
+  await page.goto(dados.caminho);
+  const nomeQr = `Titular Qr ${sufixo}`;
+  await page.getByLabel('Nome').fill(nomeQr);
+  await page.getByLabel('Telefone').fill(`(11) 98888-${sufixo.slice(-4)}`);
+  await page.getByRole('checkbox', { name: /contato comercial/i }).check();
+  const pergunta = page.getByTestId('pergunta-captcha');
+  const numeros = ((await pergunta.innerText()).match(/\d+/g) ?? []).map(Number);
+  await page.getByLabel('Resposta do desafio').fill(String((numeros[0] ?? 0) + (numeros[1] ?? 0)));
+  await page.getByRole('button', { name: 'Concluir cadastro' }).click();
+  await expect(page.getByTestId('cadastro-concluido')).toBeVisible();
+
+  // 2) Vendedor digita e registra o aceite do titular.
+  const nomeVend = `Titular Vendedor ${sufixo}`;
+  const criado = await request.post(`${API}/v1/contatos`, {
+    headers: vendedor,
+    data: {
+      nome: nomeVend,
+      origem: { modo: 'manual' },
+      telefone: `(11) 97777-${sufixo.slice(-4)}`,
+    },
+  });
+  expect(criado.status()).toBe(201);
+  const idVend = ((await criado.json()) as { dados: { _id: string } }).dados._id;
+  const aceite = await request.post(`${API}/v1/contatos/${idVend}/consentimento`, {
+    headers: vendedor,
+    data: { contatoComercial: true, emDispositivo: new Date().toISOString() },
+  });
+  expect(aceite.status()).toBeLessThan(300);
+
+  for (const nome of [nomeQr, nomeVend]) {
+    const r = await request.get(`${API}/v1/campanhas/candidatos?q=${encodeURIComponent(nome)}`, {
+      headers,
+    });
+    expect(r.status()).toBe(200);
+    const { registros } = (await r.json()) as {
+      registros: { nome: string; elegivel: boolean; motivo: string }[];
+    };
+    expect(registros, nome).toHaveLength(1);
+    expect(registros[0], nome).toMatchObject({ elegivel: true, motivo: '' });
+  }
+});
