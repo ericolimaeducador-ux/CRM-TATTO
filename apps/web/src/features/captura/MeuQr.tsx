@@ -11,6 +11,7 @@ export function MeuQr() {
   const [token, setToken] = useState('');
   const [imagem, setImagem] = useState('');
   const [mensagem, setMensagem] = useState('');
+  const [validade, setValidade] = useState('');
 
   async function gerar() {
     let resposta: Response;
@@ -25,7 +26,7 @@ export function MeuQr() {
       return;
     }
     const json = (await resposta.json()) as {
-      dados?: { caminho?: string; token?: string };
+      dados?: { caminho?: string; token?: string; expiraEm?: string; limiteUsos?: number };
       erros?: { mensagem?: string }[];
       mensagem?: string;
     };
@@ -38,6 +39,7 @@ export function MeuQr() {
     }
     const url = urlDoAplicativo(recebido);
     setToken(json.dados.token);
+    setValidade(textoDaValidade(json.dados.expiraEm, json.dados.limiteUsos));
     setCaminho(url);
     setImagem(await QRCode.toDataURL(url, { margin: 1, width: 240 }));
     setMensagem('O titular abre este endereço e marca as caixas. Elas começam desmarcadas.');
@@ -58,6 +60,7 @@ export function MeuQr() {
     setImagem('');
     setCaminho('');
     setToken('');
+    setValidade('');
     setMensagem('QR revogado. Esse endereço não conclui mais cadastro.');
   }
 
@@ -66,13 +69,14 @@ export function MeuQr() {
       <h1 className="text-2xl font-semibold">Meu QR</h1>
       <p className="text-base">
         {hospedagemPublica()
-          ? 'O titular abre o endereço abaixo. Este modo usa certificado válido, então não precisa instalar certificado no celular. O QR vale duas horas e um cadastro.'
-          : 'Quem estiver na mesma rede Wi-Fi abre o endereço deste computador. Nesse modo o celular precisa da CA instalada. O QR vale duas horas e um cadastro.'}
+          ? 'O titular abre o endereço abaixo. Este modo usa certificado válido, então não precisa instalar certificado no celular. Cada QR tem validade e limite de cadastros, mostrados depois de gerar.'
+          : 'Quem estiver na mesma rede Wi-Fi abre o endereço deste computador. Nesse modo o celular precisa da CA instalada. Cada QR tem validade e limite de cadastros, mostrados depois de gerar.'}
       </p>
       <button type="button" className="btn" onClick={() => void gerar()}>
         Gerar QR de autocadastro
       </button>
       {imagem ? <img alt="QR do autocadastro" className="h-60 w-60" src={imagem} /> : null}
+      {validade ? <p className="text-base font-semibold">{validade}</p> : null}
       {caminho ? (
         <a className="break-all text-base underline" href={caminho}>
           {caminho}
@@ -89,4 +93,12 @@ export function MeuQr() {
       </Link>
     </section>
   );
+}
+
+function textoDaValidade(expiraEm?: string, limiteUsos?: number): string {
+  const data = expiraEm ? new Date(expiraEm) : null;
+  if (!data || Number.isNaN(data.getTime()) || !limiteUsos) return '';
+  const quando = data.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  const cadastros = limiteUsos === 1 ? '1 cadastro' : `até ${limiteUsos} cadastros`;
+  return `Este QR aceita ${cadastros} e vale até ${quando}.`;
 }

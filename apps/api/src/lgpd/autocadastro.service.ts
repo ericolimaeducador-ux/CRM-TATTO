@@ -38,19 +38,26 @@ export class AutocadastroService {
     @InjectModel('TokenAutocadastro') private readonly tokens: Model<TokenDoc>,
   ) {}
 
-  async emitir(usuario: UsuarioSessao): Promise<{ token: string; caminho: string }> {
+  async emitir(usuario: UsuarioSessao): Promise<{
+    token: string;
+    caminho: string;
+    expiraEm: string;
+    limiteUsos: number;
+  }> {
     const token = randomBytes(24).toString('hex');
     const agora = new Date();
+    const expiraEm = new Date(agora.getTime() + prazoTokenSegundos() * 1000);
+    const limiteUsos = limiteDeUsosDoToken();
     await this.tokens.create({
       token,
       vendedorId: new Types.ObjectId(usuario.id),
       criadoEm: agora,
-      expiraEm: new Date(agora.getTime() + prazoTokenSegundos() * 1000),
+      expiraEm,
       usos: 0,
-      limiteUsos: limiteDeUsosDoToken(),
+      limiteUsos,
       revogadoEm: null,
     });
-    return { token, caminho: `/p/${token}` };
+    return { token, caminho: `/p/${token}`, expiraEm: expiraEm.toISOString(), limiteUsos };
   }
 
   async revogar(tokenBruto: string, usuario: UsuarioSessao) {
