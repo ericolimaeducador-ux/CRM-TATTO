@@ -14,6 +14,7 @@ const SECOES: Record<string, string> = {
   treinamentos: 'Treinamentos',
   relatorios: 'Relatórios comerciais',
   propostas: 'Propostas',
+  campanhas: 'Campanhas',
   capturar: 'Captura rápida',
   contatos: 'Contatos',
   entrar: 'Entrar',
@@ -79,6 +80,7 @@ export function Layout({ children }: { children: ReactNode }) {
     'precos',
     'treinamentos',
     'relatorios',
+    'campanhas',
   ].includes(segmento);
   if (segmento === 'entrar') return <main className="tv-login-screen">{children}</main>;
   if (segmento === 'p' || segmento === 'termo' || segmento === 'inscricao-treinamento')

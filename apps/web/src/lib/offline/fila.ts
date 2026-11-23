@@ -209,12 +209,16 @@ export async function drenar(): Promise<void> {
       const espera = await sincronizarContato(idLocal, grupo, definirEstado);
       if (espera !== null) proxima = Math.min(proxima, espera);
     }
-    if (navigator.onLine) await enviarConsentimentosLocais();
+    // Aceite que não subiu é tentado de novo sozinho, mesmo sem outra operação na fila.
+    const aceitesPendentes = navigator.onLine
+      ? await enviarConsentimentosLocais()
+      : await haConsentimentoPendente();
+    if (aceitesPendentes) proxima = Math.min(proxima, ESPERA_ACEITE_MS);
     const idsIniciais = new Set(operacoes.map((item) => item.id));
     const novas = (await listarOperacoes()).filter((item) => !idsIniciais.has(item.id));
     if (novas.length)
       proxima = Math.min(proxima, ...novas.map((item) => item.proximaEm - Date.now()));
-    if (porContato.size > 0 || novas.length > 0) agendar(Math.max(proxima, 0));
+    if (porContato.size > 0 || novas.length > 0 || aceitesPendentes) agendar(Math.max(proxima, 0));
   } catch {
     // Sem IndexedDB neste ambiente a fila não drena. A tela continua.
   } finally {
@@ -246,16 +250,36 @@ async function definirEstado(
   });
 }
 
-async function enviarConsentimentosLocais(): Promise<void> {
+const ESPERA_ACEITE_MS = 60 * 1000;
+
+function aceitePendente(contato: ContatoLocal): boolean {
+  const escolha = contato.consentimento;
+  return Boolean(escolha?.contatoComercial && escolha.estado !== 'enviado');
+}
+
+async function haConsentimentoPendente(): Promise<boolean> {
+  return (await listarContatos()).some(aceitePendente);
+}
+
+/** Envia os aceites guardados no aparelho. Devolve true se algum ainda não subiu. */
+export async function enviarConsentimentosLocais(): Promise<boolean> {
+  let restam = false;
   for (const contato of await listarContatos()) {
     const escolha = contato.consentimento;
-    if (!escolha?.contatoComercial || escolha.estado === 'enviado' || !contato.idServidor) continue;
+    if (!escolha || !aceitePendente(contato)) continue;
+    if (!contato.idServidor) {
+      restam = true;
+      continue;
+    }
     const resposta = await postarConsentimento(
       contato.idServidor,
       escolha.emDispositivo,
       escolha.envioErp === true,
     ).catch(() => null);
-    if (!resposta || resposta.http >= 400) continue;
+    if (!resposta || resposta.http >= 400) {
+      restam = true;
+      continue;
+    }
     await emSerie(contato.idLocal, async () => {
       const fresco = await lerContato(contato.idLocal);
       if (
@@ -268,6 +292,7 @@ async function enviarConsentimentosLocais(): Promise<void> {
       await gravarContato(fresco);
     });
   }
+  return restam;
 }
 
 function avisar(): void {

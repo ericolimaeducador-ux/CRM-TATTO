@@ -28,6 +28,14 @@ _(vazio — F3-02 foi para FEITO com a autorização de 26/09/2026)_
 
 ## EM CURSO
 
+- `[CP-02]` Contrato e dados de campanhas WhatsApp — **@ARQ-02** — aceite: ADR-019, coleções aditivas, estados/versionamento/auditoria, seleção histórica explícita e dedup por campanha/telefone sem alterar captura — dep: [CP-01] — FEITO 23/11/2026
+- `[CP-03]` API e fila controlada de campanhas — **@API-03** — aceite: público/prévia, rascunho/iniciar/pausar/retomar/cancelar, reserva global persistida, cadência/horário/teto diário/lotes, falhas/incertos/recibos sem envio em modo desativado — dep: [CP-02] — FEITO 23/11/2026; API 247/247
+- `[CP-04]` Revisão de elegibilidade e integração Meta — **@SEC-07** — aceite: gestor/admin, autorização ativa e opt-out revalidados, template aprovado correspondente à prévia, segredos fora do cliente/logs, nenhuma ativação ou envio real no desenvolvimento — dep: [CP-03] — APROVADO COM RESSALVAS 23/11/2026; ver PROGRESS_FASE_CAMPANHAS.md
+- `[CP-05]` Tela Campanhas no Tela Viva — **@UI-04** — aceite: menu/rota, público com inclusões/exclusões e seleção, mensagem/prévia, configurações de ritmo, confirmação de início, controles e resultados desktop/mobile com estados reais — dep: [CP-04] — IMPLEMENTADO 23/11/2026; tela, menu e rotas gestor/admin, web 82/82
+- `[CP-06]` QA de campanhas sem envio real — **@QA-09** — aceite: integração Mongo/transporte simulado para fila/limites/idempotência/RBAC/opt-out/reinício e testes web/E2E desktop/mobile; regressões pertinentes verdes — dep: [CP-05] — VERDE 23/11/2026; API 247/247, web 82/82, E2E isolado 14/14 (campanhas desktop+mobile), sem envio real
+- `[CP-07]` Portão e disponibilização de campanhas — **@REV-11** — aceite: parecer após QA, instruções de acesso/configuração, build utilizável na instalação existente quando disponível, limites/pontos externos explícitos — dep: [CP-06] — APROVADO COM RESSALVAS PARA MERGE 23/11/2026; ativação real depende de configuração privada do proprietário
+
+
 - `[AC-10]` Corrigir posição ao trocar seções e validar navegador — **@UI-04** + **@QA-09** — aceite: troca de rota inicia no topo; regressões da lista/rascunhos/sessão e fluxo integrado desktop/mobile aprovados — dep: [AC-09]
 - `[AC-11]` Revisar e aplicar correções de navegação/lista — **@REV-11** + **@OPS-10** — aceite: revisão aprovada, web local aplicada, lista real conferida e dados preservados — dep: [AC-10]
 
@@ -40,6 +48,12 @@ _(vazio — F3-02 foi para FEITO com a autorização de 26/09/2026)_
 - `[AC-08]` Depurar navegador autenticado e corrigir falhas reproduzíveis — **@ORQ-01** — aceite: verificar console/rede, interface desktop/mobile, navegação, usuários e contatos; documentar causa e submeter correções a QA/REV antes de aplicar — dep: [AC-07] — diagnóstico confirmado: lista lia somente IndexedDB apesar de5 contatos na API; scroll retido entre rotas; sessão/usuários/painel200 e zeros comerciais corretos; causas registradas, correções aguardam QA/REV
 
 ## FEITO
+
+- `[TR-01]` Simular jornada Tela Viva e capturar etapas reais — **@UI-04** — aceite: mesma aplicação em base isolada, cliente fictício da captura ao aceite da proposta, prints numerados e inventário de ações; contrato externo identificado — dep: [] — FEITO em 23/11/2026;49prints, contato cliente/oportunidade ganha/proposta R$1800, sem uso da base real
+- `[TR-02]` Produzir material didático ilustrado da equipe — **@INT-06** — aceite: guia HTML/PDF com passos, exemplos, perfis, alternativas e exercício — dep: [TR-01] — FEITO; guia62p, proposta fictícia1p,49PNG, HTML com ampliação e pacote em docs/Tela-Viva-Treinamento.zip
+- `[TR-03]` Validar guia e evidências — **@QA-09** — aceite: prints, arquivos e fidelidade conferidos — dep: [TR-02] — APROVADO COM RESSALVAS; imagens únicas/carregadas, PDF62/7/1, sintaxe dos scripts e layout aprovados, inspeção visual amostral; QR descrito como padrão configurável
+- `[TR-04]` Revisar entrega de treinamento — **@REV-11** — aceite: parecer registrado, sem funcionalidades inventadas — dep: [TR-03] — APROVADO COM RESSALVAS após QA e regeneração; contrato externo/mailto/estados/campanha planejada claros; ver PROGRESS_FASE_TREINAMENTO.md
+- `[CP-01]` Planejar campanha pós Tattoo Week por WhatsApp e e-mail — **@ORQ-01** — aceite: rascunhos, fila/cadência/pausa/opt-out, limites e pendências — dep: [] — FEITO como planejamento; PDF7p/HTML/textos, escopo Tela Viva; número/provedor/remetente/público/autorização a confirmar para futura implementação; nenhum envio/ativação
 
 - `[AC-07]` Redefinir e entregar senha do administrador ao proprietário — **@OPS-10** + **@SEC-07** + **@REV-11** — aceite: somente erico.telaviva atualizado, senha aleatória em scrypt, auditoria sem segredo, sessões antigas revogadas, login/criação de equipe autorizada conferidos e sessão de teste encerrada — dep: [AC-06] — FEITO; processo exit0, update condicional modificou1 usuário, auditoria sem senha,1 sessão antiga revogada, login real201/gestão200/logout200; base3 usuários/5contatos preservada, credencial destinada somente ao proprietário na conversa
 - `[AC-06]` Aplicar e conferir acesso local do proprietário — **@OPS-10** — aceite: API/web locais atualizadas, usuário admin identificado, dados preservados e instruções de acesso entregues — dep: [AC-05] — FEITO; compose API/web atualizado e saudável, HTTPS novo bundle e viewport360 confirmados, base3 usuários/5contatos preservada; erico.telaviva admin ativo; autenticação do dono não exercitada por ausência de senha, fluxo real validado somente na base isolada

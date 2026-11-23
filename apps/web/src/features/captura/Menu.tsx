@@ -30,6 +30,12 @@ export function Menu({ aoNavegar }: { aoNavegar?: () => void }) {
           {texto}
         </NavLink>
       ))}
+      {podeGerir() ? (
+        <NavLink className="tv-nav-link" to="/campanhas" onClick={aoNavegar}>
+          <Icone nome="contatos" />
+          Campanhas
+        </NavLink>
+      ) : null}
       <span className="tv-nav-caption tv-nav-caption-secondary">CAPTURA & ORGANIZAÇÃO</span>
       <NavLink className="tv-nav-link" to="/capturar" onClick={aoNavegar}>
         <Icone nome="qr" />

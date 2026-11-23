@@ -3,6 +3,22 @@
 Formato: contexto · decisão · alternativas consideradas · consequências · status.
 Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
+## ADR-019 — Campanhas WhatsApp históricas com revisão explícita e fila controlada
+
+**Contexto.** Em 23/11/2026 o proprietário autorizou implementar o que falta para campanhas aos contatos da Tattoo Week no CRM Tela Viva. A preparação anterior tem Cloud API oficial, recibos e bloqueios, mas só boas-vindas a leads novos. O público da feira não pode ser inferido de toda a base nem receber mensagens durante o desenvolvimento.
+
+**Decisão.** Acrescentar Campanhas à interface existente e módulo NestJS/Mongo aditivo, sem Python/Redis e sem alterar contatos/captura. Gestor/admin prepara rascunho, seleciona explicitamente IDs autorizados, consulta exclusões/deduplicação, revisa mensagem/template e ritmo, inicia com confirmação, pausa/retoma/cancela e acompanha resultados. Versão e autor/horário do servidor protegem alterações; eventos append-only registram operações. Coleções próprias de campanhas/fila/controle, sem índice único global por contato que impediria campanhas distintas; unicidade por campanha/telefone hash e revisão de elegibilidade imediatamente antes de transmitir. Sem cópia de telefone/token nos trabalhos.
+
+Usar a Cloud API oficial e compartilhar recibos/opt-out existentes. Reutilizar verificação HMAC dos webhooks; reconhecer também respostas recebidas por hash/horário, sem armazenar conteúdo de conversa desnecessário. Separar ritmo global persistido do agendamento individual: reserva atômica impede envios simultâneos entre workers/campanhas; limites de intervalo, lotes, pausa, dias/horários de São Paulo e teto diário são escolhas operacionais configuráveis, sem promessa contra bloqueio. Rejeição429 respeita Retry-After; resultado ambíguo fica incerto, sem reenvio cego. Reservas vencidas após reinício também ficam incertas.
+
+Mensagem real deve corresponder a template de marketing aprovado e verificado pela API da Meta (WABA ID privado para consulta), não a texto livre digitado como se fosse template aprovado. O rascunho pós-feira contém link do vídeo fornecido e opt-out, sem alegações clínicas ou transcrição inventada; enquanto não houver template compatível aprovado, permanece rascunho. Interface mostra configuração pendente sem expor credenciais. Flags operacionais próprias nascem desligadas; números, tokens e templates não são inventados nem copiados de outro sistema. Não ativar nem enviar mensagem real nesta implementação/QA. Remetente, conta e credenciais externos serão configurados privadamente pelo proprietário.
+
+**Alternativas.** Automação de cliques em WhatsApp Web ou app Python separado: não adotadas, pois já existe transporte oficial no CRM. Reutilizar a fila de boas-vindas com índice único por contato: rejeitado por misturar gatilhos e ignorar público histórico. Enfileirar toda a base implicitamente: rejeitado; seleção é explícita e autorização revalidada.
+
+**Consequências.** O módulo pode ser usado para preparar campanhas antes das credenciais. Início real exige configuração, template aprovado e confirmação na interface. Instalação e volumes existentes preservados. Envio de e-mail em massa não integra esta entrega específica de WhatsApp; o rascunho de proposta por e-mail permanece disponível. Regressões incluem rotina de boas-vindas, segurança/RBAC, concorrência, retomada, exclusões e UI móvel. A implantação/publicação da versão segue os mecanismos e permissões existentes; nenhuma campanha é iniciada automaticamente.
+
+**Status.** aceito para implementação — 23/11/2026 — autorização do proprietário: “pode fazer o que falta”.
+
 ---
 
 ## ADR-001 — Entrada permissiva, saída controlada
