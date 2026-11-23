@@ -654,4 +654,109 @@ describe('CP — campanhas em Mongo isolado e transporte simulado', () => {
     expect(podeAgendar(new Date('2026-11-23T12:00:00Z'), CADENCIA_PADRAO, controle)).toBe(true);
     expect(podeAgendar(new Date('2026-11-23T17:00:00Z'), CADENCIA_PADRAO, controle)).toBe(true);
   });
+
+  describe('modo manual (WhatsApp Web)', () => {
+    async function manualPreparada(ids: string[]) {
+      const c = await criar(ids, { modo: 'manual', template: null });
+      expect(c.modo).toBe('manual');
+      return preparar(c);
+    }
+    async function fila(c: Campanha) {
+      return db
+        .db!.collection('whatsapp_campanhas_fila')
+        .find({ campanhaId: new Types.ObjectId(String(c._id)) })
+        .sort({ _id: 1 })
+        .toArray();
+    }
+    const abrir = (c: Campanha, destino: unknown, papel = 'gestor') =>
+      api()
+        .post(`/v1/campanhas/${c._id}/destinatarios/${String(destino)}/whatsapp-manual`)
+        .set(head(papel));
+
+    it('prepara sem template/Meta, nunca envia sozinho e recusa iniciar', async () => {
+      process.env.CAMPANHAS_WHATSAPP_ATIVO = 'false';
+      delete process.env.WHATSAPP_WABA_ID;
+      delete process.env.WHATSAPP_ACCESS_TOKEN;
+      const c = await manualPreparada([await lead()]);
+      expect(c.estado).toBe('preparada');
+      const r = await api()
+        .post(`/v1/campanhas/${c._id}/iniciar`)
+        .set(head())
+        .send({ versao: c.versao, confirmar: true });
+      expect(r.status).toBe(422);
+      // Mesmo que alguém force o estado, o robô ignora campanha manual.
+      process.env.CAMPANHAS_WHATSAPP_ATIVO = 'true';
+      process.env.WHATSAPP_WABA_ID = '12345678901';
+      process.env.WHATSAPP_ACCESS_TOKEN = 'token-ficticio-sem-acesso-meta';
+      await db
+        .db!.collection('whatsapp_campanhas')
+        .updateOne(
+          { _id: new Types.ObjectId(String(c._id)) },
+          { $set: { estado: 'em_andamento' } },
+        );
+      await svc.executarCiclo();
+      expect(transporte).not.toHaveBeenCalled();
+      expect((await fila(c))[0].estado).toBe('pendente');
+    });
+
+    it('abre conversa com telefone e texto, respeita intervalo e permite reabrir', async () => {
+      const c = await manualPreparada([
+        await lead({}, '+5511999990001'),
+        await lead({}, '+5511999990002'),
+      ]);
+      const [a, b] = await fila(c);
+      const r1 = await abrir(c, a._id);
+      expect(r1.status).toBe(201);
+      expect(r1.body.registro).toMatchObject({
+        telefone: '5511999990001',
+        texto: MENSAGEM_INICIAL,
+        primeiraAbertura: true,
+      });
+      const cedo = await abrir(c, b._id);
+      expect(cedo.status).toBe(429);
+      expect(cedo.body.erros?.[0]?.mensagem ?? cedo.text).toMatch(/Aguarde \d+s/);
+      // Reabrir o mesmo contato não espera o intervalo.
+      expect((await abrir(c, a._id)).body.registro.primeiraAbertura).toBe(false);
+      instante = new Date(instante.getTime() + CADENCIA_PADRAO.intervaloSegundos * 1000);
+      expect((await abrir(c, b._id)).status).toBe(201);
+      const [fa, fb] = await fila(c);
+      expect([fa.estado, fb.estado]).toEqual(['aberto_manual', 'aberto_manual']);
+      expect(fa.eventos.map((e: { codigo: string }) => e.codigo)).toEqual([
+        'preparado',
+        'whatsapp_web_aberto',
+        'whatsapp_web_reaberto',
+      ]);
+      expect(JSON.stringify(fa.eventos)).not.toContain(ADMIN);
+      const res = await resultado(c);
+      expect(res.modo).toBe('manual');
+      expect(res.resumo).toEqual({ aberto_manual: 2 });
+      expect(res.registros[0].nome).toMatch(/^Contato /);
+      expect(JSON.stringify(res.registros)).not.toContain('999990001');
+      expect(
+        await db.db!.collection('acessos_dados').countDocuments({ acao: 'campanhas_envio_manual' }),
+      ).toBe(3);
+      expect(transporte).not.toHaveBeenCalled();
+    });
+
+    it('revalida autorização antes de abrir e respeita papel e modo', async () => {
+      const id = await lead();
+      const c = await manualPreparada([id]);
+      const [d] = await fila(c);
+      expect((await abrir(c, d._id, 'vendedor')).status).toBe(403);
+      await db
+        .db!.collection('contatos')
+        .updateOne(
+          { _id: new Types.ObjectId(id) },
+          { $set: { 'lgpd.contatoComercial': 'revogado', 'lgpd.revogadoEm': instante } },
+        );
+      const r = await abrir(c, d._id);
+      expect(r.status).toBe(409);
+      expect(r.text).not.toContain('999990042');
+      expect((await fila(c))[0]).toMatchObject({ estado: 'excluido' });
+      const api_ = await preparar(await criar([await lead({}, '+5511999990077')]));
+      const [x] = await fila(api_);
+      expect((await abrir(api_, x._id)).status).toBe(422);
+      expect((await abrir(c, 'nao-e-id')).status).toBe(404);
+    });
+  });
 });

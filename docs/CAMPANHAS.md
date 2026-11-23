@@ -2,6 +2,15 @@
 
 Gestor e administrador preparam campanhas para contatos históricos selecionados explicitamente. A captura de leads permanece permissiva; o módulo não cria consentimentos nem altera dados do contato para permitir um envio. E-mail em massa não faz parte deste módulo.
 
+## Modos de envio (ADR-020)
+
+Em "Como enviar", no rascunho:
+
+- **Manual pelo WhatsApp Web** (padrão enquanto a API não é contratada): preparar não exige modelo da Meta. Depois de preparada, cada contato tem o botão **Enviar pelo WhatsApp**, que abre a conversa com o texto pronto (WhatsApp Web no computador, app no celular). **Nada é enviado sozinho**: você confere e clica enviar no WhatsApp. Entre um contato e outro há o intervalo da cadência (padrão 90s); reabrir o mesmo contato não espera. O estado fica "Aberto no WhatsApp" — o CRM não sabe se você clicou enviar. Respostas e pedidos de SAIR chegam no celular: registre a revogação no contato para ele sair das próximas campanhas.
+- **API oficial da Meta**: o fluxo abaixo, com modelo aprovado e envio automático.
+
+Campanhas criadas antes desta opção são do modo API. O servidor recusa iniciar campanhas manuais e o robô de envio as ignora.
+
 ## Preparar e revisar
 
 1. Crie um rascunho, ajuste título, mensagem e cadência. Pode salvar sem credenciais, template ou público.
@@ -45,5 +54,6 @@ Todas as rotas `/v1/campanhas` exigem sessão gestor/admin. Configuração, cria
 | `POST /:id/iniciar`, `/pausar`, `/retomar`, `/cancelar` | Operações versionadas                                             |
 | `GET /:id/resultados`                                   | Contagens, destinatários mascarados, respostas e cadência         |
 | `GET /:id/auditoria`                                    | Eventos de operação sem valores pessoais                          |
+| `POST /:id/destinatarios/:destinatarioId/whatsapp-manual` | Modo manual: revalida, aplica intervalo e devolve telefone/texto |
 
 Os testes usam Mongo temporário e transporte simulado; nunca apontar runners de teste para o banco real ou usar credenciais reais.

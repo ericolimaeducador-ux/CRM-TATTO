@@ -377,3 +377,147 @@ describe('Campanhas — preparação, segurança e estados honestos', () => {
     expect(screen.getByRole('button', { name: 'Cancelar campanha' })).toBeTruthy();
   });
 });
+
+describe('Campanhas — envio manual pelo WhatsApp Web', () => {
+  const D1 = '507f1f77bcf86cd7994390a1';
+  const D2 = '507f1f77bcf86cd7994390a2';
+  let estados: Record<string, string>;
+  let ultima: string | null;
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let aba: { opener: unknown; closed: boolean; location: { href: string }; focus: () => void };
+  const campanhaManual = (): Campanha => ({
+    _id: ID,
+    titulo: 'Pós Tattoo Week manual',
+    mensagem: MENSAGEM_CAMPANHA,
+    contatosIds: [C1, C2],
+    template: null,
+    cadencia: { ...CADENCIA_INICIAL },
+    modo: 'manual',
+    estado: 'preparada',
+    versao: 3,
+    criadoEm: '2026-11-23T13:00:00Z',
+    alteradoEm: '2026-11-23T13:00:00Z',
+  });
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('captura7.token', 'token-local-qa');
+    localStorage.setItem(
+      'captura7.perfil',
+      JSON.stringify({ id: ID, nome: 'Gestão QA', papel: 'gestor' }),
+    );
+    estados = { [D1]: 'pendente', [D2]: 'pendente' };
+    ultima = null;
+    aba = { opener: {}, closed: false, location: { href: '' }, focus: vi.fn() };
+    vi.spyOn(window, 'open').mockReturnValue(aba as unknown as Window);
+    fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const caminho = new URL(String(input), 'http://localhost').pathname;
+      if (caminho.endsWith('/configuracao'))
+        return resposta({
+          registro: {
+            envioAtivo: false,
+            configuracaoCompleta: false,
+            faltantes: [],
+            limitePublico: 2000,
+          },
+        });
+      if (caminho.endsWith('/candidatos'))
+        return resposta({ registros: [], total: 0, pagina: 1, limite: 30 });
+      if (caminho.endsWith('/auditoria')) return resposta({ registro: { eventos: [] } });
+      if (caminho.includes('/whatsapp-manual') && init?.method === 'POST') {
+        const dest = caminho.split('/').at(-2)!;
+        estados[dest] = 'aberto_manual';
+        ultima = new Date().toISOString();
+        return resposta(
+          { registro: { telefone: '5511999990042', texto: 'Olá!\nVídeo', primeiraAbertura: true } },
+          201,
+        );
+      }
+      if (caminho.endsWith('/resultados'))
+        return resposta({
+          registro: {
+            resumo: {},
+            respondidos: 0,
+            registros: [D1, D2].map((d, i) => ({
+              _id: d,
+              contatoId: i ? C2 : C1,
+              nome: i ? 'Bruno Tatuador' : 'Ana Estúdio',
+              telefoneMascarado: '+55 ••••• 004' + i,
+              estado: estados[d],
+              motivo: '',
+              tentativas: estados[d] === 'pendente' ? 0 : 1,
+              respondeuEm: null,
+            })),
+            total: 2,
+            pagina: 1,
+            limite: 30,
+            diario: 0,
+            proximaSaidaEm: null,
+            modo: 'manual',
+            ultimaAberturaManualEm: ultima,
+            aviso: 'Envio manual: quem confirma o envio é você.',
+          },
+        });
+      if (caminho.endsWith(`/${ID}`)) return resposta({ registro: campanhaManual() });
+      if (init?.method === 'POST' && caminho.endsWith('/v1/campanhas'))
+        return resposta(
+          {
+            registro: {
+              ...campanhaManual(),
+              ...JSON.parse(String(init.body)),
+              estado: 'rascunho',
+              versao: 1,
+            },
+          },
+          201,
+        );
+      return resposta({ registros: [], total: 0, pagina: 1, limite: 30 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('abre o WhatsApp Web com texto pronto, sem iniciar envio automático, e espera o intervalo', async () => {
+    montar(`/campanhas/${ID}`);
+    const botao = await screen.findByRole('button', { name: 'Enviar pelo WhatsApp: Ana Estúdio' });
+    expect(screen.queryByRole('button', { name: 'Revisar início dos envios' })).toBeNull();
+    expect(screen.getByText(/Não é necessário no envio manual/)).toBeTruthy();
+    fireEvent.click(botao);
+    await waitFor(() =>
+      expect(aba.location.href).toBe(
+        'https://web.whatsapp.com/send?phone=5511999990042&text=Ol%C3%A1!%0AV%C3%ADdeo',
+      ),
+    );
+    expect(aba.opener).toBeNull();
+    expect(window.open).toHaveBeenCalledWith('', 'tela-viva-whatsapp');
+    expect(
+      await screen.findByRole('button', { name: 'Abrir de novo no WhatsApp: Ana Estúdio' }),
+    ).toBeTruthy();
+    // Intervalo: o próximo contato fica bloqueado e o contador aparece.
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Enviar pelo WhatsApp: Bruno Tatuador',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    expect(screen.getByText(/Próximo contato liberado em \d+s/)).toBeTruthy();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/iniciar'))).toBe(false);
+  });
+
+  it('nova campanha nasce no modo manual e salva o modo', async () => {
+    montar();
+    fireEvent.click(await screen.findByRole('button', { name: 'Nova campanha' }));
+    expect(
+      (screen.getByRole('radio', { name: /Manual pelo WhatsApp Web/ }) as HTMLInputElement).checked,
+    ).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar rascunho' }));
+    await waitFor(() => {
+      const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+      expect(JSON.parse(String(post?.[1]?.body))).toMatchObject({ modo: 'manual' });
+    });
+  });
+});

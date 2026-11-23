@@ -8,9 +8,11 @@ import {
   CADENCIA_INICIAL,
   ErroCampanha,
   ESTADOS_CAMPANHA,
+  linkWhatsApp,
   MENSAGEM_CAMPANHA,
   motivoCampanha,
   type Campanha,
+  type ModoEnvio,
   type CandidatoCampanha,
   type ConfigCampanhas,
   type EventoCampanha,
@@ -25,13 +27,14 @@ const dataHora = (valor?: string | null) =>
   valor
     ? new Date(valor).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
     : 'Ainda não registrado';
-const novaCampanha = (): Campanha => ({
+const novaCampanha = (modo: ModoEnvio = 'manual'): Campanha => ({
   _id: '',
   titulo: 'Pós Tattoo Week',
   mensagem: MENSAGEM_CAMPANHA,
   contatosIds: [],
   template: null,
   cadencia: { ...CADENCIA_INICIAL },
+  modo,
   estado: 'rascunho',
   versao: 0,
   criadoEm: '',
@@ -108,7 +111,21 @@ function CampanhasGestao() {
   const [eventos, setEventos] = useState<EventoCampanha[]>([]);
   const [confirmacao, setConfirmacao] = useState<'iniciar' | 'retomar' | 'cancelar' | null>(null);
   const [conferiu, setConferiu] = useState(false);
+  const [recarga, setRecarga] = useState(0);
+  const [agora, setAgora] = useState(() => Date.now());
+  const [linkManual, setLinkManual] = useState<{ nome: string; url: string } | null>(null);
   const editor = Boolean(id || novo);
+  const manual = (form.modo ?? 'api') === 'manual';
+  const ultimaManual = resultados?.ultimaAberturaManualEm
+    ? Date.parse(resultados.ultimaAberturaManualEm)
+    : 0;
+  const esperaManual =
+    manual && ultimaManual
+      ? Math.max(
+          0,
+          Math.ceil((ultimaManual + form.cadencia.intervaloSegundos * 1000 - agora) / 1000),
+        )
+      : 0;
   const editavel = form.estado === 'rascunho';
   const bloqueado = Boolean(ocupado || carregando);
   const prontoAcoes = Boolean(salva && !dirty && !conflito && !bloqueado);
@@ -220,7 +237,13 @@ function CampanhasGestao() {
     return () => {
       vivo = false;
     };
-  }, [id, salva, paginaResultados]);
+  }, [id, salva, paginaResultados, recarga]);
+  // Relógio do intervalo entre contatos no envio manual.
+  useEffect(() => {
+    if (!manual || form.estado !== 'preparada') return;
+    const t = window.setInterval(() => setAgora(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [manual, form.estado]);
   useEffect(() => {
     if (!dirty) return;
     const aoSair = (e: BeforeUnloadEvent) => {
@@ -270,6 +293,7 @@ function CampanhasGestao() {
         contatosIds: form.contatosIds,
         template: form.template,
         cadencia: form.cadencia,
+        modo: form.modo ?? 'api',
         ...(salva ? { versao: salva.versao } : {}),
       };
       const r = await apiCampanhas<{ registro: Campanha }>(
@@ -390,6 +414,48 @@ function CampanhasGestao() {
     }
     setConferiu(false);
     setConfirmacao(tipo);
+  }
+  /**
+   * Abre a conversa no WhatsApp com o texto pronto. A aba é aberta já no clique
+   * (senão o navegador bloqueia) e recebe o endereço depois que o servidor confere
+   * a autorização do contato. Nada é enviado sem o clique da pessoa no WhatsApp.
+   */
+  async function enviarManual(destinatarioId: string, nome: string) {
+    if (!salva || bloqueado) return;
+    const celular = window.matchMedia?.('(pointer: coarse)')?.matches ?? false;
+    const aba = celular ? null : window.open('', 'tela-viva-whatsapp');
+    // A aba do WhatsApp não precisa de acesso a esta página.
+    if (aba) aba.opener = null;
+    setOcupado(`manual:${destinatarioId}`);
+    setErro('');
+    setMensagem('');
+    setLinkManual(null);
+    try {
+      const r = await apiCampanhas<{ registro: { telefone: string; texto: string } }>(
+        `/${salva._id}/destinatarios/${destinatarioId}/whatsapp-manual`,
+        'POST',
+        {},
+      );
+      const url = linkWhatsApp(r.registro.telefone, r.registro.texto, celular);
+      if (aba && !aba.closed) {
+        aba.location.href = url;
+        aba.focus();
+      } else if (celular) {
+        window.location.href = url;
+      } else {
+        setLinkManual({ nome, url });
+      }
+      setMensagem(
+        `Conversa com ${nome} aberta no WhatsApp. Confira o texto e clique em enviar por lá.`,
+      );
+    } catch (e) {
+      aba?.close();
+      // Aqui 409 é contato inelegível e 429 é o intervalo; não é conflito de versão.
+      setErro(e instanceof Error ? e.message : 'Não foi possível abrir a conversa.');
+    } finally {
+      setOcupado('');
+      setRecarga((n) => n + 1);
+    }
   }
   function buscar(e: FormEvent) {
     e.preventDefault();
@@ -620,6 +686,33 @@ function CampanhasGestao() {
                 da feira.
               </p>
               <fieldset disabled={!editavel || bloqueado} className="tv-campaign-fields">
+                <fieldset className="tv-campaign-mode">
+                  <legend>Como enviar</legend>
+                  <label className="tv-campaign-confirm">
+                    <input
+                      type="radio"
+                      name="modo-envio"
+                      checked={manual}
+                      onChange={() => alterar({ modo: 'manual' })}
+                    />
+                    <span>
+                      <strong>Manual pelo WhatsApp Web</strong> — cada contato tem um botão que abre
+                      a conversa com o texto pronto; você confere e clica enviar.
+                    </span>
+                  </label>
+                  <label className="tv-campaign-confirm">
+                    <input
+                      type="radio"
+                      name="modo-envio"
+                      checked={!manual}
+                      onChange={() => alterar({ modo: 'api' })}
+                    />
+                    <span>
+                      <strong>API oficial da Meta</strong> — envio automático com modelo aprovado.
+                      Exige a conta WhatsApp Business API configurada.
+                    </span>
+                  </label>
+                </fieldset>
                 <label className="tv-field">
                   <span>Título da campanha</span>
                   <input
@@ -639,8 +732,10 @@ function CampanhasGestao() {
                 </label>
                 <p className="tv-help-text">
                   O vídeo é compartilhado como link. Não há resumo de áudio ou promessa de
-                  resultado. Para envio, o texto precisa corresponder ao modelo aprovado escolhido
-                  abaixo.
+                  resultado.{' '}
+                  {manual
+                    ? 'No envio manual, este é exatamente o texto que aparece no WhatsApp.'
+                    : 'Para envio, o texto precisa corresponder ao modelo aprovado escolhido abaixo.'}
                 </p>
                 <div className="tv-campaign-grid">
                   {(
@@ -846,7 +941,17 @@ function CampanhasGestao() {
                 />
               ) : null}
             </section>
-            <section className="tv-panel tv-campaign-section">
+            {manual ? (
+              <section className="tv-panel tv-campaign-section">
+                <h2>3. Modelo da Meta</h2>
+                <p>
+                  Não é necessário no envio manual. Quando a API oficial for contratada, escolha
+                  &quot;API oficial da Meta&quot; em &quot;Como enviar&quot; para usar um modelo
+                  aprovado e o envio automático.
+                </p>
+              </section>
+            ) : null}
+            <section className="tv-panel tv-campaign-section" hidden={manual}>
               <h2>3. Escolher um modelo aprovado</h2>
               <p>
                 O WhatsApp exige um modelo de marketing aprovado na conta da empresa. Nesta versão,
@@ -979,7 +1084,7 @@ function CampanhasGestao() {
                     </li>
                   ))}
                 </ul>
-                {!previa.templateCompativel ? (
+                {!manual && !previa.templateCompativel ? (
                   <p className="tv-campaign-warning">
                     Selecione um modelo e confira a correspondência da mensagem antes de preparar.
                   </p>
@@ -994,21 +1099,24 @@ function CampanhasGestao() {
             {['rascunho', 'preparando'].includes(form.estado) ? (
               <button
                 className="tv-button tv-button-primary"
-                disabled={!prontoAcoes || !previa?.elegiveis || !previa.templateCompativel}
+                disabled={
+                  !prontoAcoes || !previa?.elegiveis || (!manual && !previa.templateCompativel)
+                }
                 onClick={() => void acao('preparar')}
               >
                 {form.estado === 'preparando' ? 'Retomar preparação' : 'Preparar público'}
               </button>
             ) : null}
             <p className="tv-help-text">
-              Preparar congela o texto e o público. Requer um modelo verificado; não inicia envios,
-              mesmo com o ambiente habilitado.
+              {manual
+                ? 'Preparar congela o texto e o público e libera o botão "Enviar pelo WhatsApp" em cada contato. Nada é enviado sozinho.'
+                : 'Preparar congela o texto e o público. Requer um modelo verificado; não inicia envios, mesmo com o ambiente habilitado.'}
             </p>
           </section>
           <section className="tv-panel tv-campaign-section">
             <h2>5. Operação e resultados</h2>
             <div className="tv-campaign-actions">
-              {form.estado === 'preparada' ? (
+              {form.estado === 'preparada' && !manual ? (
                 <button
                   className="tv-button tv-button-primary"
                   disabled={!prontoAcoes || !config?.envioAtivo || !config.configuracaoCompleta}
@@ -1045,35 +1153,91 @@ function CampanhasGestao() {
                 </button>
               ) : null}
             </div>
-            <p>
-              Pausar ou cancelar impede novas saídas; uma requisição já em andamento pode terminar.
-              Retomar não recria mensagens aceitas. Resultados incertos exigem conferência na Meta,
-              sem repetição automática.
-            </p>
+            {manual ? (
+              <p>
+                Clique em &quot;Enviar pelo WhatsApp&quot; em um contato por vez. O WhatsApp abre
+                com o texto pronto e o envio só acontece quando você clica enviar lá. Entre um
+                contato e outro há um intervalo de {form.cadencia.intervaloSegundos}s para o
+                WhatsApp não entender como envio em massa.
+              </p>
+            ) : (
+              <p>
+                Pausar ou cancelar impede novas saídas; uma requisição já em andamento pode
+                terminar. Retomar não recria mensagens aceitas. Resultados incertos exigem
+                conferência na Meta, sem repetição automática.
+              </p>
+            )}
+            {linkManual ? (
+              <p className="tv-campaign-warning" role="status">
+                O navegador bloqueou a nova aba.{' '}
+                <a href={linkManual.url} target="_blank" rel="noopener noreferrer">
+                  Abrir conversa com {linkManual.nome} no WhatsApp
+                </a>
+              </p>
+            ) : null}
             {resultados ? (
               <>
                 <p>{resultados.aviso}</p>
+                {manual && form.estado === 'preparada' ? (
+                  <p className="tv-campaign-timer" role="status" aria-live="polite">
+                    {esperaManual > 0
+                      ? `Próximo contato liberado em ${esperaManual}s.`
+                      : 'Próximo contato liberado.'}
+                  </p>
+                ) : null}
                 <div className="tv-campaign-metrics">
                   {Object.entries(resultados.resumo).map(([estado, total]) => (
                     <span key={estado}>
                       {ESTADOS_CAMPANHA[estado] ?? estado} <strong>{total}</strong>
                     </span>
                   ))}
-                  <span>
-                    Resposta recebida <strong>{resultados.respondidos}</strong>
-                  </span>
+                  {!manual ? (
+                    <span>
+                      Resposta recebida <strong>{resultados.respondidos}</strong>
+                    </span>
+                  ) : null}
                 </div>
-                <p>
-                  Tentativas hoje entre campanhas: {resultados.diario}. Próxima saída global
-                  disponível: {dataHora(resultados.proximaSaidaEm)}. Horários, pausas e limites
-                  ainda se aplicam.
-                </p>
+                {!manual ? (
+                  <p>
+                    Tentativas hoje entre campanhas: {resultados.diario}. Próxima saída global
+                    disponível: {dataHora(resultados.proximaSaidaEm)}. Horários, pausas e limites
+                    ainda se aplicam.
+                  </p>
+                ) : null}
                 <div className="tv-campaign-candidates">
                   {resultados.registros.map((r) => (
                     <article className="tv-campaign-result" key={r._id}>
-                      <strong>{r.telefoneMascarado}</strong>
+                      <strong>{r.nome ?? r.telefoneMascarado}</strong>
+                      {r.nome ? <span>{r.telefoneMascarado}</span> : null}
                       <Selo valor={r.estado}>{ESTADOS_CAMPANHA[r.estado] ?? r.estado}</Selo>
-                      <span>Tentativas: {r.tentativas}</span>
+                      {manual ? (
+                        <span>Aberturas: {r.tentativas}</span>
+                      ) : (
+                        <span>Tentativas: {r.tentativas}</span>
+                      )}
+                      {manual &&
+                      form.estado === 'preparada' &&
+                      ['pendente', 'aberto_manual'].includes(r.estado) ? (
+                        <button
+                          type="button"
+                          className={
+                            r.estado === 'pendente'
+                              ? 'tv-button tv-button-primary'
+                              : 'tv-small-button'
+                          }
+                          disabled={
+                            bloqueado || dirty || (r.estado === 'pendente' && esperaManual > 0)
+                          }
+                          onClick={() => void enviarManual(r._id, r.nome ?? 'o contato')}
+                          aria-label={`${r.estado === 'pendente' ? 'Enviar pelo WhatsApp' : 'Abrir de novo no WhatsApp'}: ${r.nome ?? r.telefoneMascarado}`}
+                        >
+                          {ocupado === `manual:${r._id}`
+                            ? 'Abrindo…'
+                            : r.estado === 'pendente'
+                              ? 'Enviar pelo WhatsApp'
+                              : 'Abrir de novo'}
+                        </button>
+                      ) : null}
                       {r.motivo ? <span>{motivoCampanha(r.motivo)}</span> : null}
                       {r.respondeuEm ? (
                         <strong>Resposta recebida em {dataHora(r.respondeuEm)}</strong>

@@ -3,6 +3,18 @@
 Formato: contexto · decisão · alternativas consideradas · consequências · status.
 Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
+## ADR-020 — Modo de envio manual pelo WhatsApp Web até a contratação da Cloud API
+
+**Contexto.** Em 23/11/2026 o proprietário informou que a Tela Viva ainda não tem WhatsApp Business API; antes usava um servidor paralelo não oficial, enviando poucas mensagens por vez. Pediu para enviar individualmente cada mensagem até contratar a API da Meta, aproveitando a campanha e sem apagar o caminho da API.
+
+**Decisão.** A campanha ganha `modo: 'api' | 'manual'` (ausente = `api`, compatível com ADR-019). No modo manual: preparar não exige template nem configuração da Meta; `iniciar`/`retomar` são recusados (422) e o worker ignora campanhas manuais. Cada destinatário preparado tem o botão "Enviar pelo WhatsApp": o servidor revalida autorização/bloqueio/telefone, aplica o intervalo da cadência entre primeiras aberturas (429 com segundos restantes; reabrir não espera), registra `aberto_manual` + evento + `acessos_dados`, e devolve telefone e texto. A tela abre o link oficial de clique para conversar (`web.whatsapp.com/send` no computador, `wa.me` no celular) com o texto pronto; o envio só ocorre quando o gestor clica enviar no WhatsApp. A aba do WhatsApp é aberta sem `opener`.
+
+**Alternativas.** Integrar o CRM ao servidor paralelo não oficial: rejeitado (risco de banimento do número da empresa e de violação dos termos do WhatsApp). Copiar números para envio fora do CRM: rejeitado (sem revalidação de opt-out, sem trilha). Automatizar o clique de envio no WhatsApp Web: rejeitado pelo mesmo motivo do servidor paralelo.
+
+**Consequências.** Campanhas podem sair hoje, uma a uma, com o mesmo público, exclusões e auditoria. O sistema não sabe se a mensagem foi de fato enviada (estado "Aberto no WhatsApp"); respostas e pedidos de SAIR chegam no celular e devem ser registrados no contato (revogação) para valer nas próximas campanhas. Ao contratar a Cloud API, novas campanhas usam `modo: 'api'` sem migração.
+
+**Status.** aceito — 23/11/2026 — pedido do proprietário.
+
 ## ADR-019 — Campanhas WhatsApp históricas com revisão explícita e fila controlada
 
 **Contexto.** Em 23/11/2026 o proprietário autorizou implementar o que falta para campanhas aos contatos da Tattoo Week no CRM Tela Viva. A preparação anterior tem Cloud API oficial, recibos e bloqueios, mas só boas-vindas a leads novos. O público da feira não pode ser inferido de toda a base nem receber mensagens durante o desenvolvimento.

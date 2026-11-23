@@ -44,6 +44,13 @@ export interface EventoCampanha {
   versao: number;
   campos: string[];
 }
+/**
+ * api: Cloud API oficial da Meta (template aprovado, fila automática).
+ * manual: o gestor abre cada conversa no WhatsApp Web com o texto pronto e clica enviar.
+ * O modo manual nunca dispara envio automático.
+ */
+export type ModoEnvio = 'api' | 'manual';
+export const MODOS_ENVIO: readonly ModoEnvio[] = ['api', 'manual'];
 export type EstadoCampanha =
   'rascunho' | 'preparando' | 'preparada' | 'em_andamento' | 'pausada' | 'cancelada' | 'concluida';
 export interface Campanha {
@@ -53,6 +60,8 @@ export interface Campanha {
   contatosIds: string[];
   template: ModeloCampanha | null;
   cadencia: Cadencia;
+  /** Ausente em campanhas antigas = 'api'. */
+  modo?: ModoEnvio;
   estado: EstadoCampanha;
   versao: number;
   criadoPor: string;
@@ -72,7 +81,9 @@ export type EstadoDestinatario =
   | 'falha'
   | 'incerto'
   | 'excluido'
-  | 'cancelado';
+  | 'cancelado'
+  /** Envio manual: conversa aberta no WhatsApp Web; quem clica enviar é o gestor. */
+  | 'aberto_manual';
 export interface Destinatario {
   _id: Types.ObjectId;
   campanhaId: Types.ObjectId;
@@ -87,6 +98,8 @@ export interface Destinatario {
   atualizadoEm: Date;
   reservaId?: string;
   reservaAte?: Date;
+  /** Modo manual: primeira abertura no WhatsApp Web. */
+  abertoEm?: Date;
   mensagemId?: string;
   nivelRecibo?: number;
   eventos: { estado: string; em: Date; autor: string; tentativa: number; codigo: string }[];

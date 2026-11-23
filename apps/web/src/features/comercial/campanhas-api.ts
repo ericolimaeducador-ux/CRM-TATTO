@@ -33,6 +33,8 @@ export interface Campanha {
   contatosIds: string[];
   template: TemplateCampanha | null;
   cadencia: CadenciaCampanha;
+  /** manual = WhatsApp Web aberto pelo gestor; api = Cloud API da Meta. Ausente = api. */
+  modo?: ModoEnvio;
   estado:
     | 'rascunho'
     | 'preparando'
@@ -88,6 +90,7 @@ export interface ResultadoCampanha {
   registros: {
     _id: string;
     contatoId: string;
+    nome?: string;
     telefoneMascarado: string;
     estado: string;
     motivo: string;
@@ -99,7 +102,22 @@ export interface ResultadoCampanha {
   limite: number;
   diario: number;
   proximaSaidaEm: string | null;
+  modo?: ModoEnvio;
+  ultimaAberturaManualEm?: string | null;
   aviso: string;
+}
+export type ModoEnvio = 'api' | 'manual';
+
+/**
+ * Link oficial de clique para conversar. No computador abre o WhatsApp Web;
+ * no celular, o app. A mensagem só sai quando a pessoa clica enviar.
+ */
+export function linkWhatsApp(telefone: string, texto: string, celular: boolean): string {
+  const digitos = telefone.replace(/\D/g, '');
+  const msg = encodeURIComponent(texto);
+  return celular
+    ? `https://wa.me/${digitos}?text=${msg}`
+    : `https://web.whatsapp.com/send?phone=${digitos}&text=${msg}`;
 }
 export const CADENCIA_INICIAL: CadenciaCampanha = {
   intervaloSegundos: 90,
@@ -179,6 +197,7 @@ export const ESTADOS_CAMPANHA: Record<string, string> = {
   incerto: 'Incerto',
   excluido: 'Excluído',
   cancelado: 'Cancelado',
+  aberto_manual: 'Aberto no WhatsApp',
 };
 export const MOTIVOS_CAMPANHA: Record<string, string> = {
   contato_indisponivel: 'Contato descartado, eliminado, fundido ou indisponível',
