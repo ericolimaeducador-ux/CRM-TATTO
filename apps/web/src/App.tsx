@@ -9,6 +9,7 @@ import { PaginaTreinamentos } from './features/comercial/PaginaTreinamentos';
 import { DetalheTreinamento } from './features/comercial/DetalheTreinamento';
 import { InscricaoTreinamento } from './features/comercial/InscricaoTreinamento';
 import { PaginaRelatorios } from './features/comercial/PaginaRelatorios';
+import { PaginaCampanhas } from './features/comercial/PaginaCampanhas';
 
 import { PaginaBusca } from './features/captura/PaginaBusca';
 import { PaginaLead } from './features/captura/PaginaLead';
@@ -53,6 +54,8 @@ export function App() {
           <Route path="/precos" element={<PaginaPrecosCliente />} />
           <Route path="/treinamentos" element={<PaginaTreinamentos />} />
           <Route path="/relatorios" element={<PaginaRelatorios />} />
+          <Route path="/campanhas" element={<PaginaCampanhas />} />
+          <Route path="/campanhas/:id" element={<PaginaCampanhas />} />
           <Route path="/treinamentos/:id" element={<DetalheTreinamento />} />
           <Route path="/inscricao-treinamento/:token" element={<InscricaoTreinamento />} />
           <Route

@@ -1,0 +1,657 @@
+import { createHmac, randomBytes } from 'node:crypto';
+import type { INestApplication } from '@nestjs/common';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { getConnectionToken, MongooseModule } from '@nestjs/mongoose';
+import { Test } from '@nestjs/testing';
+import { Connection, Types } from 'mongoose';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import request from 'supertest';
+import { PapelGuard } from '../auth/papel.guard';
+import { FiltroErros } from '../contatos/filtro-erros';
+import { hmacDocumento } from '../seguranca/cifra';
+import { WhatsAppModule } from '../whatsapp/whatsapp.module';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { CampanhasModule } from './campanhas.module';
+import { CampanhasService, calendario, modeloAprovado, podeAgendar } from './campanhas.service';
+import {
+  CADENCIA_PADRAO,
+  MENSAGEM_INICIAL,
+  type Campanha,
+  type ControleCampanha,
+} from './campanhas.tipos';
+
+const ADMIN = '507f1f77bcf86cd799439121';
+const head = (papel = 'admin') => ({
+  'x-papel-teste': papel,
+  'x-usuario-id': ADMIN,
+  'x-autor-nome': 'Gestão QA',
+});
+const vars = [
+  'NODE_ENV',
+  'CIFRA_PEPPER',
+  'CIFRA_CHAVE_BASE64',
+  'CAMPANHAS_WHATSAPP_ATIVO',
+  'WHATSAPP_ENVIO_ATIVO',
+  'WHATSAPP_API_VERSAO',
+  'WHATSAPP_WABA_ID',
+  'WHATSAPP_PHONE_NUMBER_ID',
+  'WHATSAPP_ACCESS_TOKEN',
+  'WHATSAPP_APP_SECRET',
+  'WHATSAPP_VERIFY_TOKEN',
+];
+const template = {
+  id: '12345678',
+  nome: 'tattoo_week',
+  idioma: 'pt_BR',
+  corpo: MENSAGEM_INICIAL,
+  status: 'APPROVED',
+  categoria: 'MARKETING',
+};
+const graphTemplate = () => ({
+  id: template.id,
+  name: template.nome,
+  language: template.idioma,
+  status: 'APPROVED',
+  category: 'MARKETING',
+  components: [{ type: 'BODY', text: template.corpo }],
+});
+
+describe('CP — campanhas em Mongo isolado e transporte simulado', () => {
+  let app: INestApplication;
+  let mongo: MongoMemoryServer;
+  let db: Connection;
+  let svc: CampanhasService;
+  let transporte: jest.MockedFunction<typeof fetch>;
+  let instante: Date;
+  let seq: number;
+  const anterior = Object.fromEntries(vars.map((v) => [v, process.env[v]]));
+  beforeAll(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.CIFRA_PEPPER = randomBytes(32).toString('hex');
+    process.env.CIFRA_CHAVE_BASE64 = randomBytes(32).toString('base64');
+    mongo = await MongoMemoryServer.create();
+    const mod = await Test.createTestingModule({
+      imports: [MongooseModule.forRoot(mongo.getUri()), CampanhasModule, WhatsAppModule],
+      providers: [
+        { provide: APP_GUARD, useClass: PapelGuard },
+        { provide: APP_FILTER, useClass: FiltroErros },
+      ],
+    }).compile();
+    app = mod.createNestApplication({ rawBody: true });
+    await app.init();
+    db = app.get(getConnectionToken());
+    svc = app.get(CampanhasService);
+  });
+  beforeEach(async () => {
+    Object.assign(process.env, {
+      CAMPANHAS_WHATSAPP_ATIVO: 'true',
+      WHATSAPP_ENVIO_ATIVO: 'false',
+      WHATSAPP_API_VERSAO: 'v99.0',
+      WHATSAPP_WABA_ID: '12345678901',
+      WHATSAPP_PHONE_NUMBER_ID: '123456789012',
+      WHATSAPP_ACCESS_TOKEN: 'token-ficticio-sem-acesso-meta',
+      WHATSAPP_APP_SECRET: 'secret-ficticio-sem-acesso-meta',
+      WHATSAPP_VERIFY_TOKEN: 'verify-ficticio-sem-acesso-meta',
+    });
+    for (const c of [
+      'contatos',
+      'whatsapp_campanhas',
+      'whatsapp_campanhas_fila',
+      'whatsapp_campanhas_controle',
+      'whatsapp_recibos',
+      'whatsapp_respostas',
+      'whatsapp_bloqueios',
+      'acessos_dados',
+    ])
+      await db.db!.collection(c).deleteMany({});
+    await db.db!.collection('whatsapp_campanhas_controle').insertOne({
+      _id: 'global' as never,
+      reservaAte: new Date(0),
+      proximaSaidaEm: new Date(0),
+      dia: '',
+      diario: 0,
+      lote: 0,
+    });
+    instante = new Date('2026-11-23T13:00:00Z');
+    svc.agora = () => instante;
+    seq = 0;
+    transporte = jest.fn<
+      ReturnType<typeof fetch>,
+      Parameters<typeof fetch>
+    >() as jest.MockedFunction<typeof fetch>;
+    transporte.mockImplementation(async (_url, init) =>
+      init?.method === 'POST'
+        ? new Response(JSON.stringify({ messages: [{ id: `wamid.qa-${++seq}` }] }), { status: 200 })
+        : new Response(JSON.stringify({ data: [graphTemplate()] }), { status: 200 }),
+    );
+    svc.fetchImpl = transporte;
+  });
+  afterAll(async () => {
+    if (app) await app.close();
+    if (mongo) await mongo.stop();
+    for (const [k, v] of Object.entries(anterior)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  });
+  const api = () => request(app.getHttpServer());
+  const posts = () => transporte.mock.calls.filter(([, init]) => init?.method === 'POST');
+  async function lead(extra: Record<string, unknown> = {}, telefone = '+5511999990042') {
+    const id = new Types.ObjectId();
+    await db.db!.collection('contatos').insertOne({
+      _id: id,
+      nome: `Contato ${id.toString().slice(-4)}`,
+      status: 'capturado',
+      criadoEm: new Date('2026-11-10T23:00:00Z'),
+      origem: { modo: 'qr_proprio' },
+      tags: ['Tattoo Week'],
+      telefones: [{ e164: telefone, principal: true }],
+      lgpd: {
+        contatoComercial: 'concedido',
+        consentimentos: [
+          { finalidade: 'contato_comercial', versaoTermo: 'qa', hashTexto: 'qa-hash' },
+        ],
+      },
+      ...extra,
+    });
+    return id.toString();
+  }
+  async function criar(ids: string[], extra: Record<string, unknown> = {}) {
+    const r = await api()
+      .post('/v1/campanhas')
+      .set(head())
+      .send({ titulo: 'Tattoo Week QA', contatosIds: ids, template, ...extra });
+    expect(r.status).toBe(201);
+    return r.body.registro as Campanha;
+  }
+  async function preparar(c: Campanha) {
+    const r = await api()
+      .post(`/v1/campanhas/${c._id}/preparar`)
+      .set(head())
+      .send({ versao: c.versao });
+    expect(r.status).toBe(201);
+    return r.body.registro as Campanha;
+  }
+  async function iniciar(c: Campanha) {
+    const r = await api()
+      .post(`/v1/campanhas/${c._id}/iniciar`)
+      .set(head())
+      .send({ versao: c.versao, confirmar: true });
+    expect(r.status).toBe(201);
+    return r.body.registro as Campanha;
+  }
+  async function campanha(ids: string[], extra: Record<string, unknown> = {}) {
+    return iniciar(await preparar(await criar(ids, extra)));
+  }
+  async function resultado(c: Campanha) {
+    return (await api().get(`/v1/campanhas/${c._id}/resultados`).set(head())).body.registro;
+  }
+  it('nega anônimo/vendedor/auditor e permite gestão; salva rascunho sem configuração', async () => {
+    for (const papel of ['vendedor', 'auditor'])
+      expect((await api().get('/v1/campanhas').set(head(papel))).status).toBe(403);
+    expect((await api().get('/v1/campanhas')).status).toBe(403);
+    delete process.env.WHATSAPP_WABA_ID;
+    process.env.CAMPANHAS_WHATSAPP_ATIVO = 'false';
+    const r = await api()
+      .post('/v1/campanhas')
+      .set(head('gestor'))
+      .send({ criadoPor: 'forjado', auditoria: [], versao: 500 });
+    expect(r.status).toBe(201);
+    expect(r.body.registro).toMatchObject({
+      estado: 'rascunho',
+      versao: 1,
+      criadoPor: ADMIN,
+      contatosIds: [],
+      template: null,
+    });
+    const cfg = await api().get('/v1/campanhas/configuracao').set(head());
+    expect(cfg.body.registro).toMatchObject({ envioAtivo: false, configuracaoCompleta: false });
+    expect(cfg.text).not.toContain('token-ficticio');
+    expect(cfg.body.registro.faltantes).toContain('WHATSAPP_WABA_ID');
+    await svc.executarCiclo();
+    expect(transporte).not.toHaveBeenCalled();
+  });
+  it('protege versão, autoria/auditoria e valida público, intervalo e operadores', async () => {
+    const c = await criar([]);
+    const edit = await api()
+      .patch(`/v1/campanhas/${c._id}`)
+      .set(head())
+      .send({ versao: c.versao, titulo: 'Revisada', auditoria: [] });
+    expect(edit.status).toBe(200);
+    expect(edit.body.registro.auditoria).toHaveLength(2);
+    expect(JSON.stringify(edit.body.registro.auditoria)).not.toContain(ADMIN);
+    expect(
+      (
+        await api()
+          .patch(`/v1/campanhas/${c._id}`)
+          .set(head())
+          .send({ versao: 1, titulo: 'Desatualizada' })
+      ).status,
+    ).toBe(409);
+    for (const body of [
+      { contatosIds: [{ $ne: null }] },
+      { contatosIds: Array(2001).fill(ADMIN) },
+      { cadencia: { intervaloSegundos: 59 } },
+      { cadencia: { inicioManha: '19:00', fimManha: '12:00' } },
+    ])
+      expect((await api().post('/v1/campanhas').set(head()).send(body)).status).toBe(422);
+    expect((await api().get('/v1/campanhas/candidatos?q[$ne]=x').set(head())).status).toBe(422);
+  });
+  it('lista candidatos mascarados com filtros e audita leitura sem nome pesquisado', async () => {
+    const id = await lead({ nome: 'Marina Tattoo' });
+    await lead({ nome: 'Outra', origem: { modo: 'manual' } });
+    const r = await api()
+      .get(
+        '/v1/campanhas/candidatos?q=Marina&origem=qr_proprio&tag=Tattoo%20Week&de=2026-11-10&ate=2026-11-10',
+      )
+      .set(head());
+    expect(r.status).toBe(200);
+    expect(r.body.registros).toHaveLength(1);
+    expect(r.body.registros[0].id).toBe(id);
+    expect(r.text).not.toContain('5511999990042');
+    expect(r.body.registros[0].telefoneMascarado).toContain('0042');
+    const audit = await db
+      .db!.collection('acessos_dados')
+      .findOne({ acao: 'campanhas_candidatos' });
+    expect(audit?.quantidade).toBe(1);
+    expect(JSON.stringify(audit)).not.toContain('Marina');
+  });
+  it('exclui autorização ausente, optout e status inválido e deduplica telefone na prévia/fila', async () => {
+    const ids = [
+      await lead(),
+      await lead(),
+      await lead({ lgpd: { contatoComercial: 'concedido', consentimentos: [] } }, '+5511999990043'),
+      await lead({ status: 'descartado' }, '+5511999990044'),
+      await lead({}, '+5511999990045'),
+    ];
+    await db
+      .db!.collection('whatsapp_bloqueios')
+      .insertOne({ telefoneHash: hmacDocumento('whatsapp:5511999990045'), em: instante });
+    const c = await criar(ids);
+    const p = await api()
+      .post(`/v1/campanhas/${c._id}/previa`)
+      .set(head())
+      .send({ versao: c.versao });
+    expect(p.body.registro).toMatchObject({
+      selecionados: 5,
+      elegiveis: 1,
+      duplicados: 1,
+      excluidos: 4,
+    });
+    expect(p.text).not.toContain('telefoneHash');
+    expect(p.text).not.toContain('5511999990042');
+    const preparado = await preparar(c);
+    expect(preparado.estado).toBe('preparada');
+    expect(await db.db!.collection('whatsapp_campanhas_fila').countDocuments()).toBe(1);
+    expect(
+      await db.db!.collection('acessos_dados').countDocuments({ acao: 'campanhas_previa' }),
+    ).toBe(1);
+  });
+  it('não congela sem template verificado e recusa parâmetros/header/categoria/status/corpo incompatível', async () => {
+    const id = await lead();
+    let c = await criar([id], { template: null });
+    expect(
+      (await api().post(`/v1/campanhas/${c._id}/preparar`).set(head()).send({ versao: c.versao }))
+        .status,
+    ).toBe(422);
+    expect((await api().get(`/v1/campanhas/${c._id}`).set(head())).body.registro.estado).toBe(
+      'rascunho',
+    );
+    c = await criar([id], { mensagem: 'texto livre diferente' });
+    expect(
+      (await api().post(`/v1/campanhas/${c._id}/preparar`).set(head()).send({ versao: c.versao }))
+        .status,
+    ).toBe(422);
+    for (const t of [
+      { ...graphTemplate(), status: 'PAUSED' },
+      { ...graphTemplate(), category: 'UTILITY' },
+      { ...graphTemplate(), components: [{ type: 'BODY', text: 'Olá {{1}}' }] },
+      {
+        ...graphTemplate(),
+        components: [
+          { type: 'BODY', text: 'Olá' },
+          { type: 'HEADER', format: 'TEXT', text: 'x' },
+        ],
+      },
+    ])
+      expect(modeloAprovado(t)).toBeNull();
+    expect(modeloAprovado(graphTemplate())?.corpo).toBe(MENSAGEM_INICIAL);
+  });
+  it('prepara OFF sem enviar e exige flag e confirmação para iniciar/retomar', async () => {
+    process.env.CAMPANHAS_WHATSAPP_ATIVO = 'false';
+    const c = await preparar(await criar([await lead()]));
+    expect(
+      (
+        await api()
+          .post(`/v1/campanhas/${c._id}/iniciar`)
+          .set(head())
+          .send({ versao: c.versao, confirmar: true })
+      ).status,
+    ).toBe(422);
+    await svc.executarCiclo();
+    expect(posts()).toHaveLength(0);
+    process.env.CAMPANHAS_WHATSAPP_ATIVO = 'true';
+    expect(
+      (await api().post(`/v1/campanhas/${c._id}/iniciar`).set(head()).send({ versao: c.versao }))
+        .status,
+    ).toBe(422);
+  });
+  it('aceite não é entrega; recibos compartilhados elevam sem regredir e leituras são auditadas', async () => {
+    const c = await campanha([await lead()]);
+    await svc.executarCiclo();
+    expect(posts()).toHaveLength(1);
+    expect((await resultado(c)).resumo).toEqual({ aceito: 1 });
+    await db
+      .db!.collection('whatsapp_recibos')
+      .insertOne({ mensagemId: 'wamid.qa-1', entregue: true, atualizadoEm: instante });
+    expect((await resultado(c)).resumo).toEqual({ entregue: 1 });
+    await db
+      .db!.collection('whatsapp_recibos')
+      .updateOne({ mensagemId: 'wamid.qa-1' }, { $set: { lido: true, falhou: true } });
+    expect((await resultado(c)).resumo).toEqual({ lido: 1 });
+    expect(JSON.stringify(await resultado(c))).not.toContain('telefoneHash');
+    expect(
+      await db.db!.collection('acessos_dados').countDocuments({ acao: 'campanhas_resultados' }),
+    ).toBeGreaterThan(0);
+  });
+  it.each(['revogacao', 'telefone', 'optout', 'resposta'])(
+    'revalida %s antes de cada saída',
+    async (cenario) => {
+      const id = await lead();
+      const c = await campanha([id]);
+      if (cenario === 'revogacao')
+        await db
+          .db!.collection('contatos')
+          .updateOne(
+            { _id: new Types.ObjectId(id) },
+            { $set: { 'lgpd.contatoComercial': 'revogado' } },
+          );
+      if (cenario === 'telefone')
+        await db
+          .db!.collection('contatos')
+          .updateOne(
+            { _id: new Types.ObjectId(id) },
+            { $set: { telefones: [{ e164: '+5511999990000' }] } },
+          );
+      if (cenario === 'optout')
+        await db
+          .db!.collection('whatsapp_bloqueios')
+          .insertOne({ telefoneHash: hmacDocumento('whatsapp:5511999990042') });
+      if (cenario === 'resposta')
+        await db
+          .db!.collection('whatsapp_respostas')
+          .insertOne({ telefoneHash: hmacDocumento('whatsapp:5511999990042'), em: instante });
+      await svc.executarCiclo();
+      expect(posts()).toHaveLength(0);
+      expect((await resultado(c)).resumo).toEqual({ excluido: 1 });
+    },
+  );
+  it('respostas anteriores à campanha não excluem e o webhook não guarda conversa', async () => {
+    const c = await campanha([await lead()]);
+    await db.db!.collection('whatsapp_respostas').insertOne({
+      telefoneHash: hmacDocumento('whatsapp:5511999990042'),
+      em: new Date(instante.getTime() - 1000),
+    });
+    await svc.executarCiclo();
+    expect((await resultado(c)).resumo).toEqual({ aceito: 1 });
+    const payload = {
+      object: 'whatsapp_business_account',
+      entry: [
+        {
+          changes: [
+            {
+              field: 'messages',
+              value: {
+                metadata: { phone_number_id: process.env.WHATSAPP_PHONE_NUMBER_ID },
+                messages: [
+                  {
+                    from: '5511999990042',
+                    id: 'wamid.resposta',
+                    timestamp: String(Math.floor(Date.now() / 1000)),
+                    text: { body: 'conteudo privado nao armazenar' },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const raw = Buffer.from(JSON.stringify(payload));
+    await app
+      .get(WhatsAppService)
+      .receberWebhook(
+        raw,
+        `sha256=${createHmac('sha256', process.env.WHATSAPP_APP_SECRET!).update(raw).digest('hex')}`,
+      );
+    const resposta = await db
+      .db!.collection('whatsapp_respostas')
+      .findOne({ _id: { $type: 'string' } });
+    expect(resposta?.telefoneHash).toBe(hmacDocumento('whatsapp:5511999990042'));
+    expect(JSON.stringify(resposta)).not.toContain('conteudo privado');
+    expect(JSON.stringify(resposta)).not.toContain('5511999990042');
+  });
+  it('pausa, retoma e reinicia instância sem duplicar destinatários já aceitos', async () => {
+    let c = await campanha([await lead(), await lead({}, '+5511999990043')]);
+    await svc.executarCiclo();
+    let r = await api()
+      .post(`/v1/campanhas/${c._id}/pausar`)
+      .set(head())
+      .send({ versao: c.versao });
+    expect(r.status).toBe(201);
+    c = r.body.registro;
+    instante = new Date(instante.getTime() + 90_000);
+    await svc.executarCiclo();
+    expect(posts()).toHaveLength(1);
+    r = await api()
+      .post(`/v1/campanhas/${c._id}/retomar`)
+      .set(head())
+      .send({ versao: c.versao, confirmar: true });
+    expect(r.status).toBe(201);
+    c = r.body.registro;
+    const outra = new CampanhasService(db);
+    outra.agora = () => instante;
+    outra.fetchImpl = transporte;
+    await outra.executarCiclo();
+    expect(posts()).toHaveLength(2);
+    instante = new Date(instante.getTime() + 90_000);
+    await outra.executarCiclo();
+    expect(posts()).toHaveLength(2);
+    expect((await api().get(`/v1/campanhas/${c._id}`).set(head())).body.registro.estado).toBe(
+      'concluida',
+    );
+  });
+  it('respeita intervalo global entre campanhas e evita POST concorrente entre instâncias', async () => {
+    await campanha([await lead()]);
+    await campanha([await lead({}, '+5511999990043')]);
+    const outra = new CampanhasService(db);
+    outra.agora = () => instante;
+    outra.fetchImpl = transporte;
+    await Promise.all([svc.executarCiclo(), outra.executarCiclo()]);
+    expect(posts()).toHaveLength(1);
+    await outra.executarCiclo();
+    expect(posts()).toHaveLength(1);
+    instante = new Date(instante.getTime() + 90_000);
+    await Promise.all([svc.executarCiclo(), outra.executarCiclo()]);
+    expect(posts()).toHaveLength(2);
+  });
+  it('respeita lotes/pausas/teto diário e retorna no próximo dia útil', async () => {
+    await campanha(
+      [await lead(), await lead({}, '+5511999990043'), await lead({}, '+5511999990044')],
+      {
+        cadencia: { intervaloSegundos: 60, loteTamanho: 1, pausaLoteSegundos: 600, tetoDiario: 2 },
+      },
+    );
+    await svc.executarCiclo();
+    expect(posts()).toHaveLength(1);
+    instante = new Date(instante.getTime() + 60_000);
+    await svc.executarCiclo();
+    expect(posts()).toHaveLength(1);
+    instante = new Date(instante.getTime() + 540_000);
+    await svc.executarCiclo();
+    expect(posts()).toHaveLength(2);
+    instante = new Date(instante.getTime() + 600_000);
+    await svc.executarCiclo();
+    expect(posts()).toHaveLength(2);
+    instante = new Date('2026-11-24T13:00:00Z');
+    await svc.executarCiclo();
+    expect(posts()).toHaveLength(3);
+  });
+  it('revalida janela depois de consultar templates e pausa template suspenso', async () => {
+    const c = await campanha([await lead()]);
+    transporte.mockImplementation(async (_url, init) => {
+      if (init?.method === 'POST')
+        return new Response(JSON.stringify({ messages: [{ id: 'wamid.nunca' }] }));
+      instante = new Date('2026-11-23T15:01:00Z'); //12h01SP depois de consulta lenta.
+      return new Response(JSON.stringify({ data: [graphTemplate()] }));
+    });
+    await svc.executarCiclo();
+    expect(posts()).toHaveLength(0);
+    instante = new Date('2026-11-23T17:01:00Z');
+    transporte.mockResolvedValue(
+      new Response(JSON.stringify({ data: [{ ...graphTemplate(), status: 'PAUSED' }] })),
+    );
+    await svc.executarCiclo();
+    expect(posts()).toHaveLength(0);
+    expect((await api().get(`/v1/campanhas/${c._id}`).set(head())).body.registro.estado).toBe(
+      'pausada',
+    );
+  });
+  it.each([500, 408, 'rede'])('resultado ambíguo %s fica incerto, sem retry', async (codigo) => {
+    const c = await campanha([await lead()]);
+    transporte.mockImplementation(async (_url, init) => {
+      if (init?.method !== 'POST') return new Response(JSON.stringify({ data: [graphTemplate()] }));
+      if (codigo === 'rede') throw new Error('network');
+      return new Response('{}', { status: codigo as number });
+    });
+    await svc.executarCiclo();
+    instante = new Date(instante.getTime() + 300_000);
+    await svc.executarCiclo();
+    expect(posts()).toHaveLength(1);
+    expect((await resultado(c)).resumo).toEqual({ incerto: 1 });
+  });
+  it('429 respeita Retry-After global e reserva abandonada nunca volta a pendente', async () => {
+    const c = await campanha([await lead()]);
+    transporte.mockImplementation(async (_url, init) =>
+      init?.method === 'POST'
+        ? new Response('{}', { status: 429, headers: { 'retry-after': '3600' } })
+        : new Response(JSON.stringify({ data: [graphTemplate()] })),
+    );
+    await svc.executarCiclo();
+    instante = new Date(instante.getTime() + 300_000);
+    await svc.executarCiclo();
+    expect(posts()).toHaveLength(1);
+    await db
+      .db!.collection('whatsapp_campanhas_fila')
+      .updateOne(
+        { campanhaId: new Types.ObjectId(c._id) },
+        { $set: { estado: 'processando', reservaId: 'processo-morto', reservaAte: new Date(0) } },
+      );
+    await svc.executarCiclo();
+    expect((await resultado(c)).resumo).toEqual({ incerto: 1 });
+    expect(posts()).toHaveLength(1);
+    const fila = await db
+      .db!.collection('whatsapp_campanhas_fila')
+      .findOne({ campanhaId: new Types.ObjectId(c._id) });
+    expect(fila?.eventos.at(-1)).toMatchObject({
+      estado: 'incerto',
+      autor: 'worker:campanhas',
+      tentativa: 1,
+      codigo: 'reserva_perdida_verificar_meta',
+    });
+  });
+  it('mantém trilha append-only de429, retry, aceite e recibo sem dados pessoais', async () => {
+    const c = await campanha([await lead()]);
+    let tentativa = 0;
+    transporte.mockImplementation(async (_url, init) => {
+      if (init?.method !== 'POST') return new Response(JSON.stringify({ data: [graphTemplate()] }));
+      tentativa++;
+      return tentativa === 1
+        ? new Response('{}', { status: 429, headers: { 'retry-after': '120' } })
+        : new Response(JSON.stringify({ messages: [{ id: 'wamid.retry' }] }));
+    });
+    await svc.executarCiclo();
+    instante = new Date(instante.getTime() + 120_000);
+    await svc.executarCiclo();
+    await db
+      .db!.collection('whatsapp_recibos')
+      .insertOne({ mensagemId: 'wamid.retry', entregue: true, atualizadoEm: instante });
+    await resultado(c);
+    const fila = await db
+      .db!.collection('whatsapp_campanhas_fila')
+      .findOne({ campanhaId: new Types.ObjectId(c._id) });
+    expect(fila?.eventos.map((e: { estado: string }) => e.estado)).toEqual([
+      'pendente',
+      'processando',
+      'pendente',
+      'processando',
+      'aceito',
+      'entregue',
+    ]);
+    expect(fila?.eventos.map((e: { tentativa: number }) => e.tentativa)).toEqual([
+      0, 1, 1, 2, 2, 2,
+    ]);
+    expect(fila?.eventos.every((e: { autor: string }) => e.autor === 'worker:campanhas')).toBe(
+      true,
+    );
+    expect(JSON.stringify(fila?.eventos)).not.toContain('5511999990042');
+    expect(JSON.stringify(fila?.eventos)).not.toContain('token');
+    expect(JSON.stringify(fila?.eventos)).not.toContain(MENSAGEM_INICIAL);
+  });
+  it('falha de autenticação pausa a campanha sem continuar para o próximo contato', async () => {
+    const c = await campanha([await lead(), await lead({}, '+5511999990043')]);
+    transporte.mockImplementation(async (_url, init) =>
+      init?.method === 'POST'
+        ? new Response('{}', { status: 401 })
+        : new Response(JSON.stringify({ data: [graphTemplate()] })),
+    );
+    await svc.executarCiclo();
+    instante = new Date(instante.getTime() + 90_000);
+    await svc.executarCiclo();
+    expect(posts()).toHaveLength(1);
+    expect((await api().get(`/v1/campanhas/${c._id}`).set(head())).body.registro.estado).toBe(
+      'pausada',
+    );
+    expect((await resultado(c)).resumo).toEqual({ falha: 1, pendente: 1 });
+  });
+  it('cancelar preserva fila e rejeita retomada, sem apagar histórico', async () => {
+    const c = await campanha([await lead()]);
+    const r = await api()
+      .post(`/v1/campanhas/${c._id}/cancelar`)
+      .set(head())
+      .send({ versao: c.versao });
+    expect(r.status).toBe(201);
+    expect(r.body.registro.auditoria.at(-1).acao).toBe('cancelar');
+    expect((await resultado(c)).resumo).toEqual({ cancelado: 1 });
+    expect(
+      (
+        await api()
+          .post(`/v1/campanhas/${c._id}/retomar`)
+          .set(head())
+          .send({ versao: r.body.registro.versao, confirmar: true })
+      ).status,
+    ).toBe(409);
+    await svc.executarCiclo();
+    expect(posts()).toHaveLength(0);
+  });
+  it('calendário SãoPaulo e limites inclusivos/exclusivos são determinísticos', () => {
+    const controle: ControleCampanha = {
+      _id: 'global',
+      reservaAte: new Date(0),
+      proximaSaidaEm: new Date(0),
+      dia: '',
+      diario: 0,
+      lote: 0,
+    };
+    expect(calendario(new Date('2026-11-23T02:00:00Z')).dia).toBe('2026-11-22');
+    for (const hora of [
+      '2026-11-22T13:00:00Z',
+      '2026-11-23T11:59:00Z',
+      '2026-11-23T15:00:00Z',
+      '2026-11-23T20:00:00Z',
+    ])
+      expect(podeAgendar(new Date(hora), CADENCIA_PADRAO, controle)).toBe(false);
+    expect(podeAgendar(new Date('2026-11-23T12:00:00Z'), CADENCIA_PADRAO, controle)).toBe(true);
+    expect(podeAgendar(new Date('2026-11-23T17:00:00Z'), CADENCIA_PADRAO, controle)).toBe(true);
+  });
+});

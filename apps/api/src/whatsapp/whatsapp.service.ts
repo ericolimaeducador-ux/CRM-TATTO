@@ -461,6 +461,30 @@ export class WhatsAppService implements OnModuleInit, OnModuleDestroy {
         // Registrar opt-out primeiro, antes de tratar status de mensagens.
         for (const mensagem of lista(v.messages).slice(0, 100)) {
           const m = objeto(mensagem);
+          const remetente = m.from;
+          const timestamp =
+            typeof m.timestamp === 'string' && /^\d{1,12}$/.test(m.timestamp)
+              ? Number(m.timestamp) * 1000
+              : NaN;
+          // Campanhas só precisam saber que houve resposta: nenhum corpo de conversa é guardado.
+          if (
+            typeof remetente === 'string' &&
+            /^[1-9]\d{7,14}$/.test(remetente) &&
+            Number.isFinite(timestamp)
+          ) {
+            const em = new Date(timestamp);
+            if (Math.abs(em.getTime() - Date.now()) <= 30 * DIA) {
+              const telefoneHash = hmacDocumento(`whatsapp:${remetente}`);
+              const chave = hmacDocumento(`resposta:${telefoneHash}:${String(m.id ?? timestamp)}`);
+              await this.conexao
+                .db!.collection('whatsapp_respostas')
+                .updateOne(
+                  { _id: chave as never },
+                  { $setOnInsert: { telefoneHash, em, recebidoEm: new Date() } },
+                  { upsert: true },
+                );
+            }
+          }
           const texto = objeto(m.text).body;
           if (typeof texto !== 'string' || !/^(sair|parar|stop|cancelar)$/i.test(texto.trim()))
             continue;
