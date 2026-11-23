@@ -48,6 +48,8 @@ for (const viewport of [
     await expect(page.getByText('Envio desativado no ambiente')).toBeVisible();
     await page.getByRole('button', { name: 'Nova campanha' }).click();
     await expect(page.getByLabel('Mensagem para revisão')).toHaveValue(/K-dAS5cQBQQ/);
+    // Este cenário cobre o caminho da API oficial; o manual tem teste próprio abaixo.
+    await page.getByRole('radio', { name: /API oficial da Meta/ }).check();
     await page.getByLabel('Título da campanha').fill(`Pós feira QA ${viewport.nome}`);
     const salvo = page.waitForResponse(
       (r) => r.url().endsWith('/v1/campanhas') && r.request().method() === 'POST',
@@ -146,4 +148,97 @@ test('aceite do QR e do vendedor chegam elegíveis à campanha', async ({ page, 
     expect(registros, nome).toHaveLength(1);
     expect(registros[0], nome).toMatchObject({ elegivel: true, motivo: '' });
   }
+});
+
+// Envio manual: o botão abre o WhatsApp Web com o texto pronto; nada sai sozinho.
+test('envio manual abre o WhatsApp Web do contato e respeita o intervalo', async ({
+  page,
+  context,
+  request,
+}) => {
+  const VENDEDOR = '507f1f77bcf86cd799439011';
+  const vendedor = {
+    'content-type': 'application/json',
+    'x-papel-teste': 'vendedor',
+    'x-usuario-id': VENDEDOR,
+    'x-autor-nome': 'Vendedor do ensaio',
+  };
+  // O site real do WhatsApp nunca é acessado no teste.
+  const abertos: string[] = [];
+  await context.route('https://web.whatsapp.com/**', (rota) => {
+    abertos.push(rota.request().url());
+    return rota.fulfill({
+      status: 200,
+      contentType: 'text/html',
+      body: '<p>WhatsApp simulado</p>',
+    });
+  });
+  await page.addInitScript(
+    ({ id }) => {
+      localStorage.setItem(
+        'captura7.sessao',
+        JSON.stringify({ id, papel: 'gestor', nome: 'Gestão QA' }),
+      );
+      localStorage.setItem(
+        'captura7.perfil',
+        JSON.stringify({ id, papel: 'gestor', nome: 'Gestão QA' }),
+      );
+    },
+    { id: ID },
+  );
+
+  const sufixo = String(Date.now()).slice(-4);
+  const ids: string[] = [];
+  for (const [i, nome] of [`Manual Um ${sufixo}`, `Manual Dois ${sufixo}`].entries()) {
+    const criado = await request.post(`${API}/v1/contatos`, {
+      headers: vendedor,
+      data: { nome, origem: { modo: 'manual' }, telefone: `(11) 9666${i}-${sufixo}` },
+    });
+    const id = ((await criado.json()) as { dados: { _id: string } }).dados._id;
+    const aceite = await request.post(`${API}/v1/contatos/${id}/consentimento`, {
+      headers: vendedor,
+      data: { contatoComercial: true, emDispositivo: new Date().toISOString() },
+    });
+    expect(aceite.status()).toBeLessThan(300);
+    ids.push(id);
+  }
+  const criada = await request.post(`${API}/v1/campanhas`, {
+    headers,
+    data: {
+      titulo: `Manual QA ${sufixo}`,
+      contatosIds: ids,
+      modo: 'manual',
+      mensagem: 'Olá! Teste manual.',
+    },
+  });
+  expect(criada.status()).toBe(201);
+  const camp = ((await criada.json()) as { registro: { _id: string; versao: number } }).registro;
+  const prep = await request.post(`${API}/v1/campanhas/${camp._id}/preparar`, {
+    headers,
+    data: { versao: camp.versao },
+  });
+  expect(prep.status()).toBe(201);
+
+  await page.goto(`/campanhas/${camp._id}`);
+  await expect(page.getByRole('button', { name: 'Revisar início dos envios' })).toHaveCount(0);
+  const popup = page.waitForEvent('popup');
+  await page
+    .getByRole('button', { name: new RegExp(`^Enviar pelo WhatsApp: Manual Um ${sufixo}`, 'i') })
+    .click();
+  const aba = await popup;
+  await aba.waitForURL(/web\.whatsapp\.com\/send/);
+  expect(abertos.at(-1)).toMatch(/phone=55119666\d{5}&text=Ol%C3%A1!%20Teste%20manual\./);
+  await expect(page.getByText(/Próximo contato liberado em \d+s/)).toBeVisible();
+  await expect(
+    page.getByRole('button', {
+      name: new RegExp(`^Enviar pelo WhatsApp: Manual Dois ${sufixo}`, 'i'),
+    }),
+  ).toBeDisabled();
+  const res = await request.get(`${API}/v1/campanhas/${camp._id}/resultados`, { headers });
+  expect(
+    ((await res.json()) as { registro: { resumo: Record<string, number> } }).registro.resumo,
+  ).toMatchObject({
+    aberto_manual: 1,
+    pendente: 1,
+  });
 });

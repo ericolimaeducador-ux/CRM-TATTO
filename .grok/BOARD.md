@@ -28,6 +28,7 @@ _(vazio — F3-02 foi para FEITO com a autorização de 26/09/2026)_
 
 ## EM CURSO
 
+- `[CP-08]` Envio manual pelo WhatsApp Web até contratar a Cloud API — **@API-03** + **@UI-04** + **@QA-09** — aceite: ADR-020, modo manual/api na campanha, botão por contato com revalidação e intervalo, sem envio automático, caminho API intacto; API/web/E2E verdes — dep: [CP-07] — IMPLEMENTADO 23/11/2026
 - `[CP-02]` Contrato e dados de campanhas WhatsApp — **@ARQ-02** — aceite: ADR-019, coleções aditivas, estados/versionamento/auditoria, seleção histórica explícita e dedup por campanha/telefone sem alterar captura — dep: [CP-01] — FEITO 23/11/2026
 - `[CP-03]` API e fila controlada de campanhas — **@API-03** — aceite: público/prévia, rascunho/iniciar/pausar/retomar/cancelar, reserva global persistida, cadência/horário/teto diário/lotes, falhas/incertos/recibos sem envio em modo desativado — dep: [CP-02] — FEITO 23/11/2026; API 247/247
 - `[CP-04]` Revisão de elegibilidade e integração Meta — **@SEC-07** — aceite: gestor/admin, autorização ativa e opt-out revalidados, template aprovado correspondente à prévia, segredos fora do cliente/logs, nenhuma ativação ou envio real no desenvolvimento — dep: [CP-03] — APROVADO COM RESSALVAS 23/11/2026; ver PROGRESS_FASE_CAMPANHAS.md

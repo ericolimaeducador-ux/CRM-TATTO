@@ -233,3 +233,22 @@
     flex-wrap: wrap;
   }
 }
+/* Modo de envio (manual pelo WhatsApp Web ou API oficial). */
+.tv-campaign-mode {
+  display: grid;
+  gap: 8px;
+  border: 0;
+  padding: 0;
+  margin: 0 0 8px;
+  min-width: 0;
+}
+.tv-campaign-mode legend {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.tv-campaign-timer {
+  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #eef1e7;
+}

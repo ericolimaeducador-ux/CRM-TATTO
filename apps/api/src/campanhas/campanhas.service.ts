@@ -9,6 +9,7 @@ import { configCampanhas } from './campanhas.config';
 import {
   CADENCIA_PADRAO,
   MENSAGEM_INICIAL,
+  MODOS_ENVIO,
   type Cadencia,
   type Campanha,
   type ControleCampanha,
@@ -17,6 +18,7 @@ import {
   type EstadoDestinatario,
   type LeadCampanha,
   type ModeloCampanha,
+  type ModoEnvio,
 } from './campanhas.tipos';
 
 const DIA = 86_400_000;
@@ -293,7 +295,8 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     if (!['rascunho', 'preparando'].includes(c.estado))
       falha('A campanha já foi preparada ou encerrada.', 'CAMPANHA_ESTADO', 409);
     if (!c.contatosIds.length) falha('Selecione explicitamente os contatos desta campanha.');
-    await this.verificarTemplate(c);
+    // No modo manual não há template da Meta: o texto vai pelo link do WhatsApp Web.
+    if (modoDe(c) === 'api') await this.verificarTemplate(c);
     const previa = await this.calcularPrevia(c);
     if (!previa.elegiveis) falha('Nenhum contato selecionado está elegível. Revise as exclusões.');
     // Estado intermediário recuperável: nunca iniciar uma fila parcialmente materializada.
@@ -361,6 +364,12 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
         409,
       );
     if (acao === 'iniciar' || acao === 'retomar') {
+      if (modoDe(c) === 'manual')
+        falha(
+          'Campanha manual não tem envio automático. Use "Enviar pelo WhatsApp" em cada contato.',
+          'CAMPANHA_MANUAL',
+          422,
+        );
       if (body.confirmar !== true) falha('Confirme explicitamente o início dos envios.');
       const cfg = configCampanhas();
       if (!cfg.ativo || !cfg.completo)
@@ -442,12 +451,22 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
             { telefoneHash: linha.telefoneHash, em: { $gte: c.iniciadaEm ?? c.criadoEm } },
             { sort: { em: 1 }, projection: { em: 1 } },
           );
+        const contato = await this.contatos.findOne(
+          { _id: linha.contatoId },
+          { projection: { nome: 1 } },
+        );
         const publico: Partial<Destinatario> = { ...linha };
         delete publico.telefoneHash;
         delete publico.reservaId;
-        return { ...publico, respondeuEm: resposta?.em ?? null };
+        return {
+          ...publico,
+          nome: contato?.nome || 'Contato sem nome',
+          respondeuEm: resposta?.em ?? null,
+        };
       }),
     );
+    const manual = modoDe(c) === 'manual';
+    const ultimaManual = manual ? await this.ultimaAberturaManual(c._id) : null;
     const controle = await this.controles.findOne({ _id: 'global' });
     await this.acesso(usuario, 'campanhas_resultados', registros.length, { campanhaId: c._id });
     return {
@@ -460,14 +479,108 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
         limite: 30,
         proximaSaidaEm: controle?.proximaSaidaEm ?? null,
         diario: controle?.dia === calendario(this.agora()).dia ? controle.diario : 0,
-        aviso:
-          'Aceito pela API não significa entregue. Recibos confirmam entrega/leitura. Incertos não são reenviados automaticamente.',
+        modo: modoDe(c),
+        ultimaAberturaManualEm: ultimaManual,
+        aviso: manual
+          ? 'Envio manual: o sistema abre a conversa com o texto pronto; quem confirma o envio é você, no WhatsApp. Respostas e pedidos de SAIR chegam no celular e precisam ser registrados no contato.'
+          : 'Aceito pela API não significa entregue. Recibos confirmam entrega/leitura. Incertos não são reenviados automaticamente.',
       },
     };
   }
   async auditoria(id: string) {
     const c = await this.ler(id);
     return { registro: { eventos: c.auditoria } };
+  }
+
+  /**
+   * Modo manual: revalida autorização/bloqueio do destinatário, devolve o telefone
+   * e o texto para abrir o WhatsApp Web, e registra a abertura. Não envia nada:
+   * quem clica enviar é o gestor, no próprio WhatsApp.
+   */
+  async abrirManual(id: string, destinatarioId: string, usuario: UsuarioSessao) {
+    const c = await this.ler(id);
+    if (modoDe(c) !== 'manual')
+      falha('Esta campanha usa a API oficial; o envio é automático.', 'CAMPANHA_NAO_MANUAL', 422);
+    if (c.estado !== 'preparada')
+      falha(
+        'Prepare a campanha antes de abrir as conversas. Campanhas canceladas ou concluídas não abrem conversas.',
+        'CAMPANHA_ESTADO',
+        409,
+      );
+    if (!/^[a-f\d]{24}$/i.test(destinatarioId))
+      falha('Destinatário não encontrado.', 'DESTINATARIO_AUSENTE', 404);
+    const trabalho = await this.fila.findOne({
+      _id: new Types.ObjectId(destinatarioId),
+      campanhaId: c._id,
+    });
+    if (!trabalho) falha('Destinatário não encontrado.', 'DESTINATARIO_AUSENTE', 404);
+    if (!['pendente', 'aberto_manual'].includes(trabalho.estado))
+      falha('Este destinatário não está mais na fila de envio.', 'DESTINATARIO_ESTADO', 409);
+    const lead = await this.contatos.findOne({ _id: trabalho.contatoId });
+    const e = await this.elegibilidade(lead);
+    if (e.motivo || e.hash !== trabalho.telefoneHash) {
+      const motivo = e.motivo || 'telefone_alterado';
+      await this.finalizar(trabalho, 'excluido', motivo);
+      falha(
+        'O contato deixou de estar elegível (autorização, bloqueio ou telefone mudou). Nada foi aberto.',
+        'DESTINATARIO_INELEGIVEL',
+        409,
+      );
+    }
+    // Ritmo: só a primeira abertura de cada contato conta; reabrir não espera.
+    if (trabalho.estado === 'pendente') {
+      const ultima = await this.ultimaAberturaManual(c._id);
+      const liberaEm = ultima ? ultima.getTime() + c.cadencia.intervaloSegundos * 1000 : 0;
+      const faltam = Math.ceil((liberaEm - this.agora().getTime()) / 1000);
+      if (faltam > 0)
+        falha(
+          `Aguarde ${faltam}s antes do próximo contato. O intervalo evita que o WhatsApp entenda como envio em massa.`,
+          'INTERVALO_MANUAL',
+          429,
+        );
+    }
+    const agora = this.agora();
+    await this.fila.updateOne(
+      { _id: trabalho._id, estado: { $in: ['pendente', 'aberto_manual'] } },
+      {
+        $set: {
+          estado: 'aberto_manual',
+          motivo: '',
+          atualizadoEm: agora,
+          ...(trabalho.estado === 'pendente' ? { abertoEm: agora } : {}),
+        },
+        $inc: { tentativas: 1 },
+        $push: {
+          eventos: {
+            estado: 'aberto_manual',
+            em: agora,
+            autor: hmacDocumento(`usuario:${usuario.id}`),
+            tentativa: trabalho.tentativas + 1,
+            codigo:
+              trabalho.estado === 'pendente' ? 'whatsapp_web_aberto' : 'whatsapp_web_reaberto',
+          },
+        },
+      },
+    );
+    await this.acesso(usuario, 'campanhas_envio_manual', 1, {
+      campanhaId: c._id,
+      destinatarioId: trabalho._id,
+    });
+    return {
+      registro: {
+        telefone: e.telefone!.slice(1),
+        texto: c.mensagem,
+        primeiraAbertura: trabalho.estado === 'pendente',
+      },
+    };
+  }
+  private async ultimaAberturaManual(campanhaId: Types.ObjectId): Promise<Date | null> {
+    // abertoEm só é gravado na primeira abertura: reabrir não mexe no ritmo.
+    const ultima = await this.fila.findOne(
+      { campanhaId, abertoEm: { $exists: true } },
+      { sort: { abertoEm: -1 }, projection: { abertoEm: 1 } },
+    );
+    return ultima?.abertoEm ?? null;
   }
   private async acesso(
     usuario: UsuarioSessao,
@@ -601,7 +714,8 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     renovar.unref();
     try {
       const campanhas = await this.campanhas
-        .find({ estado: 'em_andamento' })
+        // Campanha manual nunca passa pelo transporte automático.
+        .find({ estado: 'em_andamento', modo: { $ne: 'manual' } })
         .sort({ iniciadaEm: 1, _id: 1 })
         .toArray();
       for (const c of campanhas) {
@@ -967,6 +1081,11 @@ function campos(body: Record<string, unknown>): Partial<Campanha> {
       falha('Selecione até 2.000 IDs válidos de contatos.');
     patch.contatosIds = [...new Set(body.contatosIds as string[])];
   }
+  if ('modo' in body) {
+    if (!MODOS_ENVIO.includes(body.modo as ModoEnvio))
+      falha('Modo de envio inválido. Use "api" ou "manual".');
+    patch.modo = body.modo as ModoEnvio;
+  }
   if ('template' in body) {
     if (body.template === null) patch.template = null;
     else {
@@ -1065,4 +1184,8 @@ export function modeloAprovado(item: unknown): ModeloCampanha | null {
     status: 'APPROVED',
     categoria: 'MARKETING',
   };
+}
+/** Campanhas criadas antes do modo manual não têm o campo: são da API oficial. */
+export function modoDe(c: Pick<Campanha, 'modo'>): ModoEnvio {
+  return c.modo === 'manual' ? 'manual' : 'api';
 }

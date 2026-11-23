@@ -88,6 +88,14 @@ export class CampanhasController {
   @Get(':id/auditoria') auditoria(@Param('id') id: string) {
     return this.campanhas.auditoria(id);
   }
+  /** Modo manual: libera telefone e texto para abrir o WhatsApp Web deste destinatário. */
+  @Post(':id/destinatarios/:destinatarioId/whatsapp-manual') abrirManual(
+    @Param('id') id: string,
+    @Param('destinatarioId') destinatarioId: string,
+    @Req() req: RequisicaoComUsuario,
+  ) {
+    return this.campanhas.abrirManual(id, destinatarioId, usuario(req));
+  }
 }
 function usuario(req: RequisicaoComUsuario): UsuarioSessao {
   if (!req.usuario?.id) falha('Entre com seu usuário.', 'SESSAO_AUSENTE', 401);
