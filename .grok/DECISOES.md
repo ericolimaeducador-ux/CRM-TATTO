@@ -3,6 +3,18 @@
 Formato: contexto · decisão · alternativas consideradas · consequências · status.
 Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
+## ADR-022 — Telefone digitado só com DDD + número; lista de contatos ordenável
+
+**Contexto.** Em 24/11/2026 o proprietário relatou que a captura parecia exigir o código do país no telefone e pediu que valesse só DDD + 9 dígitos do celular. A normalização do servidor já completava +55, mas a máscara do formulário guardava só os 11 primeiros dígitos: número colado ou autocompletado com +55 virava DDD 55 com o final cortado. Pediu também organizar a lista de contatos por data e ordem alfabética para localizar registros.
+
+**Decisão.** Quem digita informa só DDD + número (10 dígitos fixo, 11 celular). A máscara descarta +55 e o 0 de longa distância quando vierem por colagem/autocompletar e o campo pede `tel-national` ao navegador. O servidor continua gravando E.164 com +55 (necessário para WhatsApp/campanhas), aceita também o 0 na frente do DDD e o aviso orienta "DDD + número". Número com `+` de outro país e número sem DDD seguem gravados como digitados, com aviso — entrada permissiva, sem campo obrigatório. A lista de contatos ganha busca, período de entrada (dias civis de São Paulo, como ADR-015) e ordem mais recentes / mais antigos / nome A–Z; o A–Z usa colação `pt` sem acento e maiúscula, também no cursor de paginação.
+
+**Alternativas.** Exigir o +55 no campo: rejeitado, é justamente o atrito relatado. Validar e recusar número sem 11 dígitos: rejeitado pelo princípio "entrada permissiva, saída controlada". Ordenar A–Z por comparação binária: rejeitado, nomes acentuados iriam para depois do Z.
+
+**Consequências.** Contatos novos com DDD + número entram já com E.164 e ficam elegíveis a WhatsApp. Registros antigos gravados com número cortado não são corrigidos automaticamente. A ordem A–Z não usa índice dedicado; aceitável no volume atual.
+
+**Status.** aceito — 24/11/2026 — pedido do proprietário.
+
 ## ADR-020 — Modo de envio manual pelo WhatsApp Web até a contratação da Cloud API
 
 **Contexto.** Em 23/11/2026 o proprietário informou que a Tela Viva ainda não tem WhatsApp Business API; antes usava um servidor paralelo não oficial, enviando poucas mensagens por vez. Pediu para enviar individualmente cada mensagem até contratar a API da Meta, aproveitando a campanha e sem apagar o caminho da API.

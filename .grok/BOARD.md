@@ -28,6 +28,7 @@ _(vazio — F3-02 foi para FEITO com a autorização de 26/09/2026)_
 
 ## EM CURSO
 
+- `[CT-01]` Telefone só com DDD + número e lista de contatos ordenável — **@UI-04** + **@DQ-08** + **@API-03** + **@QA-09** — aceite: ADR-022; máscara descarta +55/0 de colagem ou autocompletar, servidor grava +55 sozinho, aviso "DDD + número"; lista com busca, período e ordem recentes/antigos/A–Z sem acento; edição pendente prevalece sobre cópia sincronizada; testes web/API verdes — dep: [] — IMPLEMENTADO 24/11/2026; web 49/49 captura, API 21/21 contatos+normalização; PR #23 aguardando REV-11
 - `[CP-08]` Envio manual pelo WhatsApp Web até contratar a Cloud API — **@API-03** + **@UI-04** + **@QA-09** — aceite: ADR-020, modo manual/api na campanha, botão por contato com revalidação e intervalo, sem envio automático, caminho API intacto; API/web/E2E verdes — dep: [CP-07] — IMPLEMENTADO 23/11/2026
 - `[CP-02]` Contrato e dados de campanhas WhatsApp — **@ARQ-02** — aceite: ADR-019, coleções aditivas, estados/versionamento/auditoria, seleção histórica explícita e dedup por campanha/telefone sem alterar captura — dep: [CP-01] — FEITO 23/11/2026
 - `[CP-03]` API e fila controlada de campanhas — **@API-03** — aceite: público/prévia, rascunho/iniciar/pausar/retomar/cancelar, reserva global persistida, cadência/horário/teto diário/lotes, falhas/incertos/recibos sem envio em modo desativado — dep: [CP-02] — FEITO 23/11/2026; API 247/247
