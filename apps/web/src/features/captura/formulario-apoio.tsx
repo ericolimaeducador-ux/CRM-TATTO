@@ -140,7 +140,7 @@ function tecladoDe(rotulo: string): {
   mascara?: (valor: string) => string;
 } {
   if (rotulo === 'Telefone')
-    return { inputMode: 'tel', autoComplete: 'tel', mascara: mascararTelefone };
+    return { inputMode: 'tel', autoComplete: 'tel-national', mascara: mascararTelefone };
   if (rotulo === 'E-mail') return { type: 'email', inputMode: 'email', autoComplete: 'email' };
   if (rotulo === 'CPF') return { inputMode: 'numeric', mascara: mascararCpf };
   if (rotulo === 'CNPJ') return { inputMode: 'numeric', mascara: mascararCnpj };
@@ -165,8 +165,13 @@ function mascararCnpj(valor: string): string {
     .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
 }
 
-function mascararTelefone(valor: string): string {
-  const d = valor.replace(/\D/g, '').slice(0, 11);
+// Regra: DDD + número (até 9 dígitos no celular). O código do país não é digitado;
+// se vier por colagem ou autocompletar (+55, 0 de longa distância), ele é descartado
+// em vez de ocupar o lugar do DDD.
+export function mascararTelefone(valor: string): string {
+  let d = valor.replace(/\D/g, '');
+  if (d.startsWith('55') && (valor.trim().startsWith('+') || d.length > 11)) d = d.slice(2);
+  d = d.replace(/^0+/, '').slice(0, 11);
   if (d.length <= 10) return d.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
   return d.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
 }

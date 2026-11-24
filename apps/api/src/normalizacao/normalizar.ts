@@ -30,11 +30,14 @@ export function normalizarEmail(valor: string): { valor: string; aviso?: Aviso }
 }
 
 export function normalizarTelefone(bruto: string): { bruto: string; e164?: string; aviso?: Aviso } {
-  const digitos = apenasDigitos(bruto);
+  // Regra de captura: DDD + número. O +55 é completado aqui; quem digita não precisa dele.
+  // Também aceita o número já com 55 (colado/autocompletado) e o 0 de longa distância.
+  const internacional = bruto.trim().startsWith('+');
+  const digitos = internacional ? apenasDigitos(bruto) : apenasDigitos(bruto).replace(/^0+/, '');
   if (digitos.startsWith('55') && (digitos.length === 12 || digitos.length === 13)) {
     return { bruto, e164: `+${digitos}` };
   }
-  if (!bruto.trim().startsWith('+') && (digitos.length === 10 || digitos.length === 11)) {
+  if (!internacional && (digitos.length === 10 || digitos.length === 11)) {
     return { bruto, e164: `+55${digitos}` };
   }
   return {
@@ -42,7 +45,7 @@ export function normalizarTelefone(bruto: string): { bruto: string; e164?: strin
     aviso: aviso(
       'telefones',
       'TELEFONE_INVALIDO',
-      'Não deu para converter este telefone para E.164. Ele foi gravado como você digitou.',
+      'Telefone incompleto. Use DDD + número, ex.: (11) 98765-4321. Gravamos como você digitou.',
     ),
   };
 }

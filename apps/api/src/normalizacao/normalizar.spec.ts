@@ -19,6 +19,11 @@ describe('normalização sem rejeitar', () => {
       e164: '+5511987654321',
     });
     expect(normalizarTelefone('+5511987654321').e164).toBe('+5511987654321');
+    expect(normalizarTelefone('11987654321').e164).toBe('+5511987654321');
+    expect(normalizarTelefone('011 98765-4321').e164).toBe('+5511987654321');
+    expect(normalizarTelefone('55 11 98765-4321').e164).toBe('+5511987654321');
+    expect(normalizarTelefone('(55) 98765-4321').e164).toBe('+5555987654321');
+    expect(normalizarTelefone('98765-4321').aviso?.codigo).toBe('TELEFONE_INVALIDO');
     const ruim = normalizarTelefone('abc');
     expect(ruim.e164).toBeUndefined();
     expect(ruim.bruto).toBe('abc');
