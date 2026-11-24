@@ -13,6 +13,9 @@ const ORIGENS = [
 ] as const;
 const CONSENTIMENTOS = ['pendente', 'concedido', 'revogado'] as const;
 const ORDENS = ['recente', 'antigo', 'nome'] as const;
+// A–Z em português: ignora acento e maiúscula (Álvaro fica junto de Alvaro, não depois do Z).
+// O cursor por nome compara com a mesma colação, então a paginação continua consistente.
+const COLACAO_NOME = { locale: 'pt', strength: 1 } as const;
 
 export interface ConsultaListagem {
   cursor?: string;
@@ -135,6 +138,7 @@ export async function executarListagem(
     contatos.countDocuments(semCursor),
     contatos
       .find(filtro)
+      .collation(ordem === 'nome' ? COLACAO_NOME : { locale: 'simple' })
       .sort(sort)
       .limit(limite + 1)
       .lean(),

@@ -31,6 +31,17 @@ interface PaginaRemota {
   erro: string;
 }
 
+type Ordem = 'recente' | 'antigo' | 'nome';
+
+interface FiltrosDaLista {
+  q: string;
+  desde: string;
+  ate: string;
+  ordem: Ordem;
+}
+
+const FILTROS_INICIAIS: FiltrosDaLista = { q: '', desde: '', ate: '', ordem: 'recente' };
+
 function chaveDaSessao(): string {
   const token = tokenDaSessao();
   const perfil = perfilLogado();
@@ -54,6 +65,8 @@ export function ListaContatos() {
   const [erroLocal, setErroLocal] = useState('');
   const [sessao, setSessao] = useState(chaveDaSessao);
   const [pagina, setPagina] = useState(() => paginaVazia(sessao));
+  const [filtros, setFiltros] = useState<FiltrosDaLista>(FILTROS_INICIAIS);
+  const [rascunhoDeFiltros, setRascunhoDeFiltros] = useState<FiltrosDaLista>(FILTROS_INICIAIS);
   const consulta = useRef<AbortController | null>(null);
   const geracao = useRef(0);
 
@@ -72,7 +85,10 @@ export function ListaContatos() {
           throw new Error(
             'Sem conexão para consultar o CRM. Os contatos deste aparelho continuam disponíveis.',
           );
-        const parametros = new URLSearchParams({ limite: '20' });
+        const parametros = new URLSearchParams({ limite: '20', ordem: filtros.ordem });
+        if (filtros.q) parametros.set('q', filtros.q);
+        if (filtros.desde) parametros.set('desde', filtros.desde);
+        if (filtros.ate) parametros.set('ate', filtros.ate);
         if (cursor) parametros.set('cursor', cursor);
         const resposta = await fetch(urlDaApi(`/v1/contatos?${parametros}`), {
           headers: cabecalhosDaSessao(),
@@ -141,7 +157,7 @@ export function ListaContatos() {
         if (geracao.current === atual) consulta.current = null;
       }
     },
-    [sessao],
+    [filtros, sessao],
   );
 
   useEffect(() => {
@@ -163,6 +179,7 @@ export function ListaContatos() {
   }, [sessao]);
 
   useEffect(() => {
+    setPagina(paginaVazia(sessao));
     void carregar();
     const reconectar = () => void carregar();
     window.addEventListener('online', reconectar);
@@ -201,6 +218,8 @@ export function ListaContatos() {
 
   const idsLocais = new Set<string>();
   const idsServidor = new Set<string>();
+  // Primeiro deduplica dando prioridade à edição pendente (mais nova) sobre a cópia
+  // já sincronizada; só depois filtra e ordena o que aparece na tela.
   const locais = [...itens]
     .sort(
       (a, b) =>
@@ -213,13 +232,25 @@ export function ListaContatos() {
       idsLocais.add(item.idLocal);
       if (item.idServidor) idsServidor.add(item.idServidor);
       return true;
-    });
+    })
+    .filter((item) => correspondeAosFiltrosLocais(item, filtros))
+    .sort((a, b) => compararLocais(a, b, filtros.ordem));
   const remota =
     pagina.sessao === sessao && sessao === chaveDaSessao() ? pagina : paginaVazia(sessao);
   const pendentes = locais.filter((item) => !item.idServidor).length;
   const remotos = remota.itens.filter(
     (item) => !idsServidor.has(item._id) && (!item.idLocal || !idsLocais.has(item.idLocal)),
   );
+
+  const aplicarFiltros = (evento: React.FormEvent<HTMLFormElement>) => {
+    evento.preventDefault();
+    setFiltros(rascunhoDeFiltros);
+  };
+
+  const limparFiltros = () => {
+    setRascunhoDeFiltros(FILTROS_INICIAIS);
+    setFiltros(FILTROS_INICIAIS);
+  };
 
   return (
     <section className="flex flex-col gap-4">
@@ -244,6 +275,70 @@ export function ListaContatos() {
       ) : null}
       {remota.carregando ? <p role="status">Carregando contatos do CRM…</p> : null}
       {remota.erro ? <p role="alert">{remota.erro}</p> : null}
+      <form
+        className="grid gap-3 rounded border border-stone-300 p-3 sm:grid-cols-2"
+        onSubmit={aplicarFiltros}
+      >
+        <label className="flex flex-col gap-1 text-base sm:col-span-2">
+          Buscar por nome ou dado de contato
+          <input
+            className="campo"
+            type="search"
+            value={rascunhoDeFiltros.q}
+            onChange={(evento) =>
+              setRascunhoDeFiltros((anterior) => ({ ...anterior, q: evento.target.value }))
+            }
+            placeholder="Nome, e-mail ou telefone"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-base">
+          Data de entrada — de
+          <input
+            className="campo"
+            type="date"
+            value={rascunhoDeFiltros.desde}
+            onChange={(evento) =>
+              setRascunhoDeFiltros((anterior) => ({ ...anterior, desde: evento.target.value }))
+            }
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-base">
+          Data de entrada — até
+          <input
+            className="campo"
+            type="date"
+            value={rascunhoDeFiltros.ate}
+            onChange={(evento) =>
+              setRascunhoDeFiltros((anterior) => ({ ...anterior, ate: evento.target.value }))
+            }
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-base sm:col-span-2">
+          Ordenar contatos
+          <select
+            className="campo"
+            value={rascunhoDeFiltros.ordem}
+            onChange={(evento) =>
+              setRascunhoDeFiltros((anterior) => ({
+                ...anterior,
+                ordem: evento.target.value as Ordem,
+              }))
+            }
+          >
+            <option value="recente">Mais recentes</option>
+            <option value="antigo">Mais antigos</option>
+            <option value="nome">Nome (A–Z)</option>
+          </select>
+        </label>
+        <div className="flex flex-wrap gap-2 sm:col-span-2">
+          <button type="submit" className="tv-button">
+            Aplicar filtros
+          </button>
+          <button type="button" className="tv-button tv-button-light" onClick={limparFiltros}>
+            Limpar filtros
+          </button>
+        </div>
+      </form>
       {sessao &&
       remota.consultado &&
       locais.length === 0 &&
@@ -341,4 +436,38 @@ function dataDeEntrada(valor: string): string {
     minute: '2-digit',
     timeZone: 'America/Sao_Paulo',
   }).format(data);
+}
+
+function correspondeAosFiltrosLocais(item: ContatoLocal, filtros: FiltrosDaLista): boolean {
+  const busca = normalizar(filtros.q);
+  const dados = Object.values(item.campos).join(' ');
+  if (busca && !normalizar(dados).includes(busca)) return false;
+  const data = dataLocal(item.atualizadoEm);
+  return (!filtros.desde || data >= filtros.desde) && (!filtros.ate || data <= filtros.ate);
+}
+
+function compararLocais(a: ContatoLocal, b: ContatoLocal, ordem: Ordem): number {
+  if (ordem === 'nome')
+    return rotulo(a).localeCompare(rotulo(b), 'pt-BR', { sensitivity: 'base', numeric: true });
+  return ordem === 'antigo' ? a.atualizadoEm - b.atualizadoEm : b.atualizadoEm - a.atualizadoEm;
+}
+
+function normalizar(valor: string): string {
+  return valor
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('pt-BR')
+    .trim();
+}
+
+function dataLocal(valor: number): string {
+  const partes = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(valor));
+  const parte = (tipo: Intl.DateTimeFormatPartTypes) =>
+    partes.find((item) => item.type === tipo)?.value ?? '';
+  return `${parte('year')}-${parte('month')}-${parte('day')}`;
 }
