@@ -6,6 +6,23 @@ import { cabecalhosDaSessao } from '@/lib/offline/sessao';
 interface ContatoLido {
   nome?: string;
   status?: string;
+  pf?: { cpfMascarado?: string };
+  pj?: { cnpjMascarado?: string };
+  enderecos?: { logradouro?: string; numero?: string; cidade?: string; uf?: string }[];
+}
+
+/**
+ * Virar cliente exige: estar qualificado, CPF ou CNPJ e endereço completo (ADR-027).
+ * A tela diz o que falta antes de pedir o código, para ninguém digitar o 2FA à toa (ADR-031).
+ */
+export function faltaParaCliente(c: ContatoLido): string[] {
+  const faltam: string[] = [];
+  if (c.status !== 'qualificado')
+    faltam.push('estar qualificado (hoje está em ' + (c.status ?? '…') + ')');
+  if (!c.pf?.cpfMascarado && !c.pj?.cnpjMascarado) faltam.push('CPF ou CNPJ');
+  const endereco = (c.enderecos ?? []).some((e) => e.logradouro && e.numero && e.cidade && e.uf);
+  if (!endereco) faltam.push('endereço completo (rua, número, cidade e UF)');
+  return faltam;
 }
 
 export function PaginaPromover() {
@@ -21,11 +38,45 @@ export function PaginaPromover() {
 
   const nome = contato?.nome || 'este contato';
   const status = contato?.status || 'o status atual';
+  const faltam = contato ? faltaParaCliente(contato) : [];
+
+  if (contato && faltam.length)
+    return (
+      <section className="flex flex-col gap-4">
+        <Link className="atalho" to={`/lead/${id}`}>
+          Voltar para a ficha
+        </Link>
+        <h1 className="text-2xl font-semibold">{nome} ainda não pode virar cliente</h1>
+        <div className="cartao flex flex-col gap-2" aria-label="O que falta para virar cliente">
+          <p className="text-base font-semibold">Falta:</p>
+          <ul className="list-disc pl-6 text-base">
+            {faltam.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+          <p className="text-base">
+            Virar cliente é o último passo (proposta e nota fiscal). Para começar a trabalhar o
+            contato, não precisa disso nem do código do autenticador.
+          </p>
+        </div>
+        <div className="cartao flex flex-col gap-2">
+          <p className="text-base font-semibold">O que fazer agora</p>
+          <p className="text-base">
+            Na ficha, use o bloco &quot;O que fazer com este contato&quot;: marque
+            <strong> Interessado</strong> (ele entra na carteira) e escolha em
+            <strong> Quem vai atender</strong> o vendedor responsável.
+          </p>
+          <Link className="btn" to={`/lead/${id}`}>
+            Abrir a ficha de {nome}
+          </Link>
+        </div>
+      </section>
+    );
 
   return (
     <section className="flex flex-col gap-4">
-      <Link className="atalho" to="/contatos">
-        Contatos
+      <Link className="atalho" to={`/lead/${id}`}>
+        Voltar para a ficha
       </Link>
       <h1 className="text-2xl font-semibold">Promover a cliente</h1>
       <p className="text-base">

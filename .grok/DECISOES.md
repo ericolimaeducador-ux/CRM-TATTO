@@ -3,6 +3,16 @@
 Formato: contexto · decisão · alternativas consideradas · consequências · status.
 Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
+## ADR-031 — Tela "Promover a cliente" diz o que falta antes de pedir o código
+
+**Contexto.** Em 25/11/2026 o proprietário tentou promover um contato em "capturado", sem CPF/CNPJ nem endereço. Ele digitou o código do autenticador e nada aconteceu, porque a API recusa a passagem para cliente nessas condições, mas a tela pedia o código como se faltasse só ele.
+
+**Decisão.** A tela calcula o que falta para virar cliente: estar qualificado, CPF ou CNPJ e endereço completo (ADR-027). Se faltar algo, mostra "{nome} ainda não pode virar cliente", com a lista do que falta e o caminho do dia a dia (Interessado + Quem vai atender, na ficha), e não exibe o campo do código. Só com tudo pronto aparece o formulário com o código TOTP. Os links da tela voltam para a ficha do contato.
+
+**Consequências.** Ninguém digita o 2FA à toa. A regra continua na API; a tela só a antecipa. Este ADR confirma o fluxo descrito pelo proprietário: a pré-qualificação (Interessado) leva o contato à carteira; os dados completos são coletados na conversa de 15 minutos; quem não avança vai para Adormecido (ADR-029).
+
+**Status.** aceito — 25/11/2026.
+
 ## ADR-030 — Triagem e "quem vai atender" à vista; "Pediu para sair" bloqueia de vez
 
 **Contexto.** Depois do ADR-029, em 25/11/2026, nenhum dos 92 contatos tinha sido triado. O proprietário seguia tentando "qualificar" e "promover" e recebia pedidos de dados que não tinha. Ele relatou que, mesmo informando o código do autenticador, a promoção de um contato não avançava: o contato estava em "capturado", sem cidade, tipo, CPF ou endereço, e o link "Promover" de cada linha da lista leva à promoção a cliente, que exige tudo isso. Os botões de triagem só existiam dentro da ficha, depois de um bloco de dados. O proprietário também pediu separar quem tem interesse de quem pediu para não continuar e disse que vendedores mais velhos não encontram o caminho para promover e atribuir.
