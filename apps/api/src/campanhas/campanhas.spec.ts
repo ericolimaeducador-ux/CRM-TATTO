@@ -952,6 +952,42 @@ describe('CP — campanhas em Mongo isolado e transporte simulado', () => {
       expect(transporte).not.toHaveBeenCalled();
     });
 
+    it('lista quem nunca foi incluído, com motivo, e deixa incluir quem está apto', async () => {
+      const dentro = await lead({ nome: 'Selecionado' }, '+5511999990601');
+      const c = await manualPreparada([dentro]);
+      const apto = await lead({ nome: 'Chegou Depois' }, '+5511999990602');
+      const semAceite = await lead(
+        { nome: 'Sem Aceite', lgpd: { contatoComercial: 'pendente' } },
+        '+5511999990603',
+      );
+      await lead({ nome: 'Descartado', status: 'descartado' }, '+5511999990604');
+      const r = await resultado(c);
+      const por = Object.fromEntries(
+        r.naoIncluidos.map((x: { contatoId: string }) => [x.contatoId, x]),
+      );
+      expect(Object.keys(por).sort()).toEqual([apto, semAceite].sort());
+      expect(por[apto]).toMatchObject({ motivo: 'nao_selecionado', podeIncluir: true });
+      expect(por[semAceite]).toMatchObject({
+        motivo: 'sem_autorizacao_documentada',
+        podeIncluir: false,
+      });
+      expect(JSON.stringify(r.naoIncluidos)).not.toContain('999990602');
+      const incluir = (contatoId: string, versao: number) =>
+        api()
+          .post(`/v1/campanhas/${c._id}/destinatarios/incluir`)
+          .set(head())
+          .send({ versao, contatoId });
+      expect((await incluir(semAceite, c.versao)).status).toBe(409);
+      const ok = await incluir(apto, c.versao);
+      expect(ok.status).toBe(201);
+      expect(ok.body.registro.contatosIds).toContain(apto);
+      expect(await fila(c)).toHaveLength(2);
+      const depois = await resultado(c);
+      expect(depois.naoIncluidos.map((x: { contatoId: string }) => x.contatoId)).toEqual([
+        semAceite,
+      ]);
+    });
+
     it('revalida autorização antes de abrir e respeita papel e modo', async () => {
       const id = await lead();
       const c = await manualPreparada([id]);

@@ -3,6 +3,16 @@
 Formato: contexto · decisão · alternativas consideradas · consequências · status.
 Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
+## ADR-032 — Campanha mostra também quem nunca foi incluído
+
+**Contexto.** Em 25/11/2026 o proprietário perguntou onde estavam os contatos que não receberam o WhatsApp: a base tinha 92 contatos ativos e só 76 foram abertos, mas a lista "Ficaram de fora" (ADR-025) mostrava 2. Ela só considera quem foi selecionado para a campanha. Os outros 14 nunca foram selecionados: 10 sem autorização registrada, 3 sem telefone válido e 1 apto, cadastrado depois da preparação.
+
+**Decisão.** `GET /v1/campanhas/:id/resultados` passa a trazer `naoIncluidos`: contatos ativos da base (na carteira de quem criou, se a campanha for de representante) que não estão em `contatosIds`, cada um com motivo (`nao_selecionado`, `sem_autorizacao_documentada`, `sem_telefone_valido`, `desinteressado`, `destinatario_solicitou_parada`, `fora_da_carteira`), telefone mascarado, `podeIncluir` e `criadoDepois` (cadastrado depois da preparação). A "Situação do envio" ganha o contador "Não incluídos", que abre a lista com "Incluir nesta campanha" para quem está apto e "Abrir ficha" para os demais. `POST /:id/destinatarios/incluir` passa a aceitar quem nunca foi selecionado (acrescenta à seleção, respeita o limite de 2.000 e revalida autorização, bloqueio e carteira).
+
+**Consequências.** "Quem não recebeu" fica completo numa tela só: fila + ficaram de fora + não incluídos. Representantes veem os não incluídos da base inteira nas campanhas da gestão (leitura aberta, ADR-025); só quem criou a campanha ou a gestão inclui.
+
+**Status.** aceito — 25/11/2026 — pedido do proprietário.
+
 ## ADR-031 — Tela "Promover a cliente" diz o que falta antes de pedir o código
 
 **Contexto.** Em 25/11/2026 o proprietário tentou promover um contato em "capturado", sem CPF/CNPJ nem endereço. Ele digitou o código do autenticador e nada aconteceu, porque a API recusa a passagem para cliente nessas condições, mas a tela pedia o código como se faltasse só ele.
