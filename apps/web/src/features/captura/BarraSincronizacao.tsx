@@ -22,6 +22,7 @@ export function BarraSincronizacao() {
     return observarFila(atualizar);
   }, []);
 
-  if (!estado) return null;
+  // Tudo sincronizado não precisa ocupar o topo de toda página; só avisa quando há pendência.
+  if (!estado || estado === 'sincronizado') return null;
   return <IndicadorSincronizacao estado={estado} />;
 }

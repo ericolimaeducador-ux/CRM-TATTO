@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { perfilLogado } from '@/lib/offline/sessao';
 import { Menu } from '../captura/Menu';
@@ -6,7 +6,7 @@ import { BarraSincronizacao } from '../captura/BarraSincronizacao';
 import { Icone, Logo } from './componentes';
 
 const SECOES: Record<string, string> = {
-  carteira: 'Minha carteira',
+  carteira: 'Contas e estúdios',
   agenda: 'Agenda de visitas',
   oportunidades: 'Oportunidades',
   produtos: 'Produtos',
@@ -14,14 +14,16 @@ const SECOES: Record<string, string> = {
   treinamentos: 'Treinamentos',
   relatorios: 'Relatórios comerciais',
   propostas: 'Propostas',
-  campanhas: 'Campanhas',
-  capturar: 'Captura rápida',
+  campanhas: 'Campanhas WhatsApp',
+  capturar: 'Capturar contato',
   contatos: 'Contatos',
   entrar: 'Entrar',
   'minha-conta': 'Minha conta',
   usuarios: 'Usuários da equipe',
-  fila: 'Fila de sincronização',
+  fila: 'Envios pendentes',
   busca: 'Busca de contatos',
+  duplicatas: 'Duplicatas',
+  'meu-qr': 'Meu QR',
 };
 export function Layout({ children }: { children: ReactNode }) {
   const local = useLocation();
@@ -94,7 +96,8 @@ export function Layout({ children }: { children: ReactNode }) {
     );
   const enviarBusca = (evento: FormEvent) => {
     evento.preventDefault();
-    navegar(`/carteira?q=${encodeURIComponent(busca)}`);
+    // A base que a equipe usa todo dia está em Contatos (ADR-026).
+    navegar(`/contatos?q=${encodeURIComponent(busca.trim())}`);
   };
   return (
     <div className="tv-shell">
@@ -156,14 +159,14 @@ export function Layout({ children }: { children: ReactNode }) {
             </button>
             <span className="tv-breadcrumb">
               Seu espaço<span>/</span>
-              <strong>{SECOES[segmento] ?? 'Visão geral'}</strong>
+              <strong>{SECOES[segmento] ?? 'Início'}</strong>
             </span>
           </div>
           <form className="tv-global-search" onSubmit={enviarBusca}>
             <Icone nome="busca" tamanho={18} />
             <input
-              aria-label="Buscar na carteira"
-              placeholder="Buscar na carteira…"
+              aria-label="Buscar contato"
+              placeholder="Buscar contato: nome, telefone ou e-mail…"
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
             />

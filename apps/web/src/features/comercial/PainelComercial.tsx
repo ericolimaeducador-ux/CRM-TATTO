@@ -1,4 +1,4 @@
-﻿import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { perfilLogado } from '@/lib/offline/sessao';
 import {
   dataFormatada,
@@ -67,19 +67,35 @@ export function PainelComercial() {
           </Link>
         }
       />
-      <div className="tv-welcome-strip">
-        <div>
-          <span className="tv-eyebrow">CONEXÕES QUE VIRAM OPORTUNIDADES</span>
-          <h2>Cuidado em cada conexão.</h2>
-          <p>Sua carteira, suas visitas e os próximos passos da Tela Viva.</p>
-        </div>
-        <div className="tv-welcome-art" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-          <Icone nome="grafico" tamanho={58} />
-        </div>
-      </div>
+      {/* Atalhos do dia (ADR-026): o que a equipe faz todo dia, antes dos números de vendas. */}
+      <nav className="tv-atalhos" aria-label="O que fazer agora">
+        {(
+          [
+            ['/contatos', 'contatos', 'Contatos', 'Ver, buscar e atualizar quem foi captado'],
+            [
+              '/campanhas',
+              'propostas',
+              'Campanhas WhatsApp',
+              'Quem falta mandar e quem ficou de fora',
+            ],
+            [
+              '/capturar',
+              'qr',
+              'Capturar contato',
+              'Pelo QR do cliente, digitando ou com o seu QR',
+            ],
+            ['/agenda', 'agenda', 'Agenda de visitas', 'Próximos encontros com estúdios'],
+          ] as const
+        ).map(([to, icone, titulo, texto]) => (
+          <Link key={to} to={to} className="tv-atalho">
+            <span className="tv-atalho-icone">
+              <Icone nome={icone} tamanho={22} />
+            </span>
+            <strong>{titulo}</strong>
+            <small>{texto}</small>
+          </Link>
+        ))}
+      </nav>
       <AvisoDados erro={erro} carregando={carregando} atualizar={atualizar} />
       <div className="tv-kpi-grid">
         {cards.map((c) => (

@@ -497,6 +497,19 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     const c = await this.ler(id, usuario);
     await this.conciliarRecibos(c._id);
     const pagina = inteiro(query.pagina ?? 1, 1, 10000, 'Página');
+    const filtroEstado = texto(query.estado ?? '', 40);
+    const FILTROS: Record<string, EstadoDestinatario[]> = {
+      falta: ['pendente', 'aberto_manual'],
+      nao_aberto: ['pendente'],
+      aberto: ['aberto_manual'],
+      enviado: ['aceito', 'enviado', 'entregue', 'lido'],
+      excluido: ['excluido', 'cancelado', 'falha', 'incerto'],
+    };
+    if (filtroEstado && !FILTROS[filtroEstado]) falha('Filtro de resultado inválido.');
+    const daLista = {
+      campanhaId: c._id,
+      ...(filtroEstado ? { estado: { $in: FILTROS[filtroEstado] } } : {}),
+    };
     const [grupos, linhas, total, respostas] = await Promise.all([
       this.fila
         .aggregate<{ _id: string; quantidade: number }>([
@@ -505,12 +518,12 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
         ])
         .toArray(),
       this.fila
-        .find({ campanhaId: c._id })
+        .find(daLista)
         .sort({ _id: 1 })
         .skip((pagina - 1) * 30)
         .limit(30)
         .toArray(),
-      this.fila.countDocuments({ campanhaId: c._id }),
+      this.fila.countDocuments(daLista),
       this.fila
         .aggregate<{ total: number }>([
           { $match: { campanhaId: c._id } },
@@ -673,6 +686,59 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       },
     };
   }
+  /**
+   * Envio manual: o sistema só sabe que a conversa foi aberta. Quem enviou confirma
+   * aqui ("Enviei"), ou devolve o contato para a fila ("Não enviei").
+   */
+  async confirmarManual(
+    id: string,
+    destinatarioId: string,
+    body: Record<string, unknown>,
+    usuario: UsuarioSessao,
+  ) {
+    const c = await this.ler(id, usuario);
+    exigirAutoria(c, usuario);
+    if (modoDe(c) !== 'manual')
+      falha('Só campanhas manuais têm confirmação de envio.', 'CAMPANHA_NAO_MANUAL', 422);
+    if (typeof body.enviado !== 'boolean') falha('Informe se a mensagem foi enviada.');
+    if (!/^[a-f\d]{24}$/i.test(destinatarioId))
+      falha('Destinatário não encontrado.', 'DESTINATARIO_AUSENTE', 404);
+    const de: EstadoDestinatario[] = body.enviado
+      ? ['aberto_manual', 'pendente']
+      : ['aberto_manual', 'enviado'];
+    const para: EstadoDestinatario = body.enviado ? 'enviado' : 'pendente';
+    const agora = this.agora();
+    const r = await this.fila.findOneAndUpdate(
+      { _id: new Types.ObjectId(destinatarioId), campanhaId: c._id, estado: { $in: de } },
+      {
+        $set: {
+          estado: para,
+          motivo: body.enviado ? 'confirmado_manual' : '',
+          atualizadoEm: agora,
+          ...(body.enviado ? { enviadoEm: agora } : {}),
+        },
+        ...(body.enviado ? {} : { $unset: { enviadoEm: '' } }),
+        $push: {
+          eventos: {
+            estado: para,
+            em: agora,
+            autor: hmacDocumento(`usuario:${usuario.id}`),
+            tentativa: 0,
+            codigo: body.enviado ? 'envio_confirmado' : 'envio_desfeito',
+          },
+        },
+      },
+      { returnDocument: 'after' },
+    );
+    if (!r)
+      falha(
+        'Este contato não está aberto no WhatsApp nem confirmado. Atualize a lista.',
+        'DESTINATARIO_ESTADO',
+        409,
+      );
+    return { registro: { _id: r._id, estado: r.estado } };
+  }
+
   /**
    * Quem foi selecionado e não está na fila (ou foi excluído dela depois), com o motivo.
    * Antes da preparação a prévia já mostra isso; depois, sem esta lista, eles sumiam da tela.

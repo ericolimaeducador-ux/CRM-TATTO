@@ -236,13 +236,13 @@ describe('Campanhas — preparação, segurança e estados honestos', () => {
     entrar('auditor');
     montar();
     expect(screen.getByText('Entre para usar campanhas')).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'Campanhas' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Campanhas WhatsApp' })).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
   it('representante vê o menu, só a própria carteira e não escolhe a API oficial', async () => {
     entrar('vendedor');
     montar(`/campanhas/${ID}`);
-    expect(await screen.findByRole('link', { name: 'Campanhas' })).toBeTruthy();
+    expect(await screen.findByRole('link', { name: 'Campanhas WhatsApp' })).toBeTruthy();
     expect(screen.getByText(/todas as campanhas da equipe/)).toBeTruthy();
     await screen.findByLabelText('Selecionar Marina autorizada');
     expect(screen.queryByRole('radio', { name: /API oficial da Meta/ })).toBeNull();

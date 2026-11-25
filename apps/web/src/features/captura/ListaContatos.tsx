@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { urlDaApi } from '@/lib/api-url';
 import { textoDaResposta } from '@/lib/texto-resposta';
 import { lerTodos, observarFila } from '@/lib/offline/fila';
@@ -75,8 +75,21 @@ export function ListaContatos() {
   const [erroLocal, setErroLocal] = useState('');
   const [sessao, setSessao] = useState(chaveDaSessao);
   const [pagina, setPagina] = useState(() => paginaVazia(sessao));
-  const [filtros, setFiltros] = useState<FiltrosDaLista>(FILTROS_INICIAIS);
-  const [rascunhoDeFiltros, setRascunhoDeFiltros] = useState<FiltrosDaLista>(FILTROS_INICIAIS);
+  // A busca do topo chega como ?q= (ADR-026).
+  const [parametrosDaUrl] = useSearchParams();
+  const qDaUrl = parametrosDaUrl.get('q') ?? '';
+  const [filtros, setFiltros] = useState<FiltrosDaLista>(() => ({
+    ...FILTROS_INICIAIS,
+    q: qDaUrl,
+  }));
+  const [rascunhoDeFiltros, setRascunhoDeFiltros] = useState<FiltrosDaLista>(() => ({
+    ...FILTROS_INICIAIS,
+    q: qDaUrl,
+  }));
+  useEffect(() => {
+    setFiltros((atual) => (atual.q === qDaUrl ? atual : { ...atual, q: qDaUrl }));
+    setRascunhoDeFiltros((atual) => (atual.q === qDaUrl ? atual : { ...atual, q: qDaUrl }));
+  }, [qDaUrl]);
   const gestao = podeGerir();
   const { equipe } = useEquipe(gestao && Boolean(sessao));
   const [selecionados, setSelecionados] = useState<Set<string>>(() => new Set());

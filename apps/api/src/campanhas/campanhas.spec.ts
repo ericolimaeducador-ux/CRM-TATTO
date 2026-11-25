@@ -890,6 +890,44 @@ describe('CP — campanhas em Mongo isolado e transporte simulado', () => {
       expect(transporte).not.toHaveBeenCalled();
     });
 
+    it('confirma "Enviei"/"Não enviei" e filtra quem falta mandar', async () => {
+      const c = await manualPreparada([
+        await lead({}, '+5511999990401'),
+        await lead({}, '+5511999990402'),
+        await lead({}, '+5511999990403'),
+      ]);
+      const [a, b] = await fila(c);
+      expect((await abrir(c, a._id)).status).toBe(201);
+      const confirmar = (d: unknown, enviado: unknown, papel = 'gestor') =>
+        api()
+          .post(`/v1/campanhas/${c._id}/destinatarios/${String(d)}/confirmar`)
+          .set(head(papel))
+          .send({ enviado });
+      expect((await confirmar(a._id, 'sim')).status).toBe(422);
+      expect((await confirmar(a._id, true, 'vendedor')).status).toBe(403);
+      expect((await confirmar(a._id, true)).body.registro.estado).toBe('enviado');
+      expect((await confirmar(a._id, true)).status).toBe(409);
+      const lista = async (estado: string) =>
+        (await api().get(`/v1/campanhas/${c._id}/resultados?estado=${estado}`).set(head())).body
+          .registro;
+      expect((await lista('falta')).total).toBe(2);
+      expect((await lista('enviado')).registros.map((x: { _id: string }) => x._id)).toEqual([
+        String(a._id),
+      ]);
+      expect((await lista('enviado')).resumo).toEqual({ enviado: 1, pendente: 2 });
+      expect(
+        (await api().get(`/v1/campanhas/${c._id}/resultados?estado=x`).set(head())).status,
+      ).toBe(422);
+      // Enviado fora da tela também pode ser confirmado; e desfeito volta para a fila.
+      expect((await confirmar(b._id, true)).status).toBe(201);
+      expect((await confirmar(b._id, false)).body.registro.estado).toBe('pendente');
+      expect((await lista('nao_aberto')).total).toBe(2);
+      const [fa] = await fila(c);
+      expect(fa.eventos.at(-1).codigo).toBe('envio_confirmado');
+      expect(JSON.stringify(fa.eventos)).not.toContain(ADMIN);
+      expect(transporte).not.toHaveBeenCalled();
+    });
+
     it('revalida autorização antes de abrir e respeita papel e modo', async () => {
       const id = await lead();
       const c = await manualPreparada([id]);

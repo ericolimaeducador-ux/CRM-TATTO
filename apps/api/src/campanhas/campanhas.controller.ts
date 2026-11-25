@@ -94,6 +94,15 @@ export class CampanhasController {
   @Get(':id/auditoria') auditoria(@Param('id') id: string, @Req() req: RequisicaoComUsuario) {
     return this.campanhas.auditoria(id, usuario(req));
   }
+  /** Envio manual: "Enviei" (enviado: true) ou "Não enviei" (enviado: false). */
+  @Post(':id/destinatarios/:destinatarioId/confirmar') confirmar(
+    @Param('id') id: string,
+    @Param('destinatarioId') destinatarioId: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: RequisicaoComUsuario,
+  ) {
+    return this.campanhas.confirmarManual(id, destinatarioId, corpo(body), usuario(req));
+  }
   /** Inclui um contato que ficou de fora por telefone repetido ou que ficou apto depois. */
   @Post(':id/destinatarios/incluir') incluir(
     @Param('id') id: string,
