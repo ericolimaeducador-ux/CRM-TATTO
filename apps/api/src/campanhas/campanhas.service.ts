@@ -577,6 +577,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       }),
     );
     const foraDaCampanha = await this.foraDaCampanha(c);
+    const naoIncluidos = await this.naoIncluidos(c);
     const manual = modoDe(c) === 'manual';
     const ultimaManual = manual ? await this.ultimaAberturaManual(c._id) : null;
     const controle = await this.controles.findOne({ _id: 'global' });
@@ -593,6 +594,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
         diario: controle?.dia === calendario(this.agora()).dia ? controle.diario : 0,
         modo: modoDe(c),
         foraDaCampanha,
+        naoIncluidos,
         ultimaAberturaManualEm: ultimaManual,
         aviso: manual
           ? 'Envio manual: o sistema abre a conversa com o texto pronto; quem confirma o envio é você, no WhatsApp. Respostas e pedidos de SAIR chegam no celular e precisam ser registrados no contato.'
@@ -745,6 +747,49 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
    * Quem foi selecionado e não está na fila (ou foi excluído dela depois), com o motivo.
    * Antes da preparação a prévia já mostra isso; depois, sem esta lista, eles sumiam da tela.
    */
+  /**
+   * Contatos da base (na carteira de quem criou, se for de representante) que nunca foram
+   * selecionados para esta campanha, com o motivo (ADR-032). Sem isso, "quem não recebeu"
+   * só mostrava os selecionados que ficaram de fora.
+   */
+  private async naoIncluidos(c: Campanha) {
+    if (['rascunho', 'preparando'].includes(c.estado)) return [];
+    const selecionados = c.contatosIds.map((id) => new Types.ObjectId(id));
+    const leads = await this.contatos
+      .find({
+        _id: { $nin: selecionados },
+        status: { $in: ['rascunho', 'capturado', 'qualificado', 'cliente'] },
+        fundidoEm: { $exists: false },
+        'lgpd.eliminadoEm': { $exists: false },
+        ...(c.carteiraDe ? { 'origem.vendedorAtribuido': new Types.ObjectId(c.carteiraDe) } : {}),
+      })
+      .sort({ criadoEm: -1, _id: -1 })
+      .limit(LIMITE_PENDENCIAS)
+      .toArray();
+    const alteravel = ['preparada', 'pausada'].includes(c.estado);
+    const saida: {
+      contatoId: string;
+      nome: string;
+      telefoneMascarado: string;
+      motivo: string;
+      podeIncluir: boolean;
+      criadoDepois: boolean;
+    }[] = [];
+    for (const lead of leads) {
+      const e = await this.elegibilidade(lead, c.carteiraDe);
+      if (e.motivo === 'contato_indisponivel') continue;
+      saida.push({
+        contatoId: lead._id.toString(),
+        nome: lead.nome || 'Contato sem nome',
+        telefoneMascarado: e.telefone ? mascarar(e.telefone) : '',
+        motivo: e.motivo || 'nao_selecionado',
+        podeIncluir: alteravel && !e.motivo,
+        criadoDepois: Boolean(c.preparadaEm && lead.criadoEm && lead.criadoEm > c.preparadaEm),
+      });
+    }
+    return saida;
+  }
+
   private async foraDaCampanha(c: Campanha) {
     if (['rascunho', 'preparando'].includes(c.estado)) return [];
     const fila = await this.fila
@@ -821,8 +866,12 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
         409,
       );
     const contatoId = texto(body.contatoId ?? '', 24);
-    if (!/^[a-f\d]{24}$/i.test(contatoId) || !c.contatosIds.includes(contatoId))
-      falha('Este contato não faz parte da seleção desta campanha.', 'DESTINATARIO_AUSENTE', 404);
+    if (!/^[a-f\d]{24}$/i.test(contatoId))
+      falha('Contato não encontrado.', 'DESTINATARIO_AUSENTE', 404);
+    // Quem nunca foi selecionado também pode entrar, se estiver apto (ADR-032).
+    const novoNaSelecao = !c.contatosIds.includes(contatoId);
+    if (novoNaSelecao && c.contatosIds.length >= MAX_PUBLICO)
+      falha('A campanha já tem 2.000 contatos selecionados.', 'CAMPANHA_CHEIA', 409);
     const oid = new Types.ObjectId(contatoId);
     const e = await this.elegibilidade(await this.contatos.findOne({ _id: oid }), c.carteiraDe);
     if (e.motivo)
@@ -839,7 +888,10 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       falha('Este contato já está na fila.', 'DESTINATARIO_ESTADO', 409);
     const registro = await this.atualizar(
       c,
-      { repetidosLiberados: [...new Set([...(c.repetidosLiberados ?? []), contatoId])] },
+      {
+        repetidosLiberados: [...new Set([...(c.repetidosLiberados ?? []), contatoId])],
+        ...(novoNaSelecao ? { contatosIds: [...c.contatosIds, contatoId] } : {}),
+      },
       'incluir_contato',
       usuario.id,
     );

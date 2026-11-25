@@ -463,6 +463,24 @@ describe('Campanhas — envio manual pelo WhatsApp Web', () => {
             proximaSaidaEm: null,
             modo: 'manual',
             ultimaAberturaManualEm: ultima,
+            naoIncluidos: [
+              {
+                contatoId: '507f1f77bcf86cd799439901',
+                nome: 'Cadastro Novo QA',
+                telefoneMascarado: '+55 ••••• 0001',
+                motivo: 'nao_selecionado',
+                podeIncluir: true,
+                criadoDepois: true,
+              },
+              {
+                contatoId: '507f1f77bcf86cd799439902',
+                nome: 'Sem Aceite QA',
+                telefoneMascarado: '',
+                motivo: 'sem_autorizacao_documentada',
+                podeIncluir: false,
+                criadoDepois: false,
+              },
+            ],
             aviso: 'Envio manual: quem confirma o envio é você.',
           },
         });
@@ -515,6 +533,20 @@ describe('Campanhas — envio manual pelo WhatsApp Web', () => {
     ).toBe(true);
     expect(screen.getByText(/Próximo contato liberado em \d+s/)).toBeTruthy();
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/iniciar'))).toBe(false);
+  });
+
+  it('mostra quem nunca foi incluído, com motivo e a ação certa para cada um', async () => {
+    montar(`/campanhas/${ID}`);
+    const contador = await screen.findByRole('button', { name: /2\s*Não incluídos/ });
+    fireEvent.click(contador);
+    const lista = await screen.findByLabelText('Não incluídos');
+    expect(lista.textContent).toContain('Cadastro Novo QA');
+    expect(lista.textContent).toContain('cadastrado depois da preparação');
+    expect(lista.textContent).toContain('Sem autorização comercial documentada');
+    expect(screen.getByRole('button', { name: 'Incluir nesta campanha' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Abrir ficha' }).getAttribute('href')).toBe(
+      '/lead/507f1f77bcf86cd799439902',
+    );
   });
 
   it('nova campanha nasce no modo manual e salva o modo', async () => {

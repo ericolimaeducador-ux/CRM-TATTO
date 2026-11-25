@@ -235,7 +235,9 @@ function CampanhasGestao() {
     let vivo = true;
     void apiCampanhas<{ registro: ResultadoCampanha }>(
       `/${id}/resultados?pagina=${paginaResultados}${
-        filtroResultados && filtroResultados !== 'fora' ? `&estado=${filtroResultados}` : ''
+        filtroResultados && !['fora', 'nao_incluidos'].includes(filtroResultados)
+          ? `&estado=${filtroResultados}`
+          : ''
       }`,
     )
       .then((r) => {
@@ -970,10 +972,57 @@ function CampanhasGestao() {
                 {filtroResultados === 'fora' && !resultados.foraDaCampanha?.length ? (
                   <p>Ninguém ficou de fora desta campanha.</p>
                 ) : null}
-                {filtroResultados !== 'fora' && !resultados.registros.length ? (
+                {filtroResultados === 'nao_incluidos' ? (
+                  <div className="tv-campaign-warning" aria-label="Não incluídos">
+                    <h3>Não incluídos nesta campanha ({resultados.naoIncluidos?.length ?? 0})</h3>
+                    <p>
+                      Contatos da base que nunca foram selecionados. Quem pode receber já pode
+                      entrar; os demais precisam de ajuste na ficha (autorização ou telefone).
+                    </p>
+                    {!resultados.naoIncluidos?.length ? (
+                      <p>Todos os contatos foram incluídos.</p>
+                    ) : null}
+                    <ul className="tv-campaign-preview">
+                      {(resultados.naoIncluidos ?? []).map((n) => (
+                        <li key={n.contatoId}>
+                          <strong>
+                            <Link to={`/lead/${n.contatoId}`}>{n.nome}</Link>
+                          </strong>{' '}
+                          · {n.telefoneMascarado || 'Sem telefone'}
+                          <br />
+                          <span>
+                            {motivoCampanha(n.motivo)}
+                            {n.criadoDepois ? ' · cadastrado depois da preparação' : ''}
+                          </span>{' '}
+                          {n.podeIncluir && podeAlterar ? (
+                            <button
+                              type="button"
+                              className="tv-small-button"
+                              disabled={bloqueado || dirty}
+                              onClick={() => void incluirContato(n.contatoId, n.nome)}
+                            >
+                              {ocupado === `incluir:${n.contatoId}`
+                                ? 'Incluindo…'
+                                : 'Incluir nesta campanha'}
+                            </button>
+                          ) : (
+                            <Link className="tv-small-button" to={`/lead/${n.contatoId}`}>
+                              Abrir ficha
+                            </Link>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {!['fora', 'nao_incluidos'].includes(filtroResultados) &&
+                !resultados.registros.length ? (
                   <p>Nenhum contato nesta situação.</p>
                 ) : null}
-                <div className="tv-campaign-candidates" hidden={filtroResultados === 'fora'}>
+                <div
+                  className="tv-campaign-candidates"
+                  hidden={['fora', 'nao_incluidos'].includes(filtroResultados)}
+                >
                   {resultados.registros.map((r) => (
                     <article className="tv-campaign-result" key={r._id}>
                       <strong>{r.nome ?? r.telefoneMascarado}</strong>
@@ -1730,7 +1779,8 @@ function Paginacao({
   );
 }
 
-type FiltroResultado = '' | 'falta' | 'nao_aberto' | 'aberto' | 'enviado' | 'fora';
+type FiltroResultado =
+  '' | 'falta' | 'nao_aberto' | 'aberto' | 'enviado' | 'fora' | 'nao_incluidos';
 
 /** Contadores clicáveis do topo: "falta mandar" primeiro, porque é a pergunta do dia. */
 function contadoresDoEnvio(
@@ -1739,6 +1789,7 @@ function contadoresDoEnvio(
 ): [FiltroResultado, string, number, string][] {
   const n = (...estados: string[]) => estados.reduce((t, e) => t + (r.resumo[e] ?? 0), 0);
   const fora = r.foraDaCampanha?.length ?? 0;
+  const naoIncluidos = r.naoIncluidos?.length ?? 0;
   const enviados = n('aceito', 'enviado', 'entregue', 'lido');
   const todos = Object.values(r.resumo).reduce((t, v) => t + v, 0);
   return manual
@@ -1758,12 +1809,24 @@ function contadoresDoEnvio(
         ],
         ['enviado', 'Enviados', enviados, 'Marcados como enviados'],
         ['fora', 'Ficaram de fora', fora, 'Selecionados que não entraram na fila'],
+        [
+          'nao_incluidos',
+          'Não incluídos',
+          naoIncluidos,
+          'Contatos da base que nunca foram selecionados',
+        ],
         ['', 'Todos na fila', todos, 'Toda a fila desta campanha'],
       ]
     : [
         ['falta', 'Aguardando envio', n('pendente', 'processando'), 'Ainda na fila automática'],
         ['enviado', 'Enviados', enviados, 'Aceitos, entregues ou lidos'],
         ['fora', 'Ficaram de fora', fora, 'Selecionados que não entraram na fila'],
+        [
+          'nao_incluidos',
+          'Não incluídos',
+          naoIncluidos,
+          'Contatos da base que nunca foram selecionados',
+        ],
         ['', 'Todos na fila', todos, 'Toda a fila desta campanha'],
       ];
 }

@@ -129,8 +129,18 @@ export interface ResultadoCampanha {
   modo?: ModoEnvio;
   /** Selecionados que não estão na fila (ou foram excluídos dela), com o motivo. */
   foraDaCampanha?: ForaDaCampanha[];
+  /** Contatos da base que nunca foram selecionados para a campanha (ADR-032). */
+  naoIncluidos?: NaoIncluido[];
   ultimaAberturaManualEm?: string | null;
   aviso: string;
+}
+export interface NaoIncluido {
+  contatoId: string;
+  nome: string;
+  telefoneMascarado: string;
+  motivo: string;
+  podeIncluir: boolean;
+  criadoDepois: boolean;
 }
 export interface ForaDaCampanha {
   contatoId: string;
@@ -241,6 +251,7 @@ export const MOTIVOS_CAMPANHA: Record<string, string> = {
   destinatario_solicitou_parada: 'Solicitou parar as mensagens',
   telefone_duplicado: 'Telefone repetido nesta campanha',
   desinteressado: 'Marcado como desinteressado; volta a ser lembrado em 6 meses',
+  nao_selecionado: 'Pode receber, mas não foi selecionado para esta campanha',
   apto_apos_preparacao: 'Ficou apto depois da preparação; pode ser incluído',
   fora_da_carteira: 'Fora da carteira de quem criou a campanha',
   telefone_alterado: 'Telefone alterado após a preparação',
