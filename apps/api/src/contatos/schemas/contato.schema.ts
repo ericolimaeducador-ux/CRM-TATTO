@@ -39,6 +39,15 @@ export interface Contato {
     whatsapp?: boolean;
     principal?: boolean;
   }[];
+  enderecos?: {
+    cep?: string;
+    logradouro?: string;
+    numero?: string;
+    complemento?: string;
+    bairro?: string;
+    cidade?: string;
+    uf?: string;
+  }[];
   pf?: { cpfCifrado?: string; cpfHash?: string; cpfMascarado?: string };
   pj?: {
     cnpjCifrado?: string;

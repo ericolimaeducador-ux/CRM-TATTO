@@ -43,6 +43,7 @@ Retomado do ponto em que a tela estava "sob finalização". Página, API do clie
 - **E2E** (`e2e/campanhas.spec.ts`): o CRM normaliza o nome do contato para iniciais maiúsculas; o seletor passou a ignorar caixa. Comportamento da tela correto (contato sem autorização bloqueado, telefone não exibido).
 
 Evidência (base temporária, transporte simulado, nenhum envio real):
+
 - Web: `tsc --noEmit` OK, `eslint --max-warnings 0` OK, `vitest run` **82/82 em 27/27 arquivos**.
 - E2E isolado (`node scripts/test-e2e.cjs`): **14/14**, incluindo campanhas desktop 1280px e mobile 360px sem rolagem horizontal.
 - API: `corepack pnpm --filter @captura7/api test` **247/247 em 44/44 suítes**.
@@ -52,6 +53,7 @@ Pendente: CP-04 (parecer SEC-07) e CP-07 (portão REV-11), commit, e configuraç
 ## CP-04 — Parecer SEC-07 (Segurança & LGPD)
 
 **APROVADO COM RESSALVAS.** Conferido no código:
+
 - RBAC: controller inteiro `@Papel('gestor','admin')`; cabeçalhos de teste recusados com `NODE_ENV=production`. E2E confirma 403 para vendedor.
 - Segredos: token só no servidor (`configCampanhas`), nunca devolvido; checklist expõe apenas nomes faltantes. Chamadas à Meta em origem fixa, `redirect: 'error'`, timeout 10s, cursor de paginação limitado.
 - Entrada: IDs validados por regex, textos com tipo/tamanho, busca com regex escapada (sem injeção NoSQL), cadência com limites e janelas ordenadas.
@@ -60,6 +62,7 @@ Pendente: CP-04 (parecer SEC-07) e CP-07 (portão REV-11), commit, e configuraç
 - Minimização: telefone de contato inelegível não é exibido; fila guarda hash/máscara; acessos pessoais registrados em `acessos_dados` sem termo pesquisado.
 
 Ressalvas (não bloqueiam):
+
 1. `whatsapp_respostas` não tem expiração. Sugestão futura: TTL (ex.: 180 dias) para retenção mínima.
 2. Contatos históricos digitados sem aceite documentado ficam **inelegíveis** por design. O alcance real da campanha depende de quantos contatos da feira têm consentimento registrado — ver prévia antes de solicitar o template.
 3. "Dias úteis" ignora feriados; o gestor deve pausar manualmente em feriado.
@@ -69,3 +72,9 @@ Correção aplicada nesta revisão: `render.yaml` fixava `CAMPANHAS_WHATSAPP_ATI
 ## CP-07 — Portão REV-11
 
 **APROVADO COM RESSALVAS PARA MERGE.** Funcionalidade completa conforme ADR-019; QA verde (API 247/247, web 82/82, E2E 14/14); envio permanece desligado por padrão e exige, nesta ordem: configuração privada completa, `CAMPANHAS_WHATSAPP_ATIVO=true`, template MARKETING aprovado idêntico à mensagem, preparação e confirmação explícita na tela. Ressalvas = as de CP-04. Pontos externos do proprietário: número/WABA/token/App Secret/verify token no painel do servidor, webhook HTTPS apontado para a API, template aprovado na Meta.
+
+## CP-09 — Link pessoal de atualização cadastral
+
+Implementado conforme ADR-021. Gestor/admin gera link individual no resultado da campanha manual; o token tem 256 bits de aleatoriedade, persiste somente como SHA-256, expira em sete dias e é consumido no primeiro envio. A página pública mostra e permite corrigir nome, WhatsApp, e-mail, cidade e UF do mesmo contato, sem senha, CPF, endereço, consentimento novo ou criação de outro lead. A autoria/auditoria usa o responsável que emitiu o link.
+
+QA-09: teste focal de emissão, hash, leitura, atualização e recusa de reuso aprovado; TypeScript API/web, ESLint focal e Prettier aprovados. REV-11: revisão estática aprovada para o escopo; token não contém ID, a rota de emissão exige gestor/admin e o link não expõe campos além dos necessários. Não houve acesso, alteração ou teste contra a base real. A implantação continua pendente.

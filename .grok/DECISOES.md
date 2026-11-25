@@ -15,6 +15,16 @@ Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
 **Status.** aceito — 24/11/2026 — pedido do proprietário.
 
+## ADR-021 — Atualização cadastral por link pessoal após interesse em parceria
+
+**Contexto.** Durante a campanha manual pós Tattoo Week, contatos interessados precisam receber atendimento mesmo com uma única pessoa operando as conversas. O QR público existente cria outro lead e não pode ser usado para editar um registro já existente.
+
+**Decisão.** Gestor/admin gera, por contato, um link pessoal de atualização válido por sete dias e de uso único. O token de alta entropia fica armazenado somente como hash. A página pública permite confirmar nome, WhatsApp, e-mail, cidade e UF; não pede senha, CPF, endereço nem altera consentimento. A confirmação atualiza o mesmo contato e mantém autoria/auditoria do responsável que emitiu o link.
+
+**Consequências.** O operador envia o link apenas após conversar com o interessado. Quem abre o link vê somente os dados mínimos daquele contato; depois do envio, o token não pode ser reutilizado. Agendamento de conversa permanece manual nesta fase.
+
+**Status.** aceito — 23/11/2026 — pedido do proprietário.
+
 ## ADR-020 — Modo de envio manual pelo WhatsApp Web até a contratação da Cloud API
 
 **Contexto.** Em 23/11/2026 o proprietário informou que a Tela Viva ainda não tem WhatsApp Business API; antes usava um servidor paralelo não oficial, enviando poucas mensagens por vez. Pediu para enviar individualmente cada mensagem até contratar a API da Meta, aproveitando a campanha e sem apagar o caminho da API.

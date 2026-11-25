@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { perfilLogado, podeGerir } from '@/lib/offline/sessao';
+import { cabecalhosDaSessao, perfilLogado, podeGerir } from '@/lib/offline/sessao';
+import { urlDaApi } from '@/lib/api-url';
 import { CabecalhoPagina, Icone, Selo } from './componentes';
 import { Modal } from './EditorRegistro';
 import {
@@ -114,6 +115,7 @@ function CampanhasGestao() {
   const [recarga, setRecarga] = useState(0);
   const [agora, setAgora] = useState(() => Date.now());
   const [linkManual, setLinkManual] = useState<{ nome: string; url: string } | null>(null);
+  const [linksAtualizacao, setLinksAtualizacao] = useState<Record<string, string>>({});
   const editor = Boolean(id || novo);
   const manual = (form.modo ?? 'api') === 'manual';
   const ultimaManual = resultados?.ultimaAberturaManualEm
@@ -455,6 +457,32 @@ function CampanhasGestao() {
     } finally {
       setOcupado('');
       setRecarga((n) => n + 1);
+    }
+  }
+
+  async function gerarLinkAtualizacao(contatoId: string, nome: string) {
+    setOcupado(`atualizacao:${contatoId}`);
+    setErro('');
+    try {
+      const resposta = await fetch(urlDaApi(`/v1/contatos/${contatoId}/link-atualizacao`), {
+        method: 'POST',
+        headers: cabecalhosDaSessao(),
+      });
+      const json = (await resposta.json().catch(() => null)) as {
+        caminho?: string;
+        mensagem?: string;
+      } | null;
+      if (!resposta.ok || !json?.caminho)
+        throw new Error(json?.mensagem ?? 'Não foi possível gerar o link.');
+      const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+      const link = `${window.location.origin}${base}${json.caminho}`;
+      setLinksAtualizacao((antes) => ({ ...antes, [contatoId]: link }));
+      await navigator.clipboard?.writeText(link).catch(() => undefined);
+      setMensagem(`Link de atualização de ${nome} copiado. Envie-o somente para esta pessoa.`);
+    } catch (causa) {
+      setErro(causa instanceof Error ? causa.message : 'Não foi possível gerar o link.');
+    } finally {
+      setOcupado('');
     }
   }
   function buscar(e: FormEvent) {
@@ -1237,6 +1265,31 @@ function CampanhasGestao() {
                               ? 'Enviar pelo WhatsApp'
                               : 'Abrir de novo'}
                         </button>
+                      ) : null}
+                      {manual ? (
+                        <div className="tv-row-actions">
+                          <button
+                            type="button"
+                            className="tv-small-button"
+                            disabled={ocupado === `atualizacao:${r.contatoId}`}
+                            onClick={() =>
+                              void gerarLinkAtualizacao(r.contatoId, r.nome ?? 'o contato')
+                            }
+                          >
+                            {ocupado === `atualizacao:${r.contatoId}`
+                              ? 'Gerando…'
+                              : 'Gerar link de atualização'}
+                          </button>
+                          {linksAtualizacao[r.contatoId] ? (
+                            <input
+                              className="tv-link-output"
+                              aria-label={`Link de atualização: ${r.nome ?? r.telefoneMascarado}`}
+                              readOnly
+                              value={linksAtualizacao[r.contatoId]}
+                              onFocus={(evento) => evento.currentTarget.select()}
+                            />
+                          ) : null}
+                        </div>
                       ) : null}
                       {r.motivo ? <span>{motivoCampanha(r.motivo)}</span> : null}
                       {r.respondeuEm ? (
