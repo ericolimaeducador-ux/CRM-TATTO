@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { cabecalhosDaSessao, perfilLogado, podeGerir } from '@/lib/offline/sessao';
 
@@ -116,6 +116,7 @@ function CampanhasGestao() {
   const [previa, setPrevia] = useState<PreviaCampanha | null>(null);
   const [resultados, setResultados] = useState<ResultadoCampanha | null>(null);
   const [paginaResultados, setPaginaResultados] = useState(1);
+  const [filtroResultados, setFiltroResultados] = useState<FiltroResultado>('');
   const [eventos, setEventos] = useState<EventoCampanha[]>([]);
   const [confirmacao, setConfirmacao] = useState<'iniciar' | 'retomar' | 'cancelar' | null>(null);
   const [conferiu, setConferiu] = useState(false);
@@ -139,6 +140,8 @@ function CampanhasGestao() {
         )
       : 0;
   const editavel = form.estado === 'rascunho' && podeAlterar;
+  // Depois de preparada, o que importa é o envio: resultados no topo, formulário recolhido.
+  const congelada = Boolean(salva) && !['rascunho', 'preparando'].includes(form.estado);
   const bloqueado = Boolean(ocupado || carregando);
   const prontoAcoes = Boolean(salva && !dirty && !conflito && !bloqueado && podeAlterar);
 
@@ -231,7 +234,9 @@ function CampanhasGestao() {
     if (!id || !salva || salva._id !== id) return;
     let vivo = true;
     void apiCampanhas<{ registro: ResultadoCampanha }>(
-      `/${id}/resultados?pagina=${paginaResultados}`,
+      `/${id}/resultados?pagina=${paginaResultados}${
+        filtroResultados && filtroResultados !== 'fora' ? `&estado=${filtroResultados}` : ''
+      }`,
     )
       .then((r) => {
         if (vivo) setResultados(r.registro);
@@ -249,7 +254,7 @@ function CampanhasGestao() {
     return () => {
       vivo = false;
     };
-  }, [id, salva, paginaResultados, recarga]);
+  }, [id, salva, paginaResultados, recarga, filtroResultados]);
   // Relógio do intervalo entre contatos no envio manual.
   useEffect(() => {
     if (!manual || form.estado !== 'preparada') return;
@@ -464,6 +469,27 @@ function CampanhasGestao() {
       aba?.close();
       // Aqui 409 é contato inelegível e 429 é o intervalo; não é conflito de versão.
       setErro(e instanceof Error ? e.message : 'Não foi possível abrir a conversa.');
+    } finally {
+      setOcupado('');
+      setRecarga((n) => n + 1);
+    }
+  }
+
+  /** Envio manual: registra "Enviei" ou "Não enviei" para saber quem falta mandar. */
+  async function confirmarEnvio(destinatarioId: string, nome: string, enviado: boolean) {
+    if (!salva || bloqueado) return;
+    setOcupado(`confirmar:${destinatarioId}`);
+    setErro('');
+    setMensagem('');
+    try {
+      await apiCampanhas(`/${salva._id}/destinatarios/${destinatarioId}/confirmar`, 'POST', {
+        enviado,
+      });
+      setMensagem(
+        enviado ? `Envio para ${nome} confirmado.` : `${nome} voltou para "Falta mandar".`,
+      );
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível registrar.');
     } finally {
       setOcupado('');
       setRecarga((n) => n + 1);
@@ -760,469 +786,8 @@ function CampanhasGestao() {
               </button>
             </section>
           ) : null}
-          <form onSubmit={(e) => void salvar(e)}>
-            <section className="tv-panel tv-campaign-section">
-              <div className="tv-section-heading">
-                <h2>1. Mensagem e ritmo</h2>
-                <Selo valor={form.estado}>{ESTADOS_CAMPANHA[form.estado]}</Selo>
-              </div>
-              <p>
-                O texto inicial é uma sugestão para a Tattoo Week. Selecione somente pessoas cuja
-                origem e autorização você conferiu; a base inteira não é classificada como público
-                da feira.
-              </p>
-              <fieldset disabled={!editavel || bloqueado} className="tv-campaign-fields">
-                <fieldset className="tv-campaign-mode" hidden={!gestao}>
-                  <legend>Como enviar</legend>
-                  <label className="tv-campaign-confirm">
-                    <input
-                      type="radio"
-                      name="modo-envio"
-                      checked={manual}
-                      onChange={() => alterar({ modo: 'manual' })}
-                    />
-                    <span>
-                      <strong>Manual pelo WhatsApp Web</strong> — cada contato tem um botão que abre
-                      a conversa com o texto pronto; você confere e clica enviar.
-                    </span>
-                  </label>
-                  <label className="tv-campaign-confirm">
-                    <input
-                      type="radio"
-                      name="modo-envio"
-                      checked={!manual}
-                      onChange={() => alterar({ modo: 'api' })}
-                    />
-                    <span>
-                      <strong>API oficial da Meta</strong> — envio automático com modelo aprovado.
-                      Exige a conta WhatsApp Business API configurada.
-                    </span>
-                  </label>
-                </fieldset>
-                <label className="tv-field">
-                  <span>Título da campanha</span>
-                  <input
-                    maxLength={160}
-                    value={form.titulo}
-                    onChange={(e) => alterar({ titulo: e.target.value })}
-                  />
-                </label>
-                <label className="tv-field">
-                  <span>Mensagem para revisão</span>
-                  <textarea
-                    rows={10}
-                    maxLength={4000}
-                    value={form.mensagem}
-                    onChange={(e) => alterar({ mensagem: e.target.value })}
-                  />
-                </label>
-                <p className="tv-help-text">
-                  O vídeo é compartilhado como link. Não há resumo de áudio ou promessa de
-                  resultado.{' '}
-                  {manual
-                    ? 'No envio manual, este é exatamente o texto que aparece no WhatsApp.'
-                    : 'Para envio, o texto precisa corresponder ao modelo aprovado escolhido abaixo.'}
-                </p>
-                <div className="tv-campaign-grid">
-                  {(
-                    [
-                      ['intervaloSegundos', 'Intervalo entre mensagens (segundos)', 60, 86400],
-                      ['loteTamanho', 'Mensagens por lote', 1, 100],
-                      ['pausaLoteSegundos', 'Pausa entre lotes (segundos)', 60, 86400],
-                      ['tetoDiario', 'Teto diário de tentativas', 1, 2000],
-                    ] as const
-                  ).map(([chave, rotulo, min, max]) => (
-                    <label className="tv-field" key={chave}>
-                      <span>{rotulo}</span>
-                      <input
-                        type="number"
-                        min={min}
-                        max={max}
-                        step="1"
-                        value={form.cadencia[chave]}
-                        onChange={(e) =>
-                          alterar({
-                            cadencia: { ...form.cadencia, [chave]: Number(e.target.value) },
-                          })
-                        }
-                      />
-                    </label>
-                  ))}
-                </div>
-                <div className="tv-campaign-grid">
-                  {(
-                    [
-                      ['inicioManha', 'Início da manhã'],
-                      ['fimManha', 'Fim da manhã'],
-                      ['inicioTarde', 'Início da tarde'],
-                      ['fimTarde', 'Fim da tarde'],
-                    ] as const
-                  ).map(([chave, rotulo]) => (
-                    <label className="tv-field" key={chave}>
-                      <span>{rotulo}</span>
-                      <input
-                        type="time"
-                        value={form.cadencia[chave]}
-                        onChange={(e) =>
-                          alterar({ cadencia: { ...form.cadencia, [chave]: e.target.value } })
-                        }
-                      />
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-              <p className="tv-help-text">
-                Dias úteis, fuso de São Paulo. O ritmo e o teto são compartilhados entre campanhas;
-                trocar de campanha não zera a contagem. Estes valores são escolhas operacionais e
-                não garantem ausência de bloqueio.
-              </p>
-            </section>
-            <section className="tv-panel tv-campaign-section">
-              <h2>2. Selecionar os contatos</h2>
-              <p>
-                <strong>
-                  {form.contatosIds.length} de até {config?.limitePublico ?? 2000} contatos
-                  selecionados.
-                </strong>{' '}
-                A seleção é explícita. Nenhuma busca adiciona pessoas automaticamente e nenhuma
-                marcação cria consentimento.
-              </p>
-              <div
-                className="tv-campaign-grid tv-campaign-filters"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    buscar(e);
-                  }
-                }}
-              >
-                {(
-                  [
-                    ['q', 'Buscar contato por nome'],
-                    ['tag', 'Tag do contato'],
-                  ] as const
-                ).map(([chave, rotulo]) => (
-                  <label className="tv-field" key={chave}>
-                    <span>{rotulo}</span>
-                    <input
-                      value={filtros[chave]}
-                      onChange={(e) => setFiltros({ ...filtros, [chave]: e.target.value })}
-                    />
-                  </label>
-                ))}
-                <label className="tv-field">
-                  <span>Origem do contato</span>
-                  <select
-                    value={filtros.origem}
-                    onChange={(e) => setFiltros({ ...filtros, origem: e.target.value })}
-                  >
-                    <option value="">Todas as origens</option>
-                    <option value="manual">Digitado</option>
-                    <option value="qr_proprio">Autocadastro QR</option>
-                    <option value="qr_lido">QR lido</option>
-                    <option value="google_forms">Google Forms</option>
-                    <option value="importado">Importação</option>
-                  </select>
-                </label>
-                <label className="tv-field">
-                  <span>Criado a partir de</span>
-                  <input
-                    type="date"
-                    value={filtros.de}
-                    onChange={(e) => setFiltros({ ...filtros, de: e.target.value })}
-                  />
-                </label>
-                <label className="tv-field">
-                  <span>Criado até</span>
-                  <input
-                    type="date"
-                    value={filtros.ate}
-                    onChange={(e) => setFiltros({ ...filtros, ate: e.target.value })}
-                  />
-                </label>
-              </div>
-              <div className="tv-campaign-actions">
-                <button
-                  type="button"
-                  className="tv-button tv-button-light"
-                  onClick={(e) => buscar(e)}
-                >
-                  Buscar contatos
-                </button>
-                {editavel ? (
-                  <>
-                    <button
-                      type="button"
-                      className="tv-small-button"
-                      disabled={
-                        bloqueado ||
-                        !candidatos?.registros.some((c) => c.elegivel) ||
-                        form.contatosIds.length >= (config?.limitePublico ?? 2000)
-                      }
-                      onClick={selecionarPagina}
-                    >
-                      Selecionar elegíveis desta página
-                    </button>
-                    <button
-                      type="button"
-                      className="tv-small-button"
-                      disabled={bloqueado || !form.contatosIds.length}
-                      onClick={() => alterar({ contatosIds: [] })}
-                    >
-                      Limpar seleção
-                    </button>
-                  </>
-                ) : null}
-              </div>
-              {erroCandidatos ? (
-                <p role="alert" className="tv-inline-error">
-                  {erroCandidatos}
-                </p>
-              ) : null}
-              <div className="tv-campaign-candidates">
-                {candidatos?.registros.map((c) => (
-                  <label
-                    className={`tv-campaign-candidate ${c.elegivel ? '' : 'is-excluded'}`}
-                    key={c.id}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={form.contatosIds.includes(c.id)}
-                      disabled={
-                        !editavel ||
-                        bloqueado ||
-                        (!c.elegivel && !form.contatosIds.includes(c.id)) ||
-                        (!form.contatosIds.includes(c.id) &&
-                          form.contatosIds.length >= (config?.limitePublico ?? 2000))
-                      }
-                      onChange={(e) => escolher(c, e.target.checked)}
-                      aria-label={`Selecionar ${c.nome}`}
-                    />
-                    <span>
-                      <strong>{c.nome}</strong>
-                      <span>
-                        {c.telefoneMascarado || 'Telefone não disponível'} ·{' '}
-                        {c.origem || 'Origem não informada'}
-                      </span>
-                      <small>
-                        {c.elegivel
-                          ? 'Autorização e telefone conferidos nesta consulta'
-                          : motivoCampanha(c.motivo)}
-                      </small>
-                      {c.tags.length ? <small>Tags: {c.tags.join(', ')}</small> : null}
-                    </span>
-                  </label>
-                ))}
-              </div>
-              {candidatos?.total === 0 ? (
-                <p>Nenhum contato corresponde aos filtros. Limpe a busca ou ajuste o período.</p>
-              ) : null}
-              {candidatos ? (
-                <Paginacao
-                  pagina={paginaCandidatos}
-                  total={candidatos.total}
-                  limite={candidatos.limite}
-                  alterar={setPaginaCandidatos}
-                  nome="contatos"
-                />
-              ) : null}
-            </section>
-            {manual ? (
-              <section className="tv-panel tv-campaign-section">
-                <h2>3. Modelo da Meta</h2>
-                <p>
-                  Não é necessário no envio manual. Quando a API oficial for contratada, escolha
-                  &quot;API oficial da Meta&quot; em &quot;Como enviar&quot; para usar um modelo
-                  aprovado e o envio automático.
-                </p>
-              </section>
-            ) : null}
-            <section className="tv-panel tv-campaign-section" hidden={manual}>
-              <h2>3. Escolher um modelo aprovado</h2>
-              <p>
-                O WhatsApp exige um modelo de marketing aprovado na conta da empresa. Nesta versão,
-                aceitamos texto simples sem campos variáveis, cabeçalhos ou botões. Digitar uma
-                mensagem não a transforma em modelo aprovado.
-              </p>
-              <button
-                type="button"
-                className="tv-button tv-button-light"
-                disabled={!editavel || bloqueado || !consultaModelosDisponivel}
-                onClick={() => void consultarModelos()}
-              >
-                Consultar modelos na Meta
-              </button>
-              {!consultaModelosDisponivel ? (
-                <p className="tv-help-text">
-                  A consulta ficará disponível quando a administração conectar a conta empresarial.
-                  Você pode continuar salvando o rascunho.
-                </p>
-              ) : null}
-              {modelosConsultados && !modelos.length ? (
-                <p>
-                  Nenhum modelo de marketing aprovado compatível com texto simples foi encontrado.
-                </p>
-              ) : null}
-              <label className="tv-field">
-                <span>Modelo de marketing</span>
-                <select
-                  disabled={!editavel || bloqueado || !modelos.length}
-                  value={form.template ? `${form.template.id}:${form.template.idioma}` : ''}
-                  onChange={(e) =>
-                    alterar({
-                      template:
-                        modelos.find((m) => `${m.id}:${m.idioma}` === e.target.value) ?? null,
-                    })
-                  }
-                >
-                  <option value="">Escolher após consultar a Meta</option>
-                  {form.template &&
-                  !modelos.some(
-                    (m) => m.id === form.template?.id && m.idioma === form.template.idioma,
-                  ) ? (
-                    <option value={`${form.template.id}:${form.template.idioma}`}>
-                      {form.template.nome} · {form.template.idioma} · seleção salva
-                    </option>
-                  ) : null}
-                  {modelos.map((m) => (
-                    <option key={`${m.id}:${m.idioma}`} value={`${m.id}:${m.idioma}`}>
-                      {m.nome} · {m.idioma}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {form.template ? (
-                <>
-                  <pre className="tv-campaign-message">{form.template.corpo}</pre>
-                  <p>
-                    {mensagemCompativel
-                      ? 'O texto da mensagem corresponde ao modelo selecionado. O servidor verificará a aprovação novamente.'
-                      : 'A mensagem é diferente deste modelo. Ajuste o rascunho ou use o texto aprovado antes de preparar.'}
-                  </p>
-                  {editavel ? (
-                    <button
-                      type="button"
-                      className="tv-small-button"
-                      disabled={bloqueado}
-                      onClick={() => alterar({ mensagem: form.template!.corpo })}
-                    >
-                      Usar texto deste modelo
-                    </button>
-                  ) : null}
-                </>
-              ) : null}
-            </section>
-            <div className="tv-campaign-save">
-              <p>
-                {dirty
-                  ? 'Existem alterações sem salvar. Salve antes de consultar a prévia ou preparar.'
-                  : salva
-                    ? `Versão ${salva.versao} salva no servidor.`
-                    : 'Este rascunho ainda não foi salvo no servidor.'}
-              </p>
-              {editavel ? (
-                <button
-                  className="tv-button tv-button-primary"
-                  type="submit"
-                  disabled={bloqueado || conflito}
-                >
-                  {ocupado === 'salvar' ? 'Salvando…' : 'Salvar rascunho'}
-                </button>
-              ) : (
-                <p>O conteúdo e o público foram congelados na preparação.</p>
-              )}
-            </div>
-          </form>
           <section className="tv-panel tv-campaign-section">
-            <h2>4. Revisar e preparar</h2>
-            <button
-              className="tv-button tv-button-light"
-              disabled={!prontoAcoes}
-              onClick={() => void consultarPrevia()}
-            >
-              Consultar prévia salva
-            </button>
-            {previa ? (
-              <>
-                <div className="tv-campaign-metrics" aria-label="Resumo da prévia">
-                  <span>
-                    Selecionados <strong>{previa.selecionados}</strong>
-                  </span>
-                  <span>
-                    Elegíveis <strong>{previa.elegiveis}</strong>
-                  </span>
-                  <span>
-                    Excluídos <strong>{previa.excluidos}</strong>
-                  </span>
-                  <span>
-                    Telefones repetidos <strong>{previa.duplicados}</strong>
-                  </span>
-                </div>
-                <pre className="tv-campaign-message">{previa.mensagem}</pre>
-                <ul className="tv-campaign-preview">
-                  {previa.destinatarios.map((d) => (
-                    <li key={d.contatoId}>
-                      <strong>{d.nome}</strong> · {d.telefoneMascarado || 'Sem telefone'}
-                      <br />
-                      <span>
-                        {d.elegivel
-                          ? d.repetidoLiberado
-                            ? `Incluído por decisão sua (mesmo número de ${d.mesmoNumeroDe})`
-                            : 'Elegível nesta revisão'
-                          : motivoCampanha(d.motivo)}
-                        {!d.elegivel && d.mesmoNumeroDe
-                          ? ` — mesmo número de ${d.mesmoNumeroDe}`
-                          : ''}
-                      </span>
-                      {d.motivo === 'telefone_duplicado' && editavel ? (
-                        <>
-                          {' '}
-                          <button
-                            type="button"
-                            className="tv-small-button"
-                            disabled={!prontoAcoes}
-                            onClick={() => void incluirContato(d.contatoId, d.nome)}
-                          >
-                            {ocupado === `incluir:${d.contatoId}`
-                              ? 'Incluindo…'
-                              : 'Incluir mesmo assim'}
-                          </button>
-                        </>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-                {!manual && !previa.templateCompativel ? (
-                  <p className="tv-campaign-warning">
-                    Selecione um modelo e confira a correspondência da mensagem antes de preparar.
-                  </p>
-                ) : null}
-              </>
-            ) : (
-              <p>
-                Consulte a versão salva para ver as exclusões e a deduplicação. A autorização será
-                verificada novamente antes de cada saída.
-              </p>
-            )}
-            {['rascunho', 'preparando'].includes(form.estado) ? (
-              <button
-                className="tv-button tv-button-primary"
-                disabled={
-                  !prontoAcoes || !previa?.elegiveis || (!manual && !previa.templateCompativel)
-                }
-                onClick={() => void acao('preparar')}
-              >
-                {form.estado === 'preparando' ? 'Retomar preparação' : 'Preparar público'}
-              </button>
-            ) : null}
-            <p className="tv-help-text">
-              {manual
-                ? 'Preparar congela o texto e o público e libera o botão "Enviar pelo WhatsApp" em cada contato. Nada é enviado sozinho.'
-                : 'Preparar congela o texto e o público. Requer um modelo verificado; não inicia envios, mesmo com o ambiente habilitado.'}
-            </p>
-          </section>
-          <section className="tv-panel tv-campaign-section">
-            <h2>5. Operação e resultados</h2>
+            <h2>{congelada ? `Situação do envio — ${form.titulo}` : '5. Operação e resultados'}</h2>
             <div className="tv-campaign-actions">
               {form.estado === 'preparada' && !manual ? (
                 <button
@@ -1293,12 +858,27 @@ function CampanhasGestao() {
                       : 'Próximo contato liberado.'}
                   </p>
                 ) : null}
-                <div className="tv-campaign-metrics">
-                  {Object.entries(resultados.resumo).map(([estado, total]) => (
-                    <span key={estado}>
-                      {ESTADOS_CAMPANHA[estado] ?? estado} <strong>{total}</strong>
-                    </span>
+                <div className="tv-campaign-filtros" role="group" aria-label="Filtrar contatos">
+                  {contadoresDoEnvio(resultados, manual).map(([chave, rotulo, total, dica]) => (
+                    <button
+                      type="button"
+                      key={chave || 'todos'}
+                      className={`tv-campaign-filtro ${filtroResultados === chave ? 'is-active' : ''} ${
+                        chave === 'falta' || chave === 'fora' ? 'is-alerta' : ''
+                      }`}
+                      aria-pressed={filtroResultados === chave}
+                      title={dica}
+                      onClick={() => {
+                        setPaginaResultados(1);
+                        setFiltroResultados(chave);
+                      }}
+                    >
+                      <strong>{total}</strong>
+                      <span>{rotulo}</span>
+                    </button>
                   ))}
+                </div>
+                <div className="tv-campaign-metrics">
                   {!manual ? (
                     <span>
                       Resposta recebida <strong>{resultados.respondidos}</strong>
@@ -1312,7 +892,7 @@ function CampanhasGestao() {
                     ainda se aplicam.
                   </p>
                 ) : null}
-                {resultados.foraDaCampanha?.length ? (
+                {resultados.foraDaCampanha?.length && ['', 'fora'].includes(filtroResultados) ? (
                   <div className="tv-campaign-warning" aria-label="Ficaram de fora">
                     <h3>Ficaram de fora ({resultados.foraDaCampanha.length})</h3>
                     <p>
@@ -1351,7 +931,13 @@ function CampanhasGestao() {
                     </ul>
                   </div>
                 ) : null}
-                <div className="tv-campaign-candidates">
+                {filtroResultados === 'fora' && !resultados.foraDaCampanha?.length ? (
+                  <p>Ninguém ficou de fora desta campanha.</p>
+                ) : null}
+                {filtroResultados !== 'fora' && !resultados.registros.length ? (
+                  <p>Nenhum contato nesta situação.</p>
+                ) : null}
+                <div className="tv-campaign-candidates" hidden={filtroResultados === 'fora'}>
                   {resultados.registros.map((r) => (
                     <article className="tv-campaign-result" key={r._id}>
                       <strong>{r.nome ?? r.telefoneMascarado}</strong>
@@ -1384,6 +970,36 @@ function CampanhasGestao() {
                             : r.estado === 'pendente'
                               ? 'Enviar pelo WhatsApp'
                               : 'Abrir de novo'}
+                        </button>
+                      ) : null}
+                      {manual && podeAlterar && r.estado === 'aberto_manual' ? (
+                        <div className="tv-row-actions">
+                          <button
+                            type="button"
+                            className="tv-button tv-button-primary"
+                            disabled={bloqueado}
+                            onClick={() => void confirmarEnvio(r._id, r.nome ?? 'o contato', true)}
+                          >
+                            Enviei
+                          </button>
+                          <button
+                            type="button"
+                            className="tv-small-button"
+                            disabled={bloqueado}
+                            onClick={() => void confirmarEnvio(r._id, r.nome ?? 'o contato', false)}
+                          >
+                            Não enviei
+                          </button>
+                        </div>
+                      ) : null}
+                      {manual && podeAlterar && r.estado === 'enviado' ? (
+                        <button
+                          type="button"
+                          className="tv-small-button"
+                          disabled={bloqueado}
+                          onClick={() => void confirmarEnvio(r._id, r.nome ?? 'o contato', false)}
+                        >
+                          Desfazer envio
                         </button>
                       ) : null}
                       {manual && gestao ? (
@@ -1433,6 +1049,469 @@ function CampanhasGestao() {
               </p>
             )}
           </section>
+          <Recolhivel recolher={congelada}>
+            <form onSubmit={(e) => void salvar(e)}>
+              <section className="tv-panel tv-campaign-section">
+                <div className="tv-section-heading">
+                  <h2>1. Mensagem e ritmo</h2>
+                  <Selo valor={form.estado}>{ESTADOS_CAMPANHA[form.estado]}</Selo>
+                </div>
+                <p>
+                  O texto inicial é uma sugestão para a Tattoo Week. Selecione somente pessoas cuja
+                  origem e autorização você conferiu; a base inteira não é classificada como público
+                  da feira.
+                </p>
+                <fieldset disabled={!editavel || bloqueado} className="tv-campaign-fields">
+                  <fieldset className="tv-campaign-mode" hidden={!gestao}>
+                    <legend>Como enviar</legend>
+                    <label className="tv-campaign-confirm">
+                      <input
+                        type="radio"
+                        name="modo-envio"
+                        checked={manual}
+                        onChange={() => alterar({ modo: 'manual' })}
+                      />
+                      <span>
+                        <strong>Manual pelo WhatsApp Web</strong> — cada contato tem um botão que
+                        abre a conversa com o texto pronto; você confere e clica enviar.
+                      </span>
+                    </label>
+                    <label className="tv-campaign-confirm">
+                      <input
+                        type="radio"
+                        name="modo-envio"
+                        checked={!manual}
+                        onChange={() => alterar({ modo: 'api' })}
+                      />
+                      <span>
+                        <strong>API oficial da Meta</strong> — envio automático com modelo aprovado.
+                        Exige a conta WhatsApp Business API configurada.
+                      </span>
+                    </label>
+                  </fieldset>
+                  <label className="tv-field">
+                    <span>Título da campanha</span>
+                    <input
+                      maxLength={160}
+                      value={form.titulo}
+                      onChange={(e) => alterar({ titulo: e.target.value })}
+                    />
+                  </label>
+                  <label className="tv-field">
+                    <span>Mensagem para revisão</span>
+                    <textarea
+                      rows={10}
+                      maxLength={4000}
+                      value={form.mensagem}
+                      onChange={(e) => alterar({ mensagem: e.target.value })}
+                    />
+                  </label>
+                  <p className="tv-help-text">
+                    O vídeo é compartilhado como link. Não há resumo de áudio ou promessa de
+                    resultado.{' '}
+                    {manual
+                      ? 'No envio manual, este é exatamente o texto que aparece no WhatsApp.'
+                      : 'Para envio, o texto precisa corresponder ao modelo aprovado escolhido abaixo.'}
+                  </p>
+                  <div className="tv-campaign-grid">
+                    {(
+                      [
+                        ['intervaloSegundos', 'Intervalo entre mensagens (segundos)', 60, 86400],
+                        ['loteTamanho', 'Mensagens por lote', 1, 100],
+                        ['pausaLoteSegundos', 'Pausa entre lotes (segundos)', 60, 86400],
+                        ['tetoDiario', 'Teto diário de tentativas', 1, 2000],
+                      ] as const
+                    ).map(([chave, rotulo, min, max]) => (
+                      <label className="tv-field" key={chave}>
+                        <span>{rotulo}</span>
+                        <input
+                          type="number"
+                          min={min}
+                          max={max}
+                          step="1"
+                          value={form.cadencia[chave]}
+                          onChange={(e) =>
+                            alterar({
+                              cadencia: { ...form.cadencia, [chave]: Number(e.target.value) },
+                            })
+                          }
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <div className="tv-campaign-grid">
+                    {(
+                      [
+                        ['inicioManha', 'Início da manhã'],
+                        ['fimManha', 'Fim da manhã'],
+                        ['inicioTarde', 'Início da tarde'],
+                        ['fimTarde', 'Fim da tarde'],
+                      ] as const
+                    ).map(([chave, rotulo]) => (
+                      <label className="tv-field" key={chave}>
+                        <span>{rotulo}</span>
+                        <input
+                          type="time"
+                          value={form.cadencia[chave]}
+                          onChange={(e) =>
+                            alterar({ cadencia: { ...form.cadencia, [chave]: e.target.value } })
+                          }
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <p className="tv-help-text">
+                  Dias úteis, fuso de São Paulo. O ritmo e o teto são compartilhados entre
+                  campanhas; trocar de campanha não zera a contagem. Estes valores são escolhas
+                  operacionais e não garantem ausência de bloqueio.
+                </p>
+              </section>
+              <section className="tv-panel tv-campaign-section">
+                <h2>2. Selecionar os contatos</h2>
+                <p>
+                  <strong>
+                    {form.contatosIds.length} de até {config?.limitePublico ?? 2000} contatos
+                    selecionados.
+                  </strong>{' '}
+                  A seleção é explícita. Nenhuma busca adiciona pessoas automaticamente e nenhuma
+                  marcação cria consentimento.
+                </p>
+                <div
+                  className="tv-campaign-grid tv-campaign-filters"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      buscar(e);
+                    }
+                  }}
+                >
+                  {(
+                    [
+                      ['q', 'Buscar contato por nome'],
+                      ['tag', 'Tag do contato'],
+                    ] as const
+                  ).map(([chave, rotulo]) => (
+                    <label className="tv-field" key={chave}>
+                      <span>{rotulo}</span>
+                      <input
+                        value={filtros[chave]}
+                        onChange={(e) => setFiltros({ ...filtros, [chave]: e.target.value })}
+                      />
+                    </label>
+                  ))}
+                  <label className="tv-field">
+                    <span>Origem do contato</span>
+                    <select
+                      value={filtros.origem}
+                      onChange={(e) => setFiltros({ ...filtros, origem: e.target.value })}
+                    >
+                      <option value="">Todas as origens</option>
+                      <option value="manual">Digitado</option>
+                      <option value="qr_proprio">Autocadastro QR</option>
+                      <option value="qr_lido">QR lido</option>
+                      <option value="google_forms">Google Forms</option>
+                      <option value="importado">Importação</option>
+                    </select>
+                  </label>
+                  <label className="tv-field">
+                    <span>Criado a partir de</span>
+                    <input
+                      type="date"
+                      value={filtros.de}
+                      onChange={(e) => setFiltros({ ...filtros, de: e.target.value })}
+                    />
+                  </label>
+                  <label className="tv-field">
+                    <span>Criado até</span>
+                    <input
+                      type="date"
+                      value={filtros.ate}
+                      onChange={(e) => setFiltros({ ...filtros, ate: e.target.value })}
+                    />
+                  </label>
+                </div>
+                <div className="tv-campaign-actions">
+                  <button
+                    type="button"
+                    className="tv-button tv-button-light"
+                    onClick={(e) => buscar(e)}
+                  >
+                    Buscar contatos
+                  </button>
+                  {editavel ? (
+                    <>
+                      <button
+                        type="button"
+                        className="tv-small-button"
+                        disabled={
+                          bloqueado ||
+                          !candidatos?.registros.some((c) => c.elegivel) ||
+                          form.contatosIds.length >= (config?.limitePublico ?? 2000)
+                        }
+                        onClick={selecionarPagina}
+                      >
+                        Selecionar elegíveis desta página
+                      </button>
+                      <button
+                        type="button"
+                        className="tv-small-button"
+                        disabled={bloqueado || !form.contatosIds.length}
+                        onClick={() => alterar({ contatosIds: [] })}
+                      >
+                        Limpar seleção
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+                {erroCandidatos ? (
+                  <p role="alert" className="tv-inline-error">
+                    {erroCandidatos}
+                  </p>
+                ) : null}
+                <div className="tv-campaign-candidates">
+                  {candidatos?.registros.map((c) => (
+                    <label
+                      className={`tv-campaign-candidate ${c.elegivel ? '' : 'is-excluded'}`}
+                      key={c.id}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.contatosIds.includes(c.id)}
+                        disabled={
+                          !editavel ||
+                          bloqueado ||
+                          (!c.elegivel && !form.contatosIds.includes(c.id)) ||
+                          (!form.contatosIds.includes(c.id) &&
+                            form.contatosIds.length >= (config?.limitePublico ?? 2000))
+                        }
+                        onChange={(e) => escolher(c, e.target.checked)}
+                        aria-label={`Selecionar ${c.nome}`}
+                      />
+                      <span>
+                        <strong>{c.nome}</strong>
+                        <span>
+                          {c.telefoneMascarado || 'Telefone não disponível'} ·{' '}
+                          {c.origem || 'Origem não informada'}
+                        </span>
+                        <small>
+                          {c.elegivel
+                            ? 'Autorização e telefone conferidos nesta consulta'
+                            : motivoCampanha(c.motivo)}
+                        </small>
+                        {c.tags.length ? <small>Tags: {c.tags.join(', ')}</small> : null}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {candidatos?.total === 0 ? (
+                  <p>Nenhum contato corresponde aos filtros. Limpe a busca ou ajuste o período.</p>
+                ) : null}
+                {candidatos ? (
+                  <Paginacao
+                    pagina={paginaCandidatos}
+                    total={candidatos.total}
+                    limite={candidatos.limite}
+                    alterar={setPaginaCandidatos}
+                    nome="contatos"
+                  />
+                ) : null}
+              </section>
+              {manual ? (
+                <section className="tv-panel tv-campaign-section">
+                  <h2>3. Modelo da Meta</h2>
+                  <p>
+                    Não é necessário no envio manual. Quando a API oficial for contratada, escolha
+                    &quot;API oficial da Meta&quot; em &quot;Como enviar&quot; para usar um modelo
+                    aprovado e o envio automático.
+                  </p>
+                </section>
+              ) : null}
+              <section className="tv-panel tv-campaign-section" hidden={manual}>
+                <h2>3. Escolher um modelo aprovado</h2>
+                <p>
+                  O WhatsApp exige um modelo de marketing aprovado na conta da empresa. Nesta
+                  versão, aceitamos texto simples sem campos variáveis, cabeçalhos ou botões.
+                  Digitar uma mensagem não a transforma em modelo aprovado.
+                </p>
+                <button
+                  type="button"
+                  className="tv-button tv-button-light"
+                  disabled={!editavel || bloqueado || !consultaModelosDisponivel}
+                  onClick={() => void consultarModelos()}
+                >
+                  Consultar modelos na Meta
+                </button>
+                {!consultaModelosDisponivel ? (
+                  <p className="tv-help-text">
+                    A consulta ficará disponível quando a administração conectar a conta
+                    empresarial. Você pode continuar salvando o rascunho.
+                  </p>
+                ) : null}
+                {modelosConsultados && !modelos.length ? (
+                  <p>
+                    Nenhum modelo de marketing aprovado compatível com texto simples foi encontrado.
+                  </p>
+                ) : null}
+                <label className="tv-field">
+                  <span>Modelo de marketing</span>
+                  <select
+                    disabled={!editavel || bloqueado || !modelos.length}
+                    value={form.template ? `${form.template.id}:${form.template.idioma}` : ''}
+                    onChange={(e) =>
+                      alterar({
+                        template:
+                          modelos.find((m) => `${m.id}:${m.idioma}` === e.target.value) ?? null,
+                      })
+                    }
+                  >
+                    <option value="">Escolher após consultar a Meta</option>
+                    {form.template &&
+                    !modelos.some(
+                      (m) => m.id === form.template?.id && m.idioma === form.template.idioma,
+                    ) ? (
+                      <option value={`${form.template.id}:${form.template.idioma}`}>
+                        {form.template.nome} · {form.template.idioma} · seleção salva
+                      </option>
+                    ) : null}
+                    {modelos.map((m) => (
+                      <option key={`${m.id}:${m.idioma}`} value={`${m.id}:${m.idioma}`}>
+                        {m.nome} · {m.idioma}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {form.template ? (
+                  <>
+                    <pre className="tv-campaign-message">{form.template.corpo}</pre>
+                    <p>
+                      {mensagemCompativel
+                        ? 'O texto da mensagem corresponde ao modelo selecionado. O servidor verificará a aprovação novamente.'
+                        : 'A mensagem é diferente deste modelo. Ajuste o rascunho ou use o texto aprovado antes de preparar.'}
+                    </p>
+                    {editavel ? (
+                      <button
+                        type="button"
+                        className="tv-small-button"
+                        disabled={bloqueado}
+                        onClick={() => alterar({ mensagem: form.template!.corpo })}
+                      >
+                        Usar texto deste modelo
+                      </button>
+                    ) : null}
+                  </>
+                ) : null}
+              </section>
+              <div className="tv-campaign-save">
+                <p>
+                  {dirty
+                    ? 'Existem alterações sem salvar. Salve antes de consultar a prévia ou preparar.'
+                    : salva
+                      ? `Versão ${salva.versao} salva no servidor.`
+                      : 'Este rascunho ainda não foi salvo no servidor.'}
+                </p>
+                {editavel ? (
+                  <button
+                    className="tv-button tv-button-primary"
+                    type="submit"
+                    disabled={bloqueado || conflito}
+                  >
+                    {ocupado === 'salvar' ? 'Salvando…' : 'Salvar rascunho'}
+                  </button>
+                ) : (
+                  <p>O conteúdo e o público foram congelados na preparação.</p>
+                )}
+              </div>
+            </form>
+            <section className="tv-panel tv-campaign-section">
+              <h2>4. Revisar e preparar</h2>
+              <button
+                className="tv-button tv-button-light"
+                disabled={!prontoAcoes}
+                onClick={() => void consultarPrevia()}
+              >
+                Consultar prévia salva
+              </button>
+              {previa ? (
+                <>
+                  <div className="tv-campaign-metrics" aria-label="Resumo da prévia">
+                    <span>
+                      Selecionados <strong>{previa.selecionados}</strong>
+                    </span>
+                    <span>
+                      Elegíveis <strong>{previa.elegiveis}</strong>
+                    </span>
+                    <span>
+                      Excluídos <strong>{previa.excluidos}</strong>
+                    </span>
+                    <span>
+                      Telefones repetidos <strong>{previa.duplicados}</strong>
+                    </span>
+                  </div>
+                  <pre className="tv-campaign-message">{previa.mensagem}</pre>
+                  <ul className="tv-campaign-preview">
+                    {previa.destinatarios.map((d) => (
+                      <li key={d.contatoId}>
+                        <strong>{d.nome}</strong> · {d.telefoneMascarado || 'Sem telefone'}
+                        <br />
+                        <span>
+                          {d.elegivel
+                            ? d.repetidoLiberado
+                              ? `Incluído por decisão sua (mesmo número de ${d.mesmoNumeroDe})`
+                              : 'Elegível nesta revisão'
+                            : motivoCampanha(d.motivo)}
+                          {!d.elegivel && d.mesmoNumeroDe
+                            ? ` — mesmo número de ${d.mesmoNumeroDe}`
+                            : ''}
+                        </span>
+                        {d.motivo === 'telefone_duplicado' && editavel ? (
+                          <>
+                            {' '}
+                            <button
+                              type="button"
+                              className="tv-small-button"
+                              disabled={!prontoAcoes}
+                              onClick={() => void incluirContato(d.contatoId, d.nome)}
+                            >
+                              {ocupado === `incluir:${d.contatoId}`
+                                ? 'Incluindo…'
+                                : 'Incluir mesmo assim'}
+                            </button>
+                          </>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                  {!manual && !previa.templateCompativel ? (
+                    <p className="tv-campaign-warning">
+                      Selecione um modelo e confira a correspondência da mensagem antes de preparar.
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <p>
+                  Consulte a versão salva para ver as exclusões e a deduplicação. A autorização será
+                  verificada novamente antes de cada saída.
+                </p>
+              )}
+              {['rascunho', 'preparando'].includes(form.estado) ? (
+                <button
+                  className="tv-button tv-button-primary"
+                  disabled={
+                    !prontoAcoes || !previa?.elegiveis || (!manual && !previa.templateCompativel)
+                  }
+                  onClick={() => void acao('preparar')}
+                >
+                  {form.estado === 'preparando' ? 'Retomar preparação' : 'Preparar público'}
+                </button>
+              ) : null}
+              <p className="tv-help-text">
+                {manual
+                  ? 'Preparar congela o texto e o público e libera o botão "Enviar pelo WhatsApp" em cada contato. Nada é enviado sozinho.'
+                  : 'Preparar congela o texto e o público. Requer um modelo verificado; não inicia envios, mesmo com o ambiente habilitado.'}
+              </p>
+            </section>
+          </Recolhivel>
           {salva ? (
             <section className="tv-panel tv-campaign-section">
               <details>
@@ -1565,5 +1644,54 @@ function Paginacao({
         </button>
       </div>
     </nav>
+  );
+}
+
+type FiltroResultado = '' | 'falta' | 'nao_aberto' | 'aberto' | 'enviado' | 'fora';
+
+/** Contadores clicáveis do topo: "falta mandar" primeiro, porque é a pergunta do dia. */
+function contadoresDoEnvio(
+  r: ResultadoCampanha,
+  manual: boolean,
+): [FiltroResultado, string, number, string][] {
+  const n = (...estados: string[]) => estados.reduce((t, e) => t + (r.resumo[e] ?? 0), 0);
+  const fora = r.foraDaCampanha?.length ?? 0;
+  const enviados = n('aceito', 'enviado', 'entregue', 'lido');
+  const todos = Object.values(r.resumo).reduce((t, v) => t + v, 0);
+  return manual
+    ? [
+        [
+          'falta',
+          'Falta mandar',
+          n('pendente', 'aberto_manual'),
+          'Ainda não abertos e abertos sem confirmação',
+        ],
+        ['nao_aberto', 'Ainda não abertos', n('pendente'), 'Nunca abriu a conversa no WhatsApp'],
+        [
+          'aberto',
+          'Abertos sem confirmação',
+          n('aberto_manual'),
+          'Abriu o WhatsApp, mas ninguém marcou Enviei',
+        ],
+        ['enviado', 'Enviados', enviados, 'Marcados como enviados'],
+        ['fora', 'Ficaram de fora', fora, 'Selecionados que não entraram na fila'],
+        ['', 'Todos na fila', todos, 'Toda a fila desta campanha'],
+      ]
+    : [
+        ['falta', 'Aguardando envio', n('pendente', 'processando'), 'Ainda na fila automática'],
+        ['enviado', 'Enviados', enviados, 'Aceitos, entregues ou lidos'],
+        ['fora', 'Ficaram de fora', fora, 'Selecionados que não entraram na fila'],
+        ['', 'Todos na fila', todos, 'Toda a fila desta campanha'],
+      ];
+}
+
+/** Recolhe o que foi congelado na preparação, para os resultados ficarem à vista. */
+function Recolhivel({ recolher, children }: { recolher: boolean; children: ReactNode }) {
+  if (!recolher) return <>{children}</>;
+  return (
+    <details className="tv-panel tv-campaign-section tv-campaign-frozen">
+      <summary>Ver mensagem, ritmo e público desta campanha (congelados na preparação)</summary>
+      {children}
+    </details>
   );
 }

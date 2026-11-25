@@ -23,7 +23,9 @@ describe('menu por perfil', () => {
       </MemoryRouter>,
     );
     expect(screen.getByRole('link', { name: 'Duplicatas' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Busca' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Contatos' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Campanhas WhatsApp' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Busca' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Usuários' })).toBeNull();
   });
 });

@@ -104,6 +104,8 @@ export interface Destinatario {
   reservaAte?: Date;
   /** Modo manual: primeira abertura no WhatsApp Web. */
   abertoEm?: Date;
+  /** Modo manual: quem enviou confirmou na tela. */
+  enviadoEm?: Date;
   mensagemId?: string;
   nivelRecibo?: number;
   eventos: { estado: string; em: Date; autor: string; tentativa: number; codigo: string }[];

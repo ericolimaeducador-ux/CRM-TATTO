@@ -2,76 +2,72 @@
 import { perfilLogado, podeGerir } from '@/lib/offline/sessao';
 import { Icone } from '../comercial/componentes';
 
+type Item = [destino: string, texto: string, icone: string];
+
+/**
+ * Menu agrupado pelo que a pessoa faz no dia (ADR-026): primeiro o que se usa todo
+ * dia (contatos, campanhas, captura), depois vendas, equipe e administração.
+ * A busca fica só no topo; "Meu QR" fica dentro de Capturar.
+ */
 export function Menu({ aoNavegar }: { aoNavegar?: () => void }) {
   const perfil = perfilLogado();
-  const principais = [
-    ['/', 'Visão geral', 'painel'],
-    ['/carteira', 'Minha carteira', 'contas'],
+  const gestao = podeGerir();
+  const diaADia: Item[] = [
+    ['/', 'Início', 'painel'],
+    ['/contatos', 'Contatos', 'contatos'],
+    ...(gestao || perfil?.papel === 'vendedor'
+      ? ([['/campanhas', 'Campanhas WhatsApp', 'propostas']] as Item[])
+      : []),
+    ['/capturar', 'Capturar contato', 'qr'],
+  ];
+  const vendas: Item[] = [
+    ['/carteira', 'Contas e estúdios', 'contas'],
     ['/agenda', 'Agenda de visitas', 'agenda'],
     ['/oportunidades', 'Oportunidades', 'funil'],
-    ['/produtos', 'Produtos', 'produtos'],
+    ['/propostas', 'Propostas', 'propostas'],
     ['/precos', 'Preços por cliente', 'grafico'],
+    ['/produtos', 'Produtos', 'produtos'],
+  ];
+  const equipe: Item[] = [
     ['/treinamentos', 'Treinamentos', 'agenda'],
     ['/relatorios', 'Relatórios', 'grafico'],
-    ['/propostas', 'Propostas', 'propostas'],
   ];
+  const administracao: Item[] = [
+    ...(perfil?.papel === 'admin' ? ([['/usuarios', 'Usuários', 'usuario']] as Item[]) : []),
+    ...(gestao ? ([['/duplicatas', 'Duplicatas', 'contatos']] as Item[]) : []),
+    ['/fila', 'Envios pendentes', 'sync'],
+  ];
+  const grupo = (titulo: string, itens: Item[], secundario = false) =>
+    itens.length ? (
+      <div className="tv-nav-group" key={titulo}>
+        <span className={`tv-nav-caption ${secundario ? 'tv-nav-caption-secondary' : ''}`}>
+          {titulo}
+        </span>
+        {itens.map(([to, texto, icone]) => (
+          <NavLink
+            key={to}
+            end={to === '/'}
+            to={to}
+            onClick={aoNavegar}
+            className={({ isActive }) => `tv-nav-link ${isActive ? 'is-active' : ''}`}
+          >
+            <Icone nome={icone} />
+            {texto}
+          </NavLink>
+        ))}
+      </div>
+    ) : null;
   return (
     <nav className="tv-navigation" aria-label="Seções">
-      <span className="tv-nav-caption">RELACIONAMENTO</span>
-      {principais.map(([to, texto, icone]) => (
-        <NavLink
-          key={to}
-          end={to === '/'}
-          to={to}
-          onClick={aoNavegar}
-          className={({ isActive }) => `tv-nav-link ${isActive ? 'is-active' : ''}`}
-        >
-          <Icone nome={icone} />
-          {texto}
-        </NavLink>
-      ))}
-      {podeGerir() || perfil?.papel === 'vendedor' ? (
-        <NavLink className="tv-nav-link" to="/campanhas" onClick={aoNavegar}>
-          <Icone nome="contatos" />
-          Campanhas
-        </NavLink>
-      ) : null}
-      <span className="tv-nav-caption tv-nav-caption-secondary">CAPTURA & ORGANIZAÇÃO</span>
-      <NavLink className="tv-nav-link" to="/capturar" onClick={aoNavegar}>
-        <Icone nome="qr" />
-        Captura rápida
-      </NavLink>
-      <NavLink className="tv-nav-link" to="/contatos" onClick={aoNavegar}>
-        <Icone nome="contatos" />
-        Contatos
-      </NavLink>
-      <NavLink className="tv-nav-link" to="/fila" onClick={aoNavegar}>
-        <Icone nome="sync" />
-        Fila
-      </NavLink>
-      <NavLink className="tv-nav-link" to="/meu-qr" onClick={aoNavegar}>
-        <Icone nome="qr" />
-        Meu QR
-      </NavLink>
-      {perfil ? (
-        <NavLink className="tv-nav-link" to="/busca" onClick={aoNavegar}>
-          <Icone nome="busca" />
-          Busca
-        </NavLink>
-      ) : null}
-      {podeGerir() ? (
-        <NavLink className="tv-nav-link" to="/duplicatas" onClick={aoNavegar}>
-          <Icone nome="contatos" />
-          Duplicatas
-        </NavLink>
-      ) : null}
-      {perfil?.papel === 'admin' ? (
-        <NavLink className="tv-nav-link" to="/usuarios" onClick={aoNavegar}>
-          <Icone nome="usuario" />
-          Usuários
-        </NavLink>
-      ) : null}
-      <NavLink className="tv-nav-link" to={perfil ? '/minha-conta' : '/entrar'} onClick={aoNavegar}>
+      {grupo('DIA A DIA', diaADia)}
+      {grupo('VENDAS', vendas, true)}
+      {grupo('EQUIPE', equipe, true)}
+      {grupo('ADMINISTRAÇÃO', administracao, true)}
+      <NavLink
+        className={({ isActive }) => `tv-nav-link ${isActive ? 'is-active' : ''}`}
+        to={perfil ? '/minha-conta' : '/entrar'}
+        onClick={aoNavegar}
+      >
         <Icone nome="usuario" />
         {perfil ? 'Minha conta' : 'Entrar'}
       </NavLink>

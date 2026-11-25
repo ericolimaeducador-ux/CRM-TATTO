@@ -278,3 +278,47 @@ ul.tv-campaign-candidates {
   padding: 0;
   margin: 0;
 }
+
+/* ADR-026 — contadores clicáveis da situação do envio. */
+.tv-campaign-filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin: 12px 0 16px;
+}
+.tv-campaign-filtro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid #e4dccf;
+  border-radius: 12px;
+  background: #fffdf9;
+  cursor: pointer;
+  text-align: left;
+}
+.tv-campaign-filtro strong {
+  font-size: 26px;
+  line-height: 1;
+}
+.tv-campaign-filtro span {
+  font-size: 13px;
+  color: #5f5649;
+}
+.tv-campaign-filtro.is-alerta strong {
+  color: #a14a1f;
+}
+.tv-campaign-filtro.is-active {
+  border-color: #1d1a16;
+  box-shadow: inset 0 0 0 1px #1d1a16;
+  background: #f6efe4;
+}
+.tv-campaign-frozen > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 4px 0;
+}
+.tv-campaign-frozen[open] > summary {
+  margin-bottom: 12px;
+}
