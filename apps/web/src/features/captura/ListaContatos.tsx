@@ -22,6 +22,7 @@ interface ContatoRemoto {
   status?: string;
   criadoEm?: string;
   responsavel?: string;
+  triagem?: string;
 }
 
 interface PaginaRemota {
@@ -42,6 +43,7 @@ interface FiltrosDaLista {
   ate: string;
   ordem: Ordem;
   responsavel: string;
+  triagem: string;
 }
 
 const FILTROS_INICIAIS: FiltrosDaLista = {
@@ -50,6 +52,7 @@ const FILTROS_INICIAIS: FiltrosDaLista = {
   ate: '',
   ordem: 'recente',
   responsavel: '',
+  triagem: '',
 };
 
 function chaveDaSessao(): string {
@@ -78,13 +81,16 @@ export function ListaContatos() {
   // A busca do topo chega como ?q= (ADR-026).
   const [parametrosDaUrl] = useSearchParams();
   const qDaUrl = parametrosDaUrl.get('q') ?? '';
+  const triagemDaUrl = parametrosDaUrl.get('triagem') ?? '';
   const [filtros, setFiltros] = useState<FiltrosDaLista>(() => ({
     ...FILTROS_INICIAIS,
     q: qDaUrl,
+    triagem: triagemDaUrl,
   }));
   const [rascunhoDeFiltros, setRascunhoDeFiltros] = useState<FiltrosDaLista>(() => ({
     ...FILTROS_INICIAIS,
     q: qDaUrl,
+    triagem: triagemDaUrl,
   }));
   useEffect(() => {
     setFiltros((atual) => (atual.q === qDaUrl ? atual : { ...atual, q: qDaUrl }));
@@ -117,6 +123,7 @@ export function ListaContatos() {
         if (filtros.desde) parametros.set('desde', filtros.desde);
         if (filtros.ate) parametros.set('ate', filtros.ate);
         if (filtros.responsavel) parametros.set('responsavel', filtros.responsavel);
+        if (filtros.triagem) parametros.set('triagem', filtros.triagem);
         if (cursor) parametros.set('cursor', cursor);
         const resposta = await fetch(urlDaApi(`/v1/contatos?${parametros}`), {
           headers: cabecalhosDaSessao(),
@@ -124,7 +131,10 @@ export function ListaContatos() {
         });
         acessoNegado = resposta.status === 401 || resposta.status === 403;
         const json = (await resposta.json()) as {
-          dados?: (ContatoRemoto & { origem?: { vendedorAtribuido?: unknown } })[];
+          dados?: (Omit<ContatoRemoto, 'triagem'> & {
+            origem?: { vendedorAtribuido?: unknown };
+            triagem?: { situacao?: string };
+          })[];
           proximoCursor?: string | null;
           total?: number;
           mensagem?: string;
@@ -140,14 +150,17 @@ export function ListaContatos() {
         if (!Array.isArray(json.dados))
           throw new Error('Não consegui ler a lista do CRM. Tente atualizar.');
         if (!vigente()) return;
-        const recebidos = json.dados.map(({ _id, idLocal, nome, status, criadoEm, origem }) => ({
-          _id,
-          idLocal,
-          nome,
-          status,
-          criadoEm,
-          responsavel: origem?.vendedorAtribuido ? String(origem.vendedorAtribuido) : undefined,
-        }));
+        const recebidos = json.dados.map(
+          ({ _id, idLocal, nome, status, criadoEm, origem, triagem }) => ({
+            triagem: triagem?.situacao,
+            _id,
+            idLocal,
+            nome,
+            status,
+            criadoEm,
+            responsavel: origem?.vendedorAtribuido ? String(origem.vendedorAtribuido) : undefined,
+          }),
+        );
         setPagina((anterior) => {
           const acumulados = cursor ? [...anterior.itens, ...recebidos] : recebidos;
           const ids = new Set<string>();
@@ -359,6 +372,22 @@ export function ListaContatos() {
             <option value="nome">Nome (A–Z)</option>
           </select>
         </label>
+        <label className="flex flex-col gap-1 text-base sm:col-span-2">
+          Triagem (respondeu à mensagem?)
+          <select
+            className="campo"
+            value={rascunhoDeFiltros.triagem}
+            onChange={(evento) =>
+              setRascunhoDeFiltros((anterior) => ({ ...anterior, triagem: evento.target.value }))
+            }
+          >
+            <option value="">Todos</option>
+            <option value="sem">Ainda não triados</option>
+            <option value="interessado">Interessados</option>
+            <option value="desinteressado">Desinteressados</option>
+            <option value="saiu">Pediram para sair</option>
+          </select>
+        </label>
         {gestao ? (
           <label className="flex flex-col gap-1 text-base sm:col-span-2">
             Responsável
@@ -484,25 +513,33 @@ export function ListaContatos() {
             >
               {item.nome?.trim() || 'Contato sem nome informado'}
             </Link>
-            <p className="text-base">Salvo no CRM{item.status ? ` · ${item.status}` : ''}</p>
+            <BotoesTriagem
+              item={item}
+              aoMudar={(situacao) =>
+                setPagina((anterior) => ({
+                  ...anterior,
+                  itens: anterior.itens.map((x) =>
+                    x._id === item._id ? { ...x, triagem: situacao } : x,
+                  ),
+                }))
+              }
+            />
             {item.criadoEm ? (
               <p className="text-sm text-stone-600">Entrou em {dataDeEntrada(item.criadoEm)}</p>
             ) : null}
             {gestao ? (
-              <p className="text-sm text-stone-600">
-                Responsável:{' '}
-                {item.responsavel
-                  ? (equipe.find((p) => p.id === item.responsavel)?.nome ?? 'pessoa da equipe')
-                  : 'ninguém ainda'}
-              </p>
-            ) : null}
-            {podeGerir() ? (
-              <Link
-                className="mt-2 inline-flex min-h-12 items-center text-base underline"
-                to={`/promover/${item._id}`}
-              >
-                Promover
-              </Link>
+              <PassarPara
+                item={item}
+                equipe={equipe}
+                aoPassar={(responsavel) =>
+                  setPagina((anterior) => ({
+                    ...anterior,
+                    itens: anterior.itens.map((x) =>
+                      x._id === item._id ? { ...x, responsavel } : x,
+                    ),
+                  }))
+                }
+              />
             ) : null}
           </li>
         ))}
@@ -607,4 +644,159 @@ function dataLocal(valor: number): string {
   const parte = (tipo: Intl.DateTimeFormatPartTypes) =>
     partes.find((item) => item.type === tipo)?.value ?? '';
   return `${parte('year')}-${parte('month')}-${parte('day')}`;
+}
+
+const ROTULO_TRIAGEM: Record<string, string> = {
+  interessado: 'Interessado · na carteira',
+  desinteressado: 'Desinteressado · volta em 6 meses',
+  saiu: 'Pediu para sair · não recebe mais WhatsApp',
+};
+
+/**
+ * Triagem do SDR direto na lista (ADR-030): um clique, sem exigir dados.
+ * "Pediu para sair" bloqueia o WhatsApp de vez, como responder SAIR.
+ */
+function BotoesTriagem({
+  item,
+  aoMudar,
+}: {
+  item: ContatoRemoto;
+  aoMudar: (situacao: string) => void;
+}) {
+  const [ocupado, setOcupado] = useState(false);
+  const [erro, setErro] = useState('');
+  async function triar(situacao: 'interessado' | 'desinteressado' | 'saiu') {
+    if (
+      situacao === 'saiu' &&
+      !window.confirm(
+        `${item.nome?.trim() || 'Este contato'} pediu para não receber mais mensagens? O WhatsApp dele fica bloqueado nas campanhas.`,
+      )
+    )
+      return;
+    setOcupado(true);
+    setErro('');
+    try {
+      const resposta = await fetch(urlDaApi(`/v1/contatos/${item._id}/triagem`), {
+        method: 'POST',
+        headers: cabecalhosDaSessao(),
+        body: JSON.stringify({ situacao }),
+      });
+      const json = (await resposta.json().catch(() => null)) as {
+        erros?: { mensagem?: string }[];
+        mensagem?: string;
+      } | null;
+      if (!resposta.ok) {
+        setErro(textoDaResposta(json ?? {}, 'Não registrei a triagem.'));
+        return;
+      }
+      aoMudar(situacao);
+    } catch {
+      setErro('Sem resposta do servidor. Não registrei a triagem.');
+    } finally {
+      setOcupado(false);
+    }
+  }
+  const atual = item.triagem ?? '';
+  return (
+    <div className="mt-1 flex flex-col gap-1">
+      <p className="text-sm font-semibold">{ROTULO_TRIAGEM[atual] ?? 'Ainda não triado'}</p>
+      <div className="flex flex-wrap gap-2" aria-label={`Triagem: ${item.nome ?? ''}`}>
+        {atual !== 'interessado' ? (
+          <button
+            type="button"
+            className="tv-small-button"
+            disabled={ocupado}
+            onClick={() => void triar('interessado')}
+          >
+            Interessado
+          </button>
+        ) : null}
+        {atual !== 'desinteressado' ? (
+          <button
+            type="button"
+            className="tv-small-button"
+            disabled={ocupado}
+            onClick={() => void triar('desinteressado')}
+          >
+            Desinteressado
+          </button>
+        ) : null}
+        {atual !== 'saiu' ? (
+          <button
+            type="button"
+            className="tv-small-button"
+            disabled={ocupado}
+            onClick={() => void triar('saiu')}
+          >
+            Pediu para sair
+          </button>
+        ) : null}
+      </div>
+      {erro ? (
+        <p className="text-sm" role="alert">
+          {erro}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** "Passar para" em cada linha (ADR-030): escolher a pessoa já grava, sem outra tela. */
+function PassarPara({
+  item,
+  equipe,
+  aoPassar,
+}: {
+  item: ContatoRemoto;
+  equipe: { id: string; nome: string; papel?: string }[];
+  aoPassar: (responsavel: string) => void;
+}) {
+  const [salvando, setSalvando] = useState(false);
+  const [aviso, setAviso] = useState('');
+  const pessoas = equipe.filter((p) => ['vendedor', 'gestor', 'admin'].includes(p.papel ?? ''));
+  async function passar(responsavelId: string) {
+    if (!responsavelId || responsavelId === item.responsavel) return;
+    setSalvando(true);
+    setAviso('');
+    try {
+      const resposta = await fetch(urlDaApi('/v1/contatos/atribuir'), {
+        method: 'POST',
+        headers: cabecalhosDaSessao(),
+        body: JSON.stringify({ ids: [item._id], responsavelId }),
+      });
+      if (!resposta.ok) {
+        const json = (await resposta.json().catch(() => null)) as {
+          erros?: { mensagem?: string }[];
+        } | null;
+        setAviso(textoDaResposta(json ?? {}, 'Não passei o contato. Nada mudou.'));
+        return;
+      }
+      aoPassar(responsavelId);
+      setAviso(`Passado para ${pessoas.find((p) => p.id === responsavelId)?.nome ?? 'a pessoa'}.`);
+    } catch {
+      setAviso('Sem resposta do servidor. Não passei o contato.');
+    } finally {
+      setSalvando(false);
+    }
+  }
+  return (
+    <label className="mt-1 flex flex-col gap-1 text-sm">
+      Quem vai atender
+      <select
+        className="campo"
+        value={item.responsavel ?? ''}
+        disabled={salvando}
+        aria-label={`Passar ${item.nome?.trim() || 'contato'} para`}
+        onChange={(evento) => void passar(evento.target.value)}
+      >
+        <option value="">Ninguém ainda: escolha para passar</option>
+        {pessoas.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.nome}
+          </option>
+        ))}
+      </select>
+      {aviso ? <span role="status">{aviso}</span> : null}
+    </label>
+  );
 }

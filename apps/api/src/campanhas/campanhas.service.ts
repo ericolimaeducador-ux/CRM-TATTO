@@ -969,6 +969,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       return { motivo: 'contato_indisponivel' };
     if (carteiraDe && String(lead.origem?.vendedorAtribuido ?? '') !== carteiraDe)
       return { motivo: 'fora_da_carteira' };
+    if (lead.triagem?.situacao === 'saiu') return { motivo: 'destinatario_solicitou_parada' };
     if (
       lead.triagem?.situacao === 'desinteressado' &&
       (!lead.triagem.retomarEm || lead.triagem.retomarEm > this.agora())

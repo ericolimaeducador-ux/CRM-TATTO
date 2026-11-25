@@ -140,6 +140,41 @@ describe('ficha do lead', () => {
     });
   });
 
+  it('passa o contato para um vendedor no bloco do topo, com um seletor e um botão', async () => {
+    localStorage.setItem('captura7.token', 'sessao');
+    localStorage.setItem(
+      'captura7.perfil',
+      JSON.stringify({ id: '1', papel: 'admin', nome: 'Admin' }),
+    );
+    const fetchMock = vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
+      if (String(entrada).includes('/v1/usuarios/equipe'))
+        return {
+          ok: true,
+          json: async () => ({ dados: [{ id: 'v1', nome: 'Luiz Vendedor', papel: 'vendedor' }] }),
+        };
+      if (init?.method === 'POST') return { ok: true, json: async () => ({ dados: {} }) };
+      return { ok: true, json: async () => ({ dados: { ...gabriel, status: 'capturado' } }) };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <MemoryRouter initialEntries={['/lead/abc']}>
+        <Routes>
+          <Route path="/lead/:id" element={<PaginaLead />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    const painel = await screen.findByLabelText('O que fazer com este contato');
+    expect(painel.textContent).toContain('Quem vai atender');
+    await screen.findByRole('option', { name: 'Luiz Vendedor' });
+    fireEvent.change(screen.getByRole('combobox', { name: /Quem vai atender/ }), {
+      target: { value: 'v1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Passar para esta pessoa' }));
+    await screen.findByText(/Contato passado para Luiz Vendedor/);
+    const post = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/v1/contatos/atribuir'));
+    expect(JSON.parse(String(post?.[1]?.body))).toEqual({ ids: ['abc'], responsavelId: 'v1' });
+  });
+
   it('edita o telefone pela API com a versão conhecida', async () => {
     const fetchMock = montar(gabriel);
     fireEvent.click(await screen.findByRole('button', { name: 'Editar dados' }));

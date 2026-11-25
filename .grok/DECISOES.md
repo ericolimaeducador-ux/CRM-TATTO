@@ -3,6 +3,22 @@
 Formato: contexto · decisão · alternativas consideradas · consequências · status.
 Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
+## ADR-030 — Triagem e "quem vai atender" à vista; "Pediu para sair" bloqueia de vez
+
+**Contexto.** Depois do ADR-029, em 25/11/2026, nenhum dos 92 contatos tinha sido triado. O proprietário seguia tentando "qualificar" e "promover" e recebia pedidos de dados que não tinha. Ele relatou que, mesmo informando o código do autenticador, a promoção de um contato não avançava: o contato estava em "capturado", sem cidade, tipo, CPF ou endereço, e o link "Promover" de cada linha da lista leva à promoção a cliente, que exige tudo isso. Os botões de triagem só existiam dentro da ficha, depois de um bloco de dados. O proprietário também pediu separar quem tem interesse de quem pediu para não continuar e disse que vendedores mais velhos não encontram o caminho para promover e atribuir.
+
+**Decisão.**
+1. **Lista de Contatos:** cada linha mostra a triagem ("Ainda não triado", "Interessado · na carteira", "Desinteressado · volta em 6 meses", "Pediu para sair · não recebe mais WhatsApp") com os botões ao lado. Há o filtro "Triagem" (Todos, Ainda não triados, Interessados, Desinteressados, Pediram para sair), que também aceita `?triagem=` na URL. Para a gestão, cada linha tem o seletor "Quem vai atender", que grava ao escolher. O link "Promover" sai da lista.
+2. **Ficha:** o nome vira o título. No topo fica o bloco "O que fazer com este contato", com a triagem e "Quem vai atender" (seletor + "Passar para esta pessoa"). As ações de cadastro (capturado/qualificar/promover/descartar/LGPD) ficam recolhidas em "Mais ações", com a explicação do que cada uma exige.
+3. **"Pediu para sair"** é uma terceira situação de triagem (`saiu`). Grava o bloqueio em `whatsapp_bloqueios` para os telefones do contato (o mesmo efeito de responder SAIR), não tem retomada, arquiva a conta e na campanha aparece como `destinatario_solicitou_parada`. O desinteressado continua voltando em 6 meses.
+4. A API aceita `triagem=interessado|desinteressado|saiu|sem` na listagem de contatos.
+
+**Alternativas.** Promover sem exigir dados: rejeitado, porque cliente precisa de documento para nota fiscal (ADR-027). Tratar "pediu para sair" como desinteressado: rejeitado, porque a LGPD e o próprio texto da campanha ("responda SAIR") exigem parada definitiva.
+
+**Consequências.** O caminho do dia a dia fica em um clique na lista ou no topo da ficha. A promoção a cliente segue disponível, recolhida, para quando houver proposta. O bloqueio manual registra `origem: triagem_manual`.
+
+**Status.** aceito — 25/11/2026 — pedido do proprietário.
+
 ## ADR-029 — Triagem do SDR antes da carteira; qualificação na carteira por caminho (Funil, Nutrir, Adormecido)
 
 **Contexto.** Em 25/11/2026, ao começar a qualificar, o proprietário apontou que a ordem estava invertida: "passar o contato para futuro cliente deveria ser anterior à sua qualificação". Contatos responderam à campanha dizendo que queriam conhecer o portfólio. O dossiê "Tela Viva × Pele Rara — Canal Estúdios de Tatuagem" define a jornada do estúdio: lead → primeiro contato (enviado/respondeu) → conversa de 15 min → Academia → amostras → Experiência de Uso → devolutiva → proposta → parceiro ativo. O proprietário respondeu a um questionário de oito perguntas com as escolhas registradas abaixo.

@@ -102,7 +102,7 @@ describe('contatos deste aparelho e do CRM', () => {
     expect(
       (await screen.findByRole('link', { name: 'Lead de outro aparelho' })).getAttribute('href'),
     ).toBe('/lead/remoto-1');
-    expect(screen.getByText('Salvo no CRM · capturado')).toBeTruthy();
+    expect(screen.getByText('Ainda não triado')).toBeTruthy();
     expect(screen.queryByText('Nenhum contato encontrado.')).toBeNull();
     expect(local.gravar).not.toHaveBeenCalled();
     expect(local.itens).toHaveLength(0);
@@ -112,6 +112,29 @@ describe('contatos deste aparelho e do CRM', () => {
         headers: expect.objectContaining({ authorization: 'Bearer sessao-a' }),
       }),
     );
+  });
+
+  it('tria direto na lista: Interessado vai para a carteira e o filtro separa os grupos', async () => {
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) =>
+      init?.method === 'POST'
+        ? { ok: true, status: 201, json: async () => ({ dados: {} }) }
+        : resposta([{ _id: 'remoto-1', nome: 'Respondeu no Zap', status: 'capturado' }]),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    abrir();
+    await screen.findByRole('link', { name: 'Respondeu no Zap' });
+    expect(screen.queryByRole('link', { name: 'Promover' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Interessado' }));
+    await screen.findByText('Interessado · na carteira');
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(String(post?.[0])).toContain('/v1/contatos/remoto-1/triagem');
+    expect(JSON.parse(String(post?.[1]?.body))).toEqual({ situacao: 'interessado' });
+    fireEvent.change(screen.getByLabelText('Triagem (respondeu à mensagem?)'), {
+      target: { value: 'saiu' },
+    });
+    expect(
+      (screen.getByLabelText('Triagem (respondeu à mensagem?)') as HTMLSelectElement).value,
+    ).toBe('saiu');
   });
 
   it('deduplica idServidor e idLocal preservando edição pendente, link local e estado local', async () => {
@@ -285,7 +308,9 @@ describe('contatos deste aparelho e do CRM', () => {
     vi.stubGlobal('fetch', fetchMock);
     abrir();
     await screen.findByRole('link', { name: 'Lead da Feira' });
-    expect(screen.getByText(/Responsável:\s*ninguém ainda/)).toBeTruthy();
+    expect((screen.getByLabelText('Passar Lead da Feira para') as HTMLSelectElement).value).toBe(
+      '',
+    );
     fireEvent.change(screen.getByLabelText('Responsável'), { target: { value: 'sem' } });
     fireEvent.click(screen.getByRole('button', { name: 'Aplicar filtros' }));
     await waitFor(() =>

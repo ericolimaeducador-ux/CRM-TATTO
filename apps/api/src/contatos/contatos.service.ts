@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { hmacDocumento } from '../seguranca/cifra';
 import { publicarContatoAlterado } from './contato-alterado';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Types, type Model } from 'mongoose';
@@ -134,15 +135,20 @@ export class ContatosService {
   }
 
   /**
-   * Triagem do SDR (ADR-029): interessado entra na carteira; desinteressado sai das
-   * campanhas e volta a ser lembrado em 6 meses. Um clique, sem exigir dados.
+   * Triagem do SDR (ADR-029/030): interessado entra na carteira; desinteressado sai das
+   * campanhas e volta a ser lembrado em 6 meses; "pediu para sair" bloqueia o WhatsApp
+   * de vez (como responder SAIR) e nunca volta sozinho. Um clique, sem exigir dados.
    */
   async triar(id: string, situacaoBruta: unknown, motivoBruto: unknown, usuario: UsuarioSessao) {
-    if (situacaoBruta !== 'interessado' && situacaoBruta !== 'desinteressado')
+    if (
+      situacaoBruta !== 'interessado' &&
+      situacaoBruta !== 'desinteressado' &&
+      situacaoBruta !== 'saiu'
+    )
       throw new RespostaComErro(
         422,
         'TRIAGEM_INVALIDA',
-        'Escolha Interessado ou Desinteressado. Nada foi alterado.',
+        'Escolha Interessado, Desinteressado ou Pediu para sair. Nada foi alterado.',
         null,
       );
     const motivo = typeof motivoBruto === 'string' ? motivoBruto.trim().slice(0, 500) : '';
@@ -173,6 +179,20 @@ export class ContatosService {
         'O contato mudou enquanto a triagem era registrada. Abra de novo e tente outra vez.',
         null,
       );
+    if (situacaoBruta === 'saiu') {
+      // Mesmo efeito de responder SAIR: nenhum WhatsApp de campanha para estes números.
+      const telefones = ((antes as { telefones?: { e164?: string }[] }).telefones ?? [])
+        .map((t) => String(t.e164 ?? '').replace(/\D/g, ''))
+        .filter((d) => /^[1-9]\d{7,14}$/.test(d));
+      for (const digitos of new Set(telefones))
+        await this.conexao
+          .collection('whatsapp_bloqueios')
+          .updateOne(
+            { telefoneHash: hmacDocumento(`whatsapp:${digitos}`) },
+            { $setOnInsert: { em: agora, origem: 'triagem_manual' } },
+            { upsert: true },
+          );
+    }
     const anterior = (antes as { triagem?: { situacao?: string } }).triagem?.situacao ?? null;
     await this.conexao.collection('contatos_auditoria').insertOne({
       contatoId: new Types.ObjectId(id),

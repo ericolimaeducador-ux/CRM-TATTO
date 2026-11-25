@@ -88,6 +88,7 @@ export class ComercialService implements OnModuleInit, OnModuleDestroy {
         !contato.lgpd?.eliminadoEm &&
         contato.status !== 'descartado' &&
         situacao !== 'desinteressado' &&
+        situacao !== 'saiu' &&
         (situacao === 'interessado' || ['qualificado', 'cliente'].includes(String(contato.status)));
       if (!ativo) {
         if (!conta || conta.arquivado) return;
