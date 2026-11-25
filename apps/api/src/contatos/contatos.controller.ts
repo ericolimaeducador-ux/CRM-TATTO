@@ -39,6 +39,15 @@ export class ContatosController {
     return this.lote.executar(corpo, exigirUsuario(req));
   }
 
+  @Post('atribuir')
+  @Papel(...PERFIL_PERMISSOES.atribuir_carteira)
+  atribuir(
+    @Body() corpo: { ids?: unknown; responsavelId?: unknown },
+    @Req() req: RequisicaoComUsuario,
+  ) {
+    return this.contatos.atribuir(corpo?.ids, corpo?.responsavelId, exigirUsuario(req));
+  }
+
   @Patch(':id')
   @Papel(...PERFIL_PERMISSOES.editar_contato)
   async patch(
@@ -138,6 +147,7 @@ export class ContatosController {
     @Query('desde') desde: string | undefined,
     @Query('ate') ate: string | undefined,
     @Query('ordem') ordem: string | undefined,
+    @Query('responsavel') responsavel: string | undefined,
     @Req() req: RequisicaoComUsuario,
   ) {
     return this.contatos.listar(exigirUsuario(req), {
@@ -151,6 +161,7 @@ export class ContatosController {
       desde,
       ate,
       ordem,
+      responsavel,
     });
   }
 

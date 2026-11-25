@@ -7,6 +7,12 @@ const local = vi.hoisted(() => ({
   itens: [] as ContatoLocal[],
   gravar: vi.fn(),
 }));
+const time = vi.hoisted(() => ({
+  equipe: [] as { id: string; nome: string; papel?: string }[],
+}));
+vi.mock('../comercial/api', () => ({
+  useEquipe: () => ({ equipe: time.equipe, erro: '', carregando: false }),
+}));
 vi.mock('@/lib/offline/fila', () => ({
   lerTodos: vi.fn(async () => local.itens),
   observarFila: vi.fn(() => () => undefined),
@@ -56,6 +62,7 @@ function abrir() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  time.equipe = [];
   local.itens = [];
   localStorage.clear();
   localStorage.setItem('captura7.token', 'sessao-a');
@@ -261,5 +268,52 @@ describe('contatos deste aparelho e do CRM', () => {
     await act(async () => nova.resolver(resposta([{ _id: 'b', nome: 'Dado do usuário B' }])));
     expect(await screen.findByRole('link', { name: 'Dado do usuário B' })).toBeTruthy();
     expect(local.gravar).not.toHaveBeenCalled();
+  });
+
+  it('gestão filtra sem responsável, seleciona e atribui a um vendedor', async () => {
+    time.equipe = [{ id: 'vend-1', nome: 'Paula Vendas', papel: 'vendedor' }];
+    const fetchMock = vi.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
+      if (String(entrada).includes('/atribuir'))
+        return {
+          ok: true,
+          status: 201,
+          json: async () => ({ dados: { atribuidos: 1, semMudanca: 0, naoEncontrados: 0 } }),
+        };
+      void init;
+      return resposta([{ _id: 'lead-sem-dono', nome: 'Lead da Feira' }]);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    abrir();
+    await screen.findByRole('link', { name: 'Lead da Feira' });
+    expect(screen.getByText(/Responsável:\s*ninguém ainda/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Responsável'), { target: { value: 'sem' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar filtros' }));
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('responsavel=sem'))).toBe(true),
+    );
+    fireEvent.click(await screen.findByLabelText('Selecionar Lead da Feira'));
+    fireEvent.change(screen.getByLabelText('Passar para'), { target: { value: 'vend-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Atribuir' }));
+    await screen.findByText(/1 contato\(s\) agora com Paula Vendas/);
+    const post = fetchMock.mock.calls.find((c) => String(c[0]).includes('/atribuir'));
+    expect(JSON.parse(String(post?.[1]?.body))).toEqual({
+      ids: ['lead-sem-dono'],
+      responsavelId: 'vend-1',
+    });
+  });
+
+  it('vendedor não vê filtro de responsável nem seleção', async () => {
+    localStorage.setItem(
+      'captura7.perfil',
+      JSON.stringify({ id: 'usuario-a', nome: 'QA', papel: 'vendedor' }),
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => resposta([{ _id: 'meu', nome: 'Meu lead' }])),
+    );
+    abrir();
+    await screen.findByRole('link', { name: 'Meu lead' });
+    expect(screen.queryByLabelText('Responsável')).toBeNull();
+    expect(screen.queryByLabelText('Selecionar Meu lead')).toBeNull();
   });
 });

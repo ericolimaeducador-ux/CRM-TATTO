@@ -42,18 +42,22 @@ Campanhas guardam autor/horário/versão e eventos append-only nas mutações; v
 
 Todas as rotas `/v1/campanhas` exigem sessão gestor/admin. Configuração, criação, leitura, edição e ações retornam `{registro}`; listas/templates/candidatos retornam `{registros,...}`. Ações e edição exigem `versao`; início e retomada também `confirmar:true`.
 
-| Rota                                                    | Efeito                                                            |
-| ------------------------------------------------------- | ----------------------------------------------------------------- |
-| `GET /configuracao`                                     | Checklist sem credenciais                                         |
-| `GET /templates`                                        | Templates aprovados simples consultados na WABA                   |
-| `GET /candidatos`                                       | `q`, `origem`, `tag`, `de`, `ate`, `pagina`; telefones mascarados |
-| `GET /` / `POST /`                                      | Listar/criar rascunho                                             |
-| `GET /:id` / `PATCH /:id`                               | Ler/editar rascunho versionado                                    |
-| `POST /:id/previa`                                      | Conferir selecionados/elegíveis/exclusões/duplicatas              |
-| `POST /:id/preparar`                                    | Congelar e materializar fila, permitido com envio OFF             |
-| `POST /:id/iniciar`, `/pausar`, `/retomar`, `/cancelar` | Operações versionadas                                             |
-| `GET /:id/resultados`                                   | Contagens, destinatários mascarados, respostas e cadência         |
-| `GET /:id/auditoria`                                    | Eventos de operação sem valores pessoais                          |
-| `POST /:id/destinatarios/:destinatarioId/whatsapp-manual` | Modo manual: revalida, aplica intervalo e devolve telefone/texto |
+| Rota                                                      | Efeito                                                            |
+| --------------------------------------------------------- | ----------------------------------------------------------------- |
+| `GET /configuracao`                                       | Checklist sem credenciais                                         |
+| `GET /templates`                                          | Templates aprovados simples consultados na WABA                   |
+| `GET /candidatos`                                         | `q`, `origem`, `tag`, `de`, `ate`, `pagina`; telefones mascarados |
+| `GET /` / `POST /`                                        | Listar/criar rascunho                                             |
+| `GET /:id` / `PATCH /:id`                                 | Ler/editar rascunho versionado                                    |
+| `POST /:id/previa`                                        | Conferir selecionados/elegíveis/exclusões/duplicatas              |
+| `POST /:id/preparar`                                      | Congelar e materializar fila, permitido com envio OFF             |
+| `POST /:id/iniciar`, `/pausar`, `/retomar`, `/cancelar`   | Operações versionadas                                             |
+| `GET /:id/resultados`                                     | Contagens, destinatários mascarados, respostas e cadência         |
+| `GET /:id/auditoria`                                      | Eventos de operação sem valores pessoais                          |
+| `POST /:id/destinatarios/:destinatarioId/whatsapp-manual` | Modo manual: revalida, aplica intervalo e devolve telefone/texto  |
 
 Os testes usam Mongo temporário e transporte simulado; nunca apontar runners de teste para o banco real ou usar credenciais reais.
+
+## Atualização cadastral após interesse
+
+No resultado de uma campanha manual, gestor/admin pode usar **Gerar link de atualização** para um contato que respondeu. O link é pessoal, expira em sete dias e vale para um único envio. A pessoa confirma nome, WhatsApp, e-mail, cidade e UF no próprio registro; não cria outro lead, não pede senha nem documento e não altera a autorização comercial. Envie o link somente para o titular e combine a conversa manualmente após receber a confirmação.

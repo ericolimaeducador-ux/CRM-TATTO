@@ -12,6 +12,8 @@ import {
 } from '@/lib/offline/sessao';
 import type { ContatoLocal } from '@/lib/offline/tipos';
 import { IndicadorSincronizacao } from './IndicadorSincronizacao';
+import { AtribuirContatos } from './AtribuirContatos';
+import { useEquipe } from '../comercial/api';
 
 interface ContatoRemoto {
   _id: string;
@@ -19,6 +21,7 @@ interface ContatoRemoto {
   nome?: string;
   status?: string;
   criadoEm?: string;
+  responsavel?: string;
 }
 
 interface PaginaRemota {
@@ -38,9 +41,16 @@ interface FiltrosDaLista {
   desde: string;
   ate: string;
   ordem: Ordem;
+  responsavel: string;
 }
 
-const FILTROS_INICIAIS: FiltrosDaLista = { q: '', desde: '', ate: '', ordem: 'recente' };
+const FILTROS_INICIAIS: FiltrosDaLista = {
+  q: '',
+  desde: '',
+  ate: '',
+  ordem: 'recente',
+  responsavel: '',
+};
 
 function chaveDaSessao(): string {
   const token = tokenDaSessao();
@@ -67,6 +77,10 @@ export function ListaContatos() {
   const [pagina, setPagina] = useState(() => paginaVazia(sessao));
   const [filtros, setFiltros] = useState<FiltrosDaLista>(FILTROS_INICIAIS);
   const [rascunhoDeFiltros, setRascunhoDeFiltros] = useState<FiltrosDaLista>(FILTROS_INICIAIS);
+  const gestao = podeGerir();
+  const { equipe } = useEquipe(gestao && Boolean(sessao));
+  const [selecionados, setSelecionados] = useState<Set<string>>(() => new Set());
+  const [aviso, setAviso] = useState('');
   const consulta = useRef<AbortController | null>(null);
   const geracao = useRef(0);
 
@@ -89,6 +103,7 @@ export function ListaContatos() {
         if (filtros.q) parametros.set('q', filtros.q);
         if (filtros.desde) parametros.set('desde', filtros.desde);
         if (filtros.ate) parametros.set('ate', filtros.ate);
+        if (filtros.responsavel) parametros.set('responsavel', filtros.responsavel);
         if (cursor) parametros.set('cursor', cursor);
         const resposta = await fetch(urlDaApi(`/v1/contatos?${parametros}`), {
           headers: cabecalhosDaSessao(),
@@ -96,7 +111,7 @@ export function ListaContatos() {
         });
         acessoNegado = resposta.status === 401 || resposta.status === 403;
         const json = (await resposta.json()) as {
-          dados?: ContatoRemoto[];
+          dados?: (ContatoRemoto & { origem?: { vendedorAtribuido?: unknown } })[];
           proximoCursor?: string | null;
           total?: number;
           mensagem?: string;
@@ -112,12 +127,13 @@ export function ListaContatos() {
         if (!Array.isArray(json.dados))
           throw new Error('Não consegui ler a lista do CRM. Tente atualizar.');
         if (!vigente()) return;
-        const recebidos = json.dados.map(({ _id, idLocal, nome, status, criadoEm }) => ({
+        const recebidos = json.dados.map(({ _id, idLocal, nome, status, criadoEm, origem }) => ({
           _id,
           idLocal,
           nome,
           status,
           criadoEm,
+          responsavel: origem?.vendedorAtribuido ? String(origem.vendedorAtribuido) : undefined,
         }));
         setPagina((anterior) => {
           const acumulados = cursor ? [...anterior.itens, ...recebidos] : recebidos;
@@ -330,6 +346,29 @@ export function ListaContatos() {
             <option value="nome">Nome (A–Z)</option>
           </select>
         </label>
+        {gestao ? (
+          <label className="flex flex-col gap-1 text-base sm:col-span-2">
+            Responsável
+            <select
+              className="campo"
+              value={rascunhoDeFiltros.responsavel}
+              onChange={(evento) =>
+                setRascunhoDeFiltros((anterior) => ({
+                  ...anterior,
+                  responsavel: evento.target.value,
+                }))
+              }
+            >
+              <option value="">Todos</option>
+              <option value="sem">Sem responsável</option>
+              {equipe.map((pessoa) => (
+                <option key={pessoa.id} value={pessoa.id}>
+                  {pessoa.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <div className="flex flex-wrap gap-2 sm:col-span-2">
           <button type="submit" className="tv-button">
             Aplicar filtros
@@ -357,9 +396,46 @@ export function ListaContatos() {
           Atualizar contatos do CRM
         </button>
       ) : null}
+      {aviso ? <p role="status">{aviso}</p> : null}
+      {gestao && (remotos.length || locais.some((item) => item.idServidor)) ? (
+        <button
+          type="button"
+          className="tv-button tv-button-light"
+          onClick={() =>
+            setSelecionados(
+              new Set([
+                ...remotos.map((item) => item._id),
+                ...locais.flatMap((item) => (item.idServidor ? [item.idServidor] : [])),
+              ]),
+            )
+          }
+        >
+          Selecionar todos os listados
+        </button>
+      ) : null}
+      {gestao && selecionados.size ? (
+        <AtribuirContatos
+          ids={[...selecionados]}
+          equipe={equipe}
+          aoLimpar={() => setSelecionados(new Set())}
+          aoConcluir={(texto) => {
+            setAviso(texto);
+            setSelecionados(new Set());
+            void carregar();
+          }}
+        />
+      ) : null}
       <ul className="flex flex-col gap-3">
         {locais.map((item) => (
           <li key={item.idLocal} className="rounded border border-stone-300 p-3">
+            {gestao && item.idServidor ? (
+              <CaixaSelecao
+                id={item.idServidor}
+                nome={rotulo(item)}
+                selecionados={selecionados}
+                alterar={setSelecionados}
+              />
+            ) : null}
             <Link className="text-base underline" to={`/contatos/${item.idLocal}`}>
               {rotulo(item)}
             </Link>
@@ -381,6 +457,14 @@ export function ListaContatos() {
         ))}
         {remotos.map((item) => (
           <li key={`crm-${item._id}`} className="rounded border border-stone-300 p-3">
+            {gestao ? (
+              <CaixaSelecao
+                id={item._id}
+                nome={item.nome?.trim() || 'contato sem nome'}
+                selecionados={selecionados}
+                alterar={setSelecionados}
+              />
+            ) : null}
             <Link
               className="inline-flex min-h-12 items-center break-words text-base underline"
               to={`/lead/${item._id}`}
@@ -390,6 +474,14 @@ export function ListaContatos() {
             <p className="text-base">Salvo no CRM{item.status ? ` · ${item.status}` : ''}</p>
             {item.criadoEm ? (
               <p className="text-sm text-stone-600">Entrou em {dataDeEntrada(item.criadoEm)}</p>
+            ) : null}
+            {gestao ? (
+              <p className="text-sm text-stone-600">
+                Responsável:{' '}
+                {item.responsavel
+                  ? (equipe.find((p) => p.id === item.responsavel)?.nome ?? 'pessoa da equipe')
+                  : 'ninguém ainda'}
+              </p>
             ) : null}
             {podeGerir() ? (
               <Link
@@ -413,6 +505,38 @@ export function ListaContatos() {
         </button>
       ) : null}
     </section>
+  );
+}
+
+function CaixaSelecao({
+  id,
+  nome,
+  selecionados,
+  alterar,
+}: {
+  id: string;
+  nome: string;
+  selecionados: Set<string>;
+  alterar: React.Dispatch<React.SetStateAction<Set<string>>>;
+}) {
+  return (
+    <label className="mb-1 flex min-h-12 items-center gap-2 text-sm">
+      <input
+        type="checkbox"
+        className="h-5 w-5"
+        checked={selecionados.has(id)}
+        onChange={(evento) =>
+          alterar((anterior) => {
+            const proximo = new Set(anterior);
+            if (evento.target.checked) proximo.add(id);
+            else proximo.delete(id);
+            return proximo;
+          })
+        }
+        aria-label={`Selecionar ${nome}`}
+      />
+      Selecionar
+    </label>
   );
 }
 

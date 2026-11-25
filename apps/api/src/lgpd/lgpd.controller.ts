@@ -9,11 +9,16 @@ import { AutocadastroService } from './autocadastro.service';
 import { ConsentimentoService } from './consentimento.service';
 import { descreverCaptcha } from './captcha';
 import { textoDoTermo } from './texto-termo';
+import { AtualizacaoCadastroService } from './atualizacao-cadastro.service';
+import { AtualizacaoCadastroDto } from './atualizacao-cadastro.dto';
 
 @Controller('v1/publico')
 @Publico()
 export class PublicoController {
-  constructor(private readonly autocadastro: AutocadastroService) {}
+  constructor(
+    private readonly autocadastro: AutocadastroService,
+    private readonly atualizacao: AtualizacaoCadastroService,
+  ) {}
 
   @Get('captcha')
   captcha() {
@@ -42,6 +47,16 @@ export class PublicoController {
   @Post('autocadastro')
   concluir(@Body() corpo: AutocadastroDto, @Req() req: Request) {
     return this.autocadastro.concluir(corpo, req.ip || req.socket.remoteAddress || 'sem-ip');
+  }
+
+  @Get('atualizar-cadastro/:token')
+  dadosParaAtualizar(@Param('token') token: string) {
+    return this.atualizacao.ler(token);
+  }
+
+  @Post('atualizar-cadastro/:token')
+  atualizarCadastro(@Param('token') token: string, @Body() corpo: AtualizacaoCadastroDto) {
+    return this.atualizacao.atualizar(token, corpo);
   }
 }
 
@@ -116,6 +131,17 @@ export class ConsentimentoController {
   @Papel(...PERFIL_PERMISSOES.editar_contato)
   tentar(@Param('id') id: string, @Req() req: RequisicaoComUsuario) {
     return this.consentimento.tentarContato(id, exigirUsuario(req));
+  }
+}
+
+@Controller('v1/contatos')
+export class AtualizacaoCadastroController {
+  constructor(private readonly atualizacao: AtualizacaoCadastroService) {}
+
+  @Post(':id/link-atualizacao')
+  @Papel('gestor', 'admin')
+  emitir(@Param('id') id: string, @Req() req: RequisicaoComUsuario) {
+    return this.atualizacao.emitir(id, exigirUsuario(req));
   }
 }
 

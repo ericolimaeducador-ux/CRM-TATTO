@@ -24,6 +24,7 @@ import {
 const DIA = 86_400_000;
 const LEASE = 120_000;
 const MAX_PUBLICO = 2000;
+const LIMITE_PENDENCIAS = 5000;
 
 @Injectable()
 export class CampanhasService implements OnModuleInit, OnModuleDestroy {
@@ -48,7 +49,14 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     await this.campanhas.createIndex({ criadoEm: -1, _id: -1 });
-    await this.fila.createIndex({ campanhaId: 1, telefoneHash: 1 }, { unique: true });
+    // Um destinatário por contato. O mesmo telefone pode entrar duas vezes quando quem
+    // cuida da campanha libera o repetido (ADR-025); a prévia continua deduplicando.
+    const antigo = (await this.fila.indexes().catch(() => [])).find(
+      (i) => i.name === 'campanhaId_1_telefoneHash_1' && i.unique,
+    );
+    if (antigo) await this.fila.dropIndex('campanhaId_1_telefoneHash_1');
+    await this.fila.createIndex({ campanhaId: 1, contatoId: 1 }, { unique: true });
+    await this.fila.createIndex({ campanhaId: 1, telefoneHash: 1 });
     await this.fila.createIndex({ estado: 1, proximaTentativaEm: 1 });
     await this.fila.createIndex({ mensagemId: 1 }, { unique: true, sparse: true });
     await this.conexao.db!.collection('whatsapp_respostas').createIndex({ telefoneHash: 1, em: 1 });
@@ -151,7 +159,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
   async candidatos(query: Record<string, unknown>, usuario: UsuarioSessao) {
     const pagina = inteiro(query.pagina ?? 1, 1, 10000, 'Página');
     const limite = 30;
-    const filtro: Record<string, unknown> = {};
+    const filtro: Record<string, unknown> = { ...carteiraDoPapel(usuario) };
     const busca = texto(query.q ?? '', 100);
     if (busca)
       filtro.nome = { $regex: busca.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
@@ -196,20 +204,90 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     });
     return { registros, total, pagina, limite };
   }
-  async listar(query: Record<string, unknown>) {
+  async pendencias(query: Record<string, unknown>, usuario: UsuarioSessao) {
     const pagina = inteiro(query.pagina ?? 1, 1, 10000, 'Página');
+    const limite = 30;
+    const motivoPedido = texto(query.motivo ?? '', 60);
+    const leads = await this.contatos
+      .find(
+        {
+          status: { $in: ['rascunho', 'capturado', 'qualificado', 'cliente'] },
+          ...carteiraDoPapel(usuario),
+        },
+        {
+          projection: {
+            nome: 1,
+            status: 1,
+            criadoEm: 1,
+            fundidoEm: 1,
+            origem: 1,
+            tags: 1,
+            telefones: 1,
+            lgpd: 1,
+          },
+        },
+      )
+      .sort({ criadoEm: -1, _id: -1 })
+      .limit(LIMITE_PENDENCIAS + 1)
+      .toArray();
+    const truncado = leads.length > LIMITE_PENDENCIAS;
+    const contagem: Record<string, number> = {};
+    const fora: { lead: LeadCampanha; motivo: string }[] = [];
+    let elegiveis = 0;
+    for (const lead of leads.slice(0, LIMITE_PENDENCIAS)) {
+      const { motivo } = await this.elegibilidade(lead);
+      if (!motivo) {
+        elegiveis += 1;
+        continue;
+      }
+      if (motivo === 'contato_indisponivel') continue;
+      contagem[motivo] = (contagem[motivo] ?? 0) + 1;
+      if (!motivoPedido || motivoPedido === motivo) fora.push({ lead, motivo });
+    }
+    const registros = fora
+      .slice((pagina - 1) * limite, pagina * limite)
+      .map(({ lead, motivo }) => ({
+        id: lead._id.toString(),
+        nome: lead.nome || 'Contato sem nome',
+        status: lead.status,
+        origem: lead.origem?.modo || '',
+        criadoEm: lead.criadoEm ?? null,
+        motivo,
+        contatoComercial: lead.lgpd?.contatoComercial || 'pendente',
+        telefoneRegistrado: pistaTelefone(lead.telefones),
+      }));
+    await this.acesso(usuario, 'campanhas_pendencias', registros.length, {
+      filtroHash: hmacDocumento(JSON.stringify({ motivo: motivoPedido })),
+    });
+    return {
+      registros,
+      total: fora.length,
+      pagina,
+      limite,
+      contagem,
+      elegiveis,
+      analisados: Math.min(leads.length, LIMITE_PENDENCIAS),
+      truncado,
+    };
+  }
+  async listar(query: Record<string, unknown>, usuario: UsuarioSessao) {
+    const pagina = inteiro(query.pagina ?? 1, 1, 10000, 'Página');
+    // Toda a equipe vê todas as campanhas (ADR-025). Alterar continua com quem criou ou a gestão.
+    void usuario;
+    const escopo = {};
     const [registros, total] = await Promise.all([
       this.campanhas
-        .find({}, { projection: { auditoria: 0 } })
+        .find(escopo, { projection: { auditoria: 0 } })
         .sort({ criadoEm: -1, _id: -1 })
         .skip((pagina - 1) * 30)
         .limit(30)
         .toArray(),
-      this.campanhas.countDocuments(),
+      this.campanhas.countDocuments(escopo),
     ]);
     return { registros, total, pagina, limite: 30 };
   }
   async criar(body: Record<string, unknown>, usuario: UsuarioSessao) {
+    exigirModoDoPapel(usuario, campos(body), 'manual');
     const agora = this.agora();
     const doc: Campanha = {
       _id: new Types.ObjectId(),
@@ -221,6 +299,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       ...campos(body),
       estado: 'rascunho',
       versao: 1,
+      ...(usuario.papel === 'vendedor' ? { modo: 'manual' as const, carteiraDe: usuario.id } : {}),
       criadoPor: usuario.id,
       criadoEm: agora,
       alteradoEm: agora,
@@ -229,21 +308,23 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     await this.campanhas.insertOne(doc);
     return { registro: doc };
   }
-  async obter(id: string) {
-    return { registro: await this.ler(id) };
+  async obter(id: string, usuario: UsuarioSessao) {
+    return { registro: await this.ler(id, usuario) };
   }
   async editar(id: string, body: Record<string, unknown>, usuario: UsuarioSessao) {
-    const c = await this.lerVersao(id, body);
+    const c = await this.lerVersao(id, body, usuario);
     if (c.estado !== 'rascunho')
       falha(
         'Somente rascunhos podem ser editados. O público de uma campanha preparada está congelado.',
         'CAMPANHA_ESTADO',
         409,
       );
+    exigirAutoria(c, usuario);
+    exigirModoDoPapel(usuario, campos(body), modoDe(c));
     return { registro: await this.atualizar(c, campos(body), 'editar', usuario.id) };
   }
   async previa(id: string, body: Record<string, unknown>, usuario: UsuarioSessao) {
-    const c = await this.lerVersao(id, body);
+    const c = await this.lerVersao(id, body, usuario);
     const previa = await this.calcularPrevia(c);
     await this.acesso(usuario, 'campanhas_previa', previa.destinatarios.length, {
       campanhaId: c._id,
@@ -256,27 +337,34 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     };
   }
   private async calcularPrevia(c: Campanha) {
-    const vistos = new Set<string>();
+    const vistos = new Map<string, string>();
+    const liberados = new Set(c.repetidosLiberados ?? []);
     const destinatarios: {
       contatoId: string;
       nome: string;
       telefoneMascarado: string;
       elegivel: boolean;
       motivo: string;
+      mesmoNumeroDe?: string;
+      repetidoLiberado?: boolean;
       telefoneHash?: string;
     }[] = [];
     for (const id of c.contatosIds) {
       const lead = await this.contatos.findOne({ _id: new Types.ObjectId(id) });
-      const e = await this.elegibilidade(lead);
+      const e = await this.elegibilidade(lead, c.carteiraDe);
       let motivo = e.motivo;
-      if (!motivo && e.hash && vistos.has(e.hash)) motivo = 'telefone_duplicado';
-      if (!motivo && e.hash) vistos.add(e.hash);
+      const primeiro = e.hash ? vistos.get(e.hash) : undefined;
+      if (!motivo && primeiro !== undefined && !liberados.has(id)) motivo = 'telefone_duplicado';
+      if (!motivo && e.hash && primeiro === undefined)
+        vistos.set(e.hash, lead?.nome || 'Contato sem nome');
       destinatarios.push({
         contatoId: id,
         nome: lead?.nome || 'Contato indisponível',
         telefoneMascarado: e.telefone ? mascarar(e.telefone) : '',
         elegivel: !motivo,
         motivo,
+        ...(primeiro !== undefined ? { mesmoNumeroDe: primeiro } : {}),
+        ...(primeiro !== undefined && !motivo ? { repetidoLiberado: true } : {}),
         ...(!motivo && e.hash ? { telefoneHash: e.hash } : {}),
       });
     }
@@ -291,9 +379,10 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     };
   }
   async preparar(id: string, body: Record<string, unknown>, usuario: UsuarioSessao) {
-    let c = await this.lerVersao(id, body);
+    let c = await this.lerVersao(id, body, usuario);
     if (!['rascunho', 'preparando'].includes(c.estado))
       falha('A campanha já foi preparada ou encerrada.', 'CAMPANHA_ESTADO', 409);
+    exigirAutoria(c, usuario);
     if (!c.contatosIds.length) falha('Selecione explicitamente os contatos desta campanha.');
     // No modo manual não há template da Meta: o texto vai pelo link do WhatsApp Web.
     if (modoDe(c) === 'api') await this.verificarTemplate(c);
@@ -307,11 +396,11 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
         break;
       try {
         await this.fila.updateOne(
-          { campanhaId: c._id, telefoneHash: d.telefoneHash! },
+          { campanhaId: c._id, contatoId: new Types.ObjectId(d.contatoId) },
           {
             $setOnInsert: {
               _id: new Types.ObjectId(),
-              contatoId: new Types.ObjectId(d.contatoId),
+              telefoneHash: d.telefoneHash!,
               telefoneMascarado: d.telefoneMascarado,
               estado: 'pendente',
               motivo: '',
@@ -350,7 +439,14 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     body: Record<string, unknown>,
     usuario: UsuarioSessao,
   ) {
-    const c = await this.lerVersao(id, body);
+    const c = await this.lerVersao(id, body, usuario);
+    exigirAutoria(c, usuario);
+    if (usuario.papel === 'vendedor' && acao === 'iniciar')
+      falha(
+        'O envio automático pela API é iniciado pela gestão. Use o envio manual pelo WhatsApp Web.',
+        'PAPEL_INSUFICIENTE',
+        403,
+      );
     const esperados = {
       iniciar: ['preparada'],
       pausar: ['em_andamento'],
@@ -398,7 +494,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     };
   }
   async resultados(id: string, query: Record<string, unknown>, usuario: UsuarioSessao) {
-    const c = await this.ler(id);
+    const c = await this.ler(id, usuario);
     await this.conciliarRecibos(c._id);
     const pagina = inteiro(query.pagina ?? 1, 1, 10000, 'Página');
     const [grupos, linhas, total, respostas] = await Promise.all([
@@ -465,6 +561,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
         };
       }),
     );
+    const foraDaCampanha = await this.foraDaCampanha(c);
     const manual = modoDe(c) === 'manual';
     const ultimaManual = manual ? await this.ultimaAberturaManual(c._id) : null;
     const controle = await this.controles.findOne({ _id: 'global' });
@@ -480,6 +577,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
         proximaSaidaEm: controle?.proximaSaidaEm ?? null,
         diario: controle?.dia === calendario(this.agora()).dia ? controle.diario : 0,
         modo: modoDe(c),
+        foraDaCampanha,
         ultimaAberturaManualEm: ultimaManual,
         aviso: manual
           ? 'Envio manual: o sistema abre a conversa com o texto pronto; quem confirma o envio é você, no WhatsApp. Respostas e pedidos de SAIR chegam no celular e precisam ser registrados no contato.'
@@ -487,8 +585,8 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       },
     };
   }
-  async auditoria(id: string) {
-    const c = await this.ler(id);
+  async auditoria(id: string, usuario: UsuarioSessao) {
+    const c = await this.ler(id, usuario);
     return { registro: { eventos: c.auditoria } };
   }
 
@@ -498,7 +596,8 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
    * quem clica enviar é o gestor, no próprio WhatsApp.
    */
   async abrirManual(id: string, destinatarioId: string, usuario: UsuarioSessao) {
-    const c = await this.ler(id);
+    const c = await this.ler(id, usuario);
+    exigirAutoria(c, usuario);
     if (modoDe(c) !== 'manual')
       falha('Esta campanha usa a API oficial; o envio é automático.', 'CAMPANHA_NAO_MANUAL', 422);
     if (c.estado !== 'preparada')
@@ -517,7 +616,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     if (!['pendente', 'aberto_manual'].includes(trabalho.estado))
       falha('Este destinatário não está mais na fila de envio.', 'DESTINATARIO_ESTADO', 409);
     const lead = await this.contatos.findOne({ _id: trabalho.contatoId });
-    const e = await this.elegibilidade(lead);
+    const e = await this.elegibilidade(lead, c.carteiraDe);
     if (e.motivo || e.hash !== trabalho.telefoneHash) {
       const motivo = e.motivo || 'telefone_alterado';
       await this.finalizar(trabalho, 'excluido', motivo);
@@ -574,6 +673,144 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       },
     };
   }
+  /**
+   * Quem foi selecionado e não está na fila (ou foi excluído dela depois), com o motivo.
+   * Antes da preparação a prévia já mostra isso; depois, sem esta lista, eles sumiam da tela.
+   */
+  private async foraDaCampanha(c: Campanha) {
+    if (['rascunho', 'preparando'].includes(c.estado)) return [];
+    const fila = await this.fila
+      .find(
+        { campanhaId: c._id },
+        {
+          projection: { contatoId: 1, telefoneHash: 1, estado: 1, motivo: 1, telefoneMascarado: 1 },
+        },
+      )
+      .toArray();
+    const naFila = new Map(fila.map((f) => [String(f.contatoId), f]));
+    const donoDoNumero = new Map<string, string>();
+    for (const f of fila)
+      if (f.estado !== 'excluido' && !donoDoNumero.has(f.telefoneHash))
+        donoDoNumero.set(f.telefoneHash, String(f.contatoId));
+    // Fora da fila, ou na fila mas excluído na revalidação (autorização/telefone mudou).
+    const ids = c.contatosIds.filter((id) => (naFila.get(id)?.estado ?? 'excluido') === 'excluido');
+    const leads = await this.contatos
+      .find({
+        _id: { $in: [...ids, ...donoDoNumero.values()].map((id) => new Types.ObjectId(id)) },
+      })
+      .toArray();
+    const porId = new Map(leads.map((l) => [l._id.toString(), l]));
+    const alteravel = ['preparada', 'pausada'].includes(c.estado);
+    const saida: {
+      contatoId: string;
+      nome: string;
+      telefoneMascarado: string;
+      motivo: string;
+      mesmoNumeroDe: string;
+      podeIncluir: boolean;
+    }[] = [];
+    for (const id of ids) {
+      const lead = porId.get(id) ?? null;
+      const excluido = naFila.get(id);
+      const e = await this.elegibilidade(lead, c.carteiraDe);
+      if (excluido) {
+        saida.push({
+          contatoId: id,
+          nome: lead?.nome || 'Contato indisponível',
+          telefoneMascarado: excluido.telefoneMascarado,
+          motivo: excluido.motivo || 'excluido',
+          mesmoNumeroDe: '',
+          podeIncluir: alteravel && !e.motivo,
+        });
+        continue;
+      }
+      const dono = e.hash ? donoDoNumero.get(e.hash) : undefined;
+      const motivo = e.motivo || (dono ? 'telefone_duplicado' : 'apto_apos_preparacao');
+      saida.push({
+        contatoId: id,
+        nome: lead?.nome || 'Contato indisponível',
+        telefoneMascarado: e.telefone ? mascarar(e.telefone) : '',
+        motivo,
+        mesmoNumeroDe: dono ? porId.get(dono)?.nome || 'Contato sem nome' : '',
+        podeIncluir: alteravel && !e.motivo,
+      });
+    }
+    return saida;
+  }
+
+  /**
+   * Quem cuida da campanha decide incluir um contato que ficou de fora por telefone
+   * repetido, ou que passou a estar apto depois da preparação. Autorização, bloqueio
+   * (SAIR) e carteira continuam sendo conferidos: não há como forçar esses.
+   */
+  async incluir(id: string, body: Record<string, unknown>, usuario: UsuarioSessao) {
+    const c = await this.lerVersao(id, body, usuario);
+    exigirAutoria(c, usuario);
+    if (!['rascunho', 'preparada', 'pausada'].includes(c.estado))
+      falha(
+        'Só é possível incluir contatos em rascunho, campanha preparada ou pausada.',
+        'CAMPANHA_ESTADO',
+        409,
+      );
+    const contatoId = texto(body.contatoId ?? '', 24);
+    if (!/^[a-f\d]{24}$/i.test(contatoId) || !c.contatosIds.includes(contatoId))
+      falha('Este contato não faz parte da seleção desta campanha.', 'DESTINATARIO_AUSENTE', 404);
+    const oid = new Types.ObjectId(contatoId);
+    const e = await this.elegibilidade(await this.contatos.findOne({ _id: oid }), c.carteiraDe);
+    if (e.motivo)
+      falha(
+        'Este contato não pode ser incluído: falta autorização, pediu para sair, está sem telefone válido ou fora da carteira. Ajuste a ficha antes.',
+        'DESTINATARIO_INELEGIVEL',
+        409,
+      );
+    const ja =
+      c.estado === 'rascunho'
+        ? null
+        : await this.fila.findOne({ campanhaId: c._id, contatoId: oid });
+    if (ja && ja.estado !== 'excluido')
+      falha('Este contato já está na fila.', 'DESTINATARIO_ESTADO', 409);
+    const registro = await this.atualizar(
+      c,
+      { repetidosLiberados: [...new Set([...(c.repetidosLiberados ?? []), contatoId])] },
+      'incluir_contato',
+      usuario.id,
+    );
+    if (c.estado !== 'rascunho') {
+      const agora = this.agora();
+      const inicio = {
+        estado: 'pendente' as const,
+        motivo: '',
+        telefoneHash: e.hash!,
+        telefoneMascarado: mascarar(e.telefone!),
+        proximaTentativaEm: agora,
+        atualizadoEm: agora,
+      };
+      const evento = {
+        estado: 'pendente',
+        em: agora,
+        autor: hmacDocumento(`usuario:${usuario.id}`),
+        tentativa: ja?.tentativas ?? 0,
+        codigo: 'incluido_pelo_responsavel',
+      };
+      if (ja)
+        await this.fila.updateOne(
+          { _id: ja._id, estado: 'excluido' },
+          { $set: inicio, $push: { eventos: evento } },
+        );
+      else
+        await this.fila.insertOne({
+          _id: new Types.ObjectId(),
+          campanhaId: c._id,
+          contatoId: oid,
+          ...inicio,
+          tentativas: 0,
+          criadoEm: agora,
+          nivelRecibo: 0,
+          eventos: [evento],
+        });
+    }
+    return { registro };
+  }
   private async ultimaAberturaManual(campanhaId: Types.ObjectId): Promise<Date | null> {
     // abertoEm só é gravado na primeira abertura: reabrir não mexe no ritmo.
     const ultima = await this.fila.findOne(
@@ -596,14 +833,16 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       em: this.agora(),
     });
   }
-  private async ler(id: string) {
+  private async ler(id: string, usuario?: UsuarioSessao) {
     if (!/^[a-f\d]{24}$/i.test(id)) falha('Campanha não encontrada.', 'CAMPANHA_AUSENTE', 404);
+    // Leitura aberta a toda a equipe (ADR-025); quem altera é conferido em exigirAutoria.
+    void usuario;
     const c = await this.campanhas.findOne({ _id: new Types.ObjectId(id) });
     if (!c) falha('Campanha não encontrada.', 'CAMPANHA_AUSENTE', 404);
     return c;
   }
-  private async lerVersao(id: string, body: Record<string, unknown>) {
-    const c = await this.ler(id);
+  private async lerVersao(id: string, body: Record<string, unknown>, usuario?: UsuarioSessao) {
+    const c = await this.ler(id, usuario);
     if (body.versao !== c.versao)
       falha('A campanha foi alterada. Atualize antes de tentar novamente.', 'CAMPANHA_VERSAO', 409);
     return c;
@@ -651,7 +890,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       );
     return t;
   }
-  private async elegibilidade(lead: LeadCampanha | null) {
+  private async elegibilidade(lead: LeadCampanha | null, carteiraDe?: string) {
     if (
       !lead ||
       !['rascunho', 'capturado', 'qualificado', 'cliente'].includes(lead.status ?? '') ||
@@ -660,6 +899,8 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       lead.lgpd?.revogadoEm
     )
       return { motivo: 'contato_indisponivel' };
+    if (carteiraDe && String(lead.origem?.vendedorAtribuido ?? '') !== carteiraDe)
+      return { motivo: 'fora_da_carteira' };
     if (
       lead.lgpd?.contatoComercial !== 'concedido' ||
       !lead.lgpd.consentimentos?.some(
@@ -1138,6 +1379,36 @@ function objeto(x: unknown): Record<string, unknown> {
 }
 function normalizar(x: string) {
   return x.replace(/\r\n/g, '\n').trim();
+}
+/** Todos veem; alterar, preparar e enviar é de quem criou a campanha ou da gestão. */
+function exigirAutoria(c: Campanha, usuario: UsuarioSessao) {
+  if (usuario.papel === 'vendedor' && c.criadoPor !== usuario.id)
+    falha(
+      'Você pode acompanhar esta campanha, mas só quem a criou ou a gestão pode alterá-la ou enviar por ela.',
+      'CAMPANHA_DE_OUTRA_PESSOA',
+      403,
+    );
+}
+function carteiraDoPapel(usuario: UsuarioSessao): Record<string, unknown> {
+  return usuario.papel === 'vendedor'
+    ? { 'origem.vendedorAtribuido': new Types.ObjectId(usuario.id) }
+    : {};
+}
+function exigirModoDoPapel(usuario: UsuarioSessao, patch: Partial<Campanha>, atual: ModoEnvio) {
+  if (usuario.papel === 'vendedor' && (patch.modo ?? atual) !== 'manual')
+    falha(
+      'Representantes usam o envio manual pelo WhatsApp Web. A API oficial fica com a gestão.',
+      'PAPEL_INSUFICIENTE',
+      403,
+    );
+}
+function pistaTelefone(telefones: LeadCampanha['telefones']): string {
+  const t = telefones?.find((x) => x.principal) ?? telefones?.[0];
+  const digitos = String(t?.e164 || t?.bruto || '').replace(/\D/g, '');
+  if (!digitos) return 'Nenhum telefone registrado';
+  const fim = digitos.slice(-4);
+  const whatsapp = t?.whatsapp === false ? '; marcado como sem WhatsApp' : '';
+  return `${digitos.length} dígitos, final ${fim}${whatsapp}`;
 }
 function mascarar(x: string) {
   return `+${x.slice(1, 3)} ••••• ${x.slice(-4)}`;

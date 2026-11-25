@@ -21,9 +21,10 @@ import {
 } from './campanhas.tipos';
 
 const ADMIN = '507f1f77bcf86cd799439121';
-const head = (papel = 'admin') => ({
+const VENDEDOR = '507f1f77bcf86cd799439555';
+const head = (papel = 'admin', id = papel === 'vendedor' ? VENDEDOR : ADMIN) => ({
   'x-papel-teste': papel,
-  'x-usuario-id': ADMIN,
+  'x-usuario-id': id,
   'x-autor-nome': 'Gestão QA',
 });
 const vars = [
@@ -186,9 +187,8 @@ describe('CP — campanhas em Mongo isolado e transporte simulado', () => {
   async function resultado(c: Campanha) {
     return (await api().get(`/v1/campanhas/${c._id}/resultados`).set(head())).body.registro;
   }
-  it('nega anônimo/vendedor/auditor e permite gestão; salva rascunho sem configuração', async () => {
-    for (const papel of ['vendedor', 'auditor'])
-      expect((await api().get('/v1/campanhas').set(head(papel))).status).toBe(403);
+  it('nega anônimo/auditor e permite gestão; salva rascunho sem configuração', async () => {
+    expect((await api().get('/v1/campanhas').set(head('auditor'))).status).toBe(403);
     expect((await api().get('/v1/campanhas')).status).toBe(403);
     delete process.env.WHATSAPP_WABA_ID;
     process.env.CAMPANHAS_WHATSAPP_ATIVO = 'false';
@@ -255,6 +255,32 @@ describe('CP — campanhas em Mongo isolado e transporte simulado', () => {
       .findOne({ acao: 'campanhas_candidatos' });
     expect(audit?.quantidade).toBe(1);
     expect(JSON.stringify(audit)).not.toContain('Marina');
+  });
+  it('lista quem ficou de fora com motivo, contagem e pista do telefone, sem número inteiro', async () => {
+    await lead({ nome: 'Elegível' });
+    const semAceite = await lead({ nome: 'Sem Aceite', lgpd: { contatoComercial: 'pendente' } });
+    const semFone = await lead({ nome: 'Fone Curto', telefones: [{ bruto: '9999-1234' }] });
+    await lead({ nome: 'Descartado', status: 'descartado', lgpd: {} });
+    const r = await api().get('/v1/campanhas/pendencias').set(head('gestor'));
+    expect(r.status).toBe(200);
+    expect(r.body.contagem).toEqual({ sem_autorizacao_documentada: 1, sem_telefone_valido: 1 });
+    expect(r.body.elegiveis).toBe(1);
+    expect(r.body.registros.map((x: { id: string }) => x.id).sort()).toEqual(
+      [semAceite, semFone].sort(),
+    );
+    const curto = r.body.registros.find((x: { id: string }) => x.id === semFone);
+    expect(curto.telefoneRegistrado).toBe('8 dígitos, final 1234');
+    expect(r.text).not.toContain('5511999990042');
+    expect(r.text).not.toContain('Descartado');
+    const filtrado = await api()
+      .get('/v1/campanhas/pendencias?motivo=sem_telefone_valido')
+      .set(head('gestor'));
+    expect(filtrado.body.registros).toHaveLength(1);
+    expect(filtrado.body.total).toBe(1);
+    const audit = await db
+      .db!.collection('acessos_dados')
+      .findOne({ acao: 'campanhas_pendencias' });
+    expect(audit).toBeTruthy();
   });
   it('exclui autorização ausente, optout e status inválido e deduplica telefone na prévia/fila', async () => {
     const ids = [
@@ -735,6 +761,132 @@ describe('CP — campanhas em Mongo isolado e transporte simulado', () => {
       expect(
         await db.db!.collection('acessos_dados').countDocuments({ acao: 'campanhas_envio_manual' }),
       ).toBe(3);
+      expect(transporte).not.toHaveBeenCalled();
+    });
+
+    it('representante vê todas as campanhas, mas só altera as próprias, da própria carteira e manuais', async () => {
+      const dono = { origem: { modo: 'manual', vendedorAtribuido: new Types.ObjectId(VENDEDOR) } };
+      const meu = await lead(dono, '+5511999990101');
+      const alheio = await lead({}, '+5511999990102');
+      const daGestao = await criar([alheio]);
+      const vend = head('vendedor');
+      const lista = await api().get('/v1/campanhas').set(vend);
+      expect(lista.status).toBe(200);
+      expect(lista.body.registros.map((x: Campanha) => String(x._id))).toContain(
+        String(daGestao._id),
+      );
+      expect((await api().get(`/v1/campanhas/${daGestao._id}`).set(vend)).status).toBe(200);
+      expect((await api().get(`/v1/campanhas/${daGestao._id}/resultados`).set(vend)).status).toBe(
+        200,
+      );
+      const alheia = await api()
+        .patch(`/v1/campanhas/${daGestao._id}`)
+        .set(vend)
+        .send({ versao: daGestao.versao, titulo: 'Tomada' });
+      expect(alheia.status).toBe(403);
+      expect(alheia.text).toContain('CAMPANHA_DE_OUTRA_PESSOA');
+      const candidatos = await api().get('/v1/campanhas/candidatos').set(vend);
+      expect(candidatos.body.registros.map((x: { id: string }) => x.id)).toEqual([meu]);
+      const pend = await api().get('/v1/campanhas/pendencias').set(vend);
+      expect(pend.status).toBe(200);
+      expect(
+        (await api().post('/v1/campanhas').set(vend).send({ titulo: 'API', modo: 'api' })).status,
+      ).toBe(403);
+      const criada = await api()
+        .post('/v1/campanhas')
+        .set(vend)
+        .send({ titulo: 'Minha carteira', contatosIds: [meu, alheio] });
+      expect(criada.status).toBe(201);
+      const c = criada.body.registro as Campanha;
+      expect(c.modo).toBe('manual');
+      const previa = await api()
+        .post(`/v1/campanhas/${c._id}/previa`)
+        .set(vend)
+        .send({ versao: c.versao });
+      const motivos = Object.fromEntries(
+        previa.body.registro.destinatarios.map((d: { contatoId: string; motivo: string }) => [
+          d.contatoId,
+          d.motivo,
+        ]),
+      );
+      expect(motivos).toEqual({ [meu]: '', [alheio]: 'fora_da_carteira' });
+      expect(
+        (
+          await api()
+            .patch(`/v1/campanhas/${c._id}`)
+            .set(vend)
+            .send({ versao: c.versao, modo: 'api' })
+        ).status,
+      ).toBe(403);
+      const preparada = await api()
+        .post(`/v1/campanhas/${c._id}/preparar`)
+        .set(vend)
+        .send({ versao: c.versao, confirmarPublico: true });
+      expect(preparada.status).toBeLessThan(300);
+      const [d] = await fila(preparada.body.registro as Campanha);
+      expect(String(d.contatoId)).toBe(meu);
+      const aberto = await abrir(preparada.body.registro as Campanha, d._id, 'vendedor');
+      expect(aberto.status).toBe(201);
+      expect(transporte).not.toHaveBeenCalled();
+    });
+
+    it('mostra quem ficou de fora depois de preparar e deixa incluir telefone repetido', async () => {
+      const primeira = await lead({ nome: 'Primeira Estúdio' }, '+5511999990301');
+      const repetida = await lead({ nome: 'Segunda Estúdio' }, '+5511999990301');
+      const semAceite = await lead(
+        { nome: 'Sem Aceite', lgpd: { contatoComercial: 'pendente' } },
+        '+5511999990302',
+      );
+      const c = await manualPreparada([primeira, repetida, semAceite]);
+      expect(await fila(c)).toHaveLength(1);
+      const r = await resultado(c);
+      const fora = Object.fromEntries(
+        r.foraDaCampanha.map((x: { contatoId: string }) => [x.contatoId, x]),
+      );
+      expect(fora[repetida]).toMatchObject({
+        nome: 'Segunda Estúdio',
+        motivo: 'telefone_duplicado',
+        mesmoNumeroDe: 'Primeira Estúdio',
+        podeIncluir: true,
+      });
+      expect(fora[semAceite]).toMatchObject({
+        motivo: 'sem_autorizacao_documentada',
+        podeIncluir: false,
+      });
+      expect(JSON.stringify(r.foraDaCampanha)).not.toContain('999990301');
+      const incluir = (contatoId: string, versao: number, papel = 'gestor') =>
+        api()
+          .post(`/v1/campanhas/${c._id}/destinatarios/incluir`)
+          .set(head(papel))
+          .send({ versao, contatoId });
+      expect((await incluir(semAceite, c.versao)).status).toBe(409);
+      expect((await incluir(repetida, c.versao, 'vendedor')).status).toBe(403);
+      const ok = await incluir(repetida, c.versao);
+      expect(ok.status).toBe(201);
+      expect(ok.body.registro.repetidosLiberados).toEqual([repetida]);
+      const filaDepois = await fila(c);
+      expect(filaDepois).toHaveLength(2);
+      expect(filaDepois[1]).toMatchObject({ estado: 'pendente' });
+      expect(filaDepois[1].eventos[0].codigo).toBe('incluido_pelo_responsavel');
+      expect((await incluir(repetida, ok.body.registro.versao)).status).toBe(409);
+      const depois = await resultado(c);
+      expect(depois.foraDaCampanha.map((x: { contatoId: string }) => x.contatoId)).toEqual([
+        semAceite,
+      ]);
+      // Na prévia do rascunho, o repetido liberado deixa de ser excluído.
+      const rascunho = await criar([primeira, repetida], { modo: 'manual', template: null });
+      const liberado = await api()
+        .post(`/v1/campanhas/${rascunho._id}/destinatarios/incluir`)
+        .set(head())
+        .send({ versao: rascunho.versao, contatoId: repetida });
+      expect(liberado.status).toBe(201);
+      const previa = await api()
+        .post(`/v1/campanhas/${rascunho._id}/previa`)
+        .set(head())
+        .send({ versao: liberado.body.registro.versao });
+      expect(previa.body.registro).toMatchObject({ elegiveis: 2, duplicados: 0 });
+      const preparada = await preparar(liberado.body.registro as Campanha);
+      expect(await fila(preparada)).toHaveLength(2);
       expect(transporte).not.toHaveBeenCalled();
     });
 

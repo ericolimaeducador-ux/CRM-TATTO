@@ -1,0 +1,29 @@
+TELA VIVA — TREINAMENTO E CAMPANHA PÓS TATTOO WEEK
+Edição: 23/11/2026. Material interno.
+
+COMECE POR AQUI
+1. Guia-equipe-Tela-Viva.pdf: guia para treinamento, com 49 prints reais da aplicação.
+2. Guia-equipe-Tela-Viva.html: versão de consulta; clique nas imagens para ampliar.
+3. Plano-campanha-Tattoo-Week.pdf: planejamento da campanha de WhatsApp e e-mail.
+4. Mensagem-WhatsApp-rascunho.txt e Email-pos-Tattoo-Week-rascunho.txt: textos para revisão.
+5. Proposta-exemplo-SEM-VALIDADE-COMERCIAL.pdf: exemplo gerado na simulação.
+
+Mantenha a pasta prints junto dos HTML. Os PDF são independentes.
+O pacote ZIP contém todos estes arquivos e os prints numerados.
+
+ESCOPO
+O treinamento usa o código do CRM Tela Viva em base temporária isolada, sem alterar
+os clientes da operação. Pessoas, documento de exemplo, produto e valores são
+didáticos. Não copie os cadastros do treinamento para a base real.
+
+O CRM atual registra propostas e aceite. Contrato, upload de contrato e assinatura
+não estão implementados: o guia ensina o encaminhamento e o acompanhamento externo.
+
+A campanha está PLANEJADA. Não foi implementada nem ativada nesta entrega.
+Nenhum e-mail ou WhatsApp real foi enviado. Os textos exigem revisão, configuração
+de remetente/provedor/template, conferência do público e das autorizações.
+
+Os prints mostram as ações do fluxo principal e as telas auxiliares. Câmera física,
+mensagens externas, fusão e outras alternativas não executadas têm os limites
+explicados no guia. Não foi feita revisão humana/jurídica ou de todas as páginas PDF
+individualmente. A versão HTML oferece ampliação das imagens.

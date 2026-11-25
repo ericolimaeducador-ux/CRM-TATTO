@@ -131,6 +131,25 @@ describe('ficha do lead', () => {
     );
   });
 
+  it('registra aceite pendente só depois da confirmação explícita', async () => {
+    const fetchMock = montar({ ...gabriel, lgpd: { contatoComercial: 'pendente' } }, 'vendedor');
+    const botao = await screen.findByRole('button', { name: 'Registrar aceite' });
+    expect((botao as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(
+      screen.getByLabelText('Confirmo que a pessoa autorizou receber contato comercial.'),
+    );
+    fireEvent.click(botao);
+    await screen.findByText(/Aceite registrado em seu nome/);
+    const post = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/abc/consentimento'));
+    expect(JSON.parse(String(post?.[1]?.body))).toMatchObject({ contatoComercial: true });
+  });
+
+  it('não oferece aceite para concedido, revogado ou auditor', async () => {
+    montar(gabriel);
+    await screen.findByTestId('dados-lead');
+    expect(screen.queryByRole('button', { name: 'Registrar aceite' })).toBeNull();
+  });
+
   it('auditor vê os dados mas não edita', async () => {
     montar(gabriel, 'auditor');
     await screen.findByTestId('dados-lead');

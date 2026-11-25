@@ -18,6 +18,7 @@ import { FormularioCaptura } from './features/captura/FormularioCaptura';
 import { ListaContatos } from './features/captura/ListaContatos';
 import { MeuQr } from './features/captura/MeuQr';
 import { PaginaAutocadastro } from './features/captura/PaginaAutocadastro';
+import { PaginaAtualizacaoCadastro } from './features/captura/PaginaAtualizacaoCadastro';
 import { PaginaTermoCompleto } from './features/captura/PaginaTermoCompleto';
 import { PaginaEntrar } from './features/captura/PaginaEntrar';
 import { PaginaMinhaConta } from './features/captura/PaginaMinhaConta';
@@ -31,12 +32,44 @@ import { TelaCaptura } from './features/captura/TelaCaptura';
 import { PaginaCadastros } from './features/captura/PaginaCadastros';
 import { PaginaPlanilha } from './features/captura/PaginaPlanilha';
 import { iniciarFila } from './lib/offline/fila';
+import { urlDaApi } from './lib/api-url';
+import {
+  cabecalhosDaSessao,
+  guardarPerfil,
+  perfilLogado,
+  tokenDaSessao,
+} from './lib/offline/sessao';
+
+/**
+ * O perfil fica guardado no navegador desde o login. Se o papel mudar no servidor
+ * (ex.: virou administrador), atualiza ao abrir o app, sem precisar sair e entrar.
+ */
+async function atualizarPerfil() {
+  if (!tokenDaSessao()) return;
+  try {
+    const r = await fetch(urlDaApi('/v1/auth/eu'), { headers: cabecalhosDaSessao() });
+    if (!r.ok) return;
+    const json = (await r.json()) as { dados?: { id?: string; papel?: string; nome?: string } };
+    const d = json.dados;
+    const atual = perfilLogado();
+    if (
+      d?.id &&
+      d.papel &&
+      d.nome &&
+      (atual?.papel !== d.papel || atual?.nome !== d.nome || atual?.id !== d.id)
+    )
+      guardarPerfil({ id: d.id, papel: d.papel, nome: d.nome });
+  } catch {
+    // Sem rede: mantém o perfil guardado.
+  }
+}
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 export function App() {
   useEffect(() => {
     iniciarFila();
+    void atualizarPerfil();
   }, []);
   return (
     <BrowserRouter basename={basename}>
@@ -79,6 +112,7 @@ export function App() {
           <Route path="/promover/:id" element={<PaginaPromover />} />
           <Route path="/meu-qr" element={<MeuQr />} />
           <Route path="/p/:token" element={<PaginaAutocadastro />} />
+          <Route path="/atualizar-cadastro/:token" element={<PaginaAtualizacaoCadastro />} />
           <Route path="/termo" element={<PaginaTermoCompleto />} />
           <Route path="/contatos/:idLocal/termo" element={<PaginaConsentimento />} />
         </Routes>

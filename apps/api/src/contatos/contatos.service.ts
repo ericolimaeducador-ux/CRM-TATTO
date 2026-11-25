@@ -19,6 +19,7 @@ import type { CriarContatoDto } from './criar-contato.dto';
 import { RespostaComErro } from './erros-http';
 import { executarListagem, executarResumo, type ConsultaListagem } from './listagem';
 import type { UsuarioSessao } from './sessao.middleware';
+import { pseudonimizarAutor } from './schemas/pseudonimo';
 
 export interface Escrita {
   http: number;
@@ -26,6 +27,8 @@ export interface Escrita {
   avisos: Aviso[];
   antes?: Record<string, unknown> | null;
 }
+
+const LIMITE_ATRIBUICAO = 500;
 
 @Injectable()
 export class ContatosService {
@@ -123,6 +126,96 @@ export class ContatosService {
       );
     }
     return { http: 200, dados: gravado, avisos: patch.avisos, antes };
+  }
+
+  async atribuir(idsBrutos: unknown, responsavelBruto: unknown, usuario: UsuarioSessao) {
+    const recusar = (mensagem: string, codigo = 'ATRIBUICAO_INVALIDA') => {
+      throw new RespostaComErro(422, codigo, mensagem, null);
+    };
+    if (
+      !Array.isArray(idsBrutos) ||
+      idsBrutos.length === 0 ||
+      idsBrutos.length > LIMITE_ATRIBUICAO ||
+      !idsBrutos.every((id) => typeof id === 'string' && /^[a-f\d]{24}$/i.test(id))
+    )
+      recusar(`Escolha de 1 a ${LIMITE_ATRIBUICAO} contatos. Nada foi alterado.`);
+    const semResponsavel = responsavelBruto === null || responsavelBruto === 'sem';
+    if (
+      !semResponsavel &&
+      (typeof responsavelBruto !== 'string' || !/^[a-f\d]{24}$/i.test(responsavelBruto))
+    )
+      recusar('Escolha quem vai cuidar destes contatos. Nada foi alterado.');
+    const responsavel = semResponsavel ? null : new Types.ObjectId(responsavelBruto as string);
+    if (responsavel) {
+      const pessoa = await this.conexao
+        .collection('usuarios')
+        .findOne({ _id: responsavel }, { projection: { papel: 1, ativo: 1 } });
+      if (
+        !pessoa ||
+        pessoa.ativo === false ||
+        !['vendedor', 'gestor', 'admin'].includes(String(pessoa.papel))
+      )
+        recusar('Essa pessoa não está ativa na equipe. Nada foi alterado.', 'RESPONSAVEL_INVALIDO');
+    }
+    const ids = [...new Set(idsBrutos as string[])].map((id) => new Types.ObjectId(id));
+    const atuais = await this.contatos
+      .find(
+        {
+          _id: { $in: ids },
+          'lgpd.eliminadoEm': { $exists: false },
+          fundidoEm: { $exists: false },
+        },
+        { _id: 1, versao: 1, status: 1, 'origem.vendedorAtribuido': 1 },
+      )
+      .lean();
+    const agora = new Date();
+    const autor = new Types.ObjectId(usuario.id);
+    let atribuidos = 0;
+    for (const atual of atuais) {
+      const anterior = idDoVendedor(atual as unknown as Record<string, unknown>) ?? null;
+      if (anterior === (responsavel ? String(responsavel) : null)) continue;
+      const r = await this.contatos.updateOne(
+        { _id: atual._id, versao: atual.versao },
+        {
+          ...(responsavel
+            ? {
+                $set: {
+                  'origem.vendedorAtribuido': responsavel,
+                  alteradoEm: agora,
+                  alteradoPor: autor,
+                },
+              }
+            : {
+                $set: { alteradoEm: agora, alteradoPor: autor },
+                $unset: { 'origem.vendedorAtribuido': '' },
+              }),
+          $inc: { versao: 1 },
+        },
+      );
+      if (r.matchedCount === 0) continue;
+      atribuidos += 1;
+      await this.conexao.collection('contatos_auditoria').insertOne({
+        contatoId: atual._id,
+        versao: (atual.versao ?? 0) + 1,
+        campo: 'responsavel',
+        valorAnterior: anterior,
+        valorNovo: responsavel ? String(responsavel) : null,
+        autor,
+        autorNome: pseudonimizarAutor(usuario.nome ?? ''),
+        timestampServidor: agora,
+        motivo: 'atribuicao_carteira',
+        origem: 'api',
+      });
+    }
+    return {
+      dados: {
+        atribuidos,
+        semMudanca: atuais.length - atribuidos,
+        naoEncontrados: ids.length - atuais.length,
+      },
+      avisos: [],
+      erros: [],
+    };
   }
 
   listar(usuario: UsuarioSessao, consulta: ConsultaListagem) {

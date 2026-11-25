@@ -65,6 +65,10 @@ export interface Campanha {
   estado: EstadoCampanha;
   versao: number;
   criadoPor: string;
+  /** Campanha de representante: só contatos desta carteira são elegíveis. */
+  carteiraDe?: string;
+  /** Contatos que quem cuida da campanha decidiu incluir mesmo com telefone repetido. */
+  repetidosLiberados?: string[];
   criadoEm: Date;
   alteradoEm: Date;
   preparadaEm?: Date;
@@ -121,9 +125,9 @@ export interface LeadCampanha {
   status?: string;
   criadoEm?: Date;
   fundidoEm?: unknown;
-  origem?: { modo?: string };
+  origem?: { modo?: string; vendedorAtribuido?: unknown };
   tags?: string[];
-  telefones?: { e164?: string; principal?: boolean; whatsapp?: boolean }[];
+  telefones?: { e164?: string; bruto?: string; principal?: boolean; whatsapp?: boolean }[];
   lgpd?: {
     contatoComercial?: string;
     revogadoEm?: Date;

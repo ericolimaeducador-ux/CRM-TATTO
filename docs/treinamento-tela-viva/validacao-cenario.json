@@ -1,0 +1,12 @@
+{
+  "ambiente": "Cópia da aplicação com Mongo temporário, isolada da base real",
+  "prints": 49,
+  "resultado": {
+    "proposal": 180000,
+    "lead": "cliente",
+    "opportunity": "ganho"
+  },
+  "enviosReais": 0,
+  "escopoErrosHttp": "Somente a última execução do roteiro; a preparação usou retomadas e correções no roteiro de automação.",
+  "errosHttp": []
+}

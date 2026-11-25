@@ -3,6 +3,42 @@
 Formato: contexto · decisão · alternativas consideradas · consequências · status.
 Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
+## ADR-025 — Toda a equipe vê todas as campanhas; quem ficou de fora aparece e o responsável decide incluir repetidos
+
+**Contexto.** Em 25/11/2026 o proprietário perguntou quais contatos da campanha "Pós Tattoo Week" não receberam a mensagem: "o sistema excluiu alguns mas não consigo saber quais". A prévia mostrava os motivos, mas, ao preparar, só os elegíveis entravam na fila, e os demais sumiam da tela de resultados. Na base, de 78 selecionados, 76 foram abertos no WhatsApp. Ficaram de fora um contato que divide o telefone com outro selecionado (deduplicação por número) e um cadastro duplicado de uma pessoa que já recebeu pelo outro cadastro. O proprietário pediu: "isso precisa ser ajustado, eu decidir quem mandar ou não". Escolheu "lista de quem ficou de fora" e, para número repetido, "avisar e eu escolho". Pediu também: "o ideal é todo mundo ver tudo", porque representantes não viam a campanha da gestão.
+
+**Decisão.** (1) Leitura de campanhas aberta a vendedor, gestor e admin: lista, detalhe, prévia, resultados e histórico de todas. Alterar, preparar, iniciar/pausar/cancelar, abrir conversa manual e incluir continua com quem criou a campanha ou com a gestão (`CAMPANHA_DE_OUTRA_PESSOA`, 403). Auditor continua sem acesso. (2) `GET /:id/resultados` traz `foraDaCampanha`: cada selecionado que não está na fila, ou foi excluído dela na revalidação, com motivo, telefone mascarado, "mesmo número de" e `podeIncluir`. (3) `POST /:id/destinatarios/incluir {versao, contatoId}` em rascunho, preparada ou pausada inclui o contato repetido ou o que ficou apto depois da preparação. Autorização documentada, SAIR, telefone válido e carteira são conferidos de novo e não podem ser forçados. A liberação fica em `repetidosLiberados` e em auditoria `incluir_contato`, e o evento do destinatário é `incluido_pelo_responsavel`. (4) A fila passa a ser única por `campanhaId + contatoId`: o índice único antigo por telefone é removido ao iniciar e substituído por um não único. (5) O app atualiza o perfil por `/v1/auth/eu` ao abrir, para que uma mudança de papel apareça sem sair e entrar.
+
+**Alternativas.** Não deduplicar telefone: rejeitado pelo proprietário, que preferiu ser avisado e decidir. Permitir incluir quem não tem autorização: rejeitado, a LGPD exige o aceite registrado (ADR-023 dá o caminho na ficha). Liberar alteração de qualquer campanha a qualquer pessoa: não pedido; leitura resolve "ver tudo" sem permitir envio pela campanha de outra pessoa.
+
+**Consequências.** Substitui, em ADR-024, a regra "vendedor lista e abre só as campanhas que criou". A visibilidade de contatos por carteira (ADR-011/024) não muda. O representante passa a ver nomes e telefones mascarados de contatos fora da sua carteira quando abre a campanha da gestão. Não existe papel "superadmin": administrador é o papel máximo.
+
+**Status.** aceito — 25/11/2026 — decisão do proprietário.
+
+## ADR-024 — Admin distribui a carteira; representante faz campanha da própria carteira
+
+**Contexto.** Em 25/11/2026 o proprietário relatou que um vendedor entrou e não viu os leads capturados e digitados nem a opção Campanhas. Por desenho (ADR-011), o vendedor vê apenas contatos com `origem.vendedorAtribuido` igual ao seu id, e só ganha esse vínculo o que ele mesmo captura. Leads digitados pelo proprietário, do QR geral, Google Forms e planilha ficavam sem dono ou com o proprietário, sem nenhum caminho para repassá-los. Campanhas eram só de gestor/admin. O proprietário escolheu: o admin distribui os contatos e o vendedor faz campanhas para a própria carteira.
+
+**Decisão.** Nova permissão `atribuir_carteira` (gestor, admin). `POST /v1/contatos/atribuir` recebe de 1 a 500 ids e o responsável (pessoa ativa com papel vendedor, gestor ou admin) ou `sem` para tirar o responsável; ignora contatos eliminados ou fundidos, incrementa a versão e grava uma linha `responsavel` em `contatos_auditoria` com `motivo: atribuicao_carteira`. A listagem aceita `responsavel=sem|<id>` só para quem não é vendedor. A tela Contatos ganha, para a gestão, o filtro Responsável, a seleção por contato, "Selecionar todos os listados" e "Passar para". O vendedor continua restrito à própria carteira. Campanhas aceita o vendedor: ele lista e abre só as campanhas que criou, os candidatos e as pendências vêm só da sua carteira, a campanha nasce em modo manual com `carteiraDe` e qualquer contato fora dela sai como `fora_da_carteira` na prévia e de novo ao abrir a conversa. O vendedor não escolhe a API oficial, não inicia envio automático e não gera link de atualização cadastral.
+
+**Alternativas.** Todos veem todos: rejeitado pelo proprietário, a saída de um vendedor levaria a base inteira. Fila "sem dono" com autoatribuição: não escolhida agora; pode ser acrescentada sobre o mesmo endpoint. Liberar a API oficial ao vendedor: rejeitado, o número e o limite diário da Meta são da empresa.
+
+**Consequências.** O proprietário precisa distribuir os contatos que já existem para que cada vendedor os veja: filtrar "Sem responsável" (e os que estão com ele), selecionar e passar. Contas, oportunidades e visitas do módulo comercial continuam com a atribuição própria, já existente. Uma campanha da gestão continua podendo incluir qualquer contato elegível.
+
+**Status.** aceito — 25/11/2026 — decisão do proprietário.
+
+## ADR-023 — Pendências de campanha visíveis e aceite registrado na ficha
+
+**Contexto.** Em 25/11/2026 o proprietário percebeu que a campanha deixava de fora contatos com telefone inválido ou sem aceite de contato comercial, mas não havia como saber quem eram para ajustá-los. A seleção mostrava o motivo só misturado na lista paginada de candidatos, e a ficha de um contato já sincronizado não tinha como registrar o aceite.
+
+**Decisão.** `GET /v1/campanhas/pendencias` (gestor/admin) avalia os contatos ativos com a mesma regra de elegibilidade da prévia e devolve contagem por motivo, filtro por motivo, paginação de 30 e uma pista do telefone (quantidade de dígitos e final), nunca o número inteiro. Contatos descartados, fundidos ou eliminados ficam fora da lista. A leitura entra em `acessos_dados` como `campanhas_pendencias`. A tela Campanhas mostra o painel com orientação por motivo e link para a ficha. Na ficha, quem pode editar registra o aceite pendente pelo endpoint existente `POST /v1/contatos/:id/consentimento` (canal `vendedor_evento`, ADR-008), apenas depois de marcar "Confirmo que a pessoa autorizou receber contato comercial"; revogado não é reaberto por esse caminho. Quem pediu parada não tem atalho de ajuste.
+
+**Alternativas.** Incluir automaticamente quem não tem aceite: rejeitado, a campanha exige autorização documentada (ADR-019/CP-04). Mostrar o telefone completo na lista: rejeitado, a ficha já mostra a quem tem acesso e a lista é de volume. Calcular a elegibilidade no banco: adiado; a avaliação em memória cobre até 5000 contatos e avisa quando trunca.
+
+**Consequências.** O operador encontra e corrige os contatos antes de montar a campanha. O aceite registrado pelo operador vale como declaração dele, com nome, data e versão do termo na trilha; a prova mais forte continua sendo o titular marcar o aceite no QR ou no termo.
+
+**Status.** aceito — 25/11/2026 — pedido do proprietário.
+
 ## ADR-022 — Telefone digitado só com DDD + número; lista de contatos ordenável
 
 **Contexto.** Em 24/11/2026 o proprietário relatou que a captura parecia exigir o código do país no telefone e pediu que valesse só DDD + 9 dígitos do celular. A normalização do servidor já completava +55, mas a máscara do formulário guardava só os 11 primeiros dígitos: número colado ou autocompletado com +55 virava DDD 55 com o final cortado. Pediu também organizar a lista de contatos por data e ordem alfabética para localizar registros.
@@ -14,6 +50,16 @@ Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 **Consequências.** Contatos novos com DDD + número entram já com E.164 e ficam elegíveis a WhatsApp. Registros antigos gravados com número cortado não são corrigidos automaticamente. A ordem A–Z não usa índice dedicado; aceitável no volume atual.
 
 **Status.** aceito — 24/11/2026 — pedido do proprietário.
+
+## ADR-021 — Atualização cadastral por link pessoal após interesse em parceria
+
+**Contexto.** Durante a campanha manual pós Tattoo Week, contatos interessados precisam receber atendimento mesmo com uma única pessoa operando as conversas. O QR público existente cria outro lead e não pode ser usado para editar um registro já existente.
+
+**Decisão.** Gestor/admin gera, por contato, um link pessoal de atualização válido por sete dias e de uso único. O token de alta entropia fica armazenado somente como hash. A página pública permite confirmar nome, WhatsApp, e-mail, cidade e UF; não pede senha, CPF, endereço nem altera consentimento. A confirmação atualiza o mesmo contato e mantém autoria/auditoria do responsável que emitiu o link.
+
+**Consequências.** O operador envia o link apenas após conversar com o interessado. Quem abre o link vê somente os dados mínimos daquele contato; depois do envio, o token não pode ser reutilizado. Agendamento de conversa permanece manual nesta fase.
+
+**Status.** aceito — 23/11/2026 — pedido do proprietário.
 
 ## ADR-020 — Modo de envio manual pelo WhatsApp Web até a contratação da Cloud API
 
