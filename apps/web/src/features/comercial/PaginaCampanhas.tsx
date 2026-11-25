@@ -479,7 +479,7 @@ function CampanhasGestao() {
   async function triar(
     contatoId: string,
     nome: string,
-    situacao: 'interessado' | 'desinteressado',
+    situacao: 'interessado' | 'desinteressado' | 'saiu',
   ) {
     if (bloqueado) return;
     setOcupado(`triagem:${contatoId}`);
@@ -499,7 +499,9 @@ function CampanhasGestao() {
       setMensagem(
         situacao === 'interessado'
           ? `${nome} entrou na carteira (Funil · Conversa de 15 min).`
-          : `${nome} marcado como desinteressado. Volta a ser lembrado em 6 meses.`,
+          : situacao === 'saiu'
+            ? `${nome} pediu para sair: não recebe mais WhatsApp de campanha.`
+            : `${nome} marcado como desinteressado. Volta a ser lembrado em 6 meses.`,
       );
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível registrar a triagem.');
@@ -1039,7 +1041,11 @@ function CampanhasGestao() {
                       <div className="tv-row-actions" aria-label={`Triagem: ${r.nome ?? ''}`}>
                         {r.triagem ? (
                           <Selo valor={r.triagem}>
-                            {r.triagem === 'interessado' ? 'Interessado' : 'Desinteressado'}
+                            {r.triagem === 'interessado'
+                              ? 'Interessado'
+                              : r.triagem === 'saiu'
+                                ? 'Pediu para sair'
+                                : 'Desinteressado'}
                           </Selo>
                         ) : (
                           <small>Respondeu?</small>
@@ -1066,6 +1072,16 @@ function CampanhasGestao() {
                             }
                           >
                             Desinteressado
+                          </button>
+                        ) : null}
+                        {r.triagem !== 'saiu' ? (
+                          <button
+                            type="button"
+                            className="tv-small-button"
+                            disabled={bloqueado}
+                            onClick={() => void triar(r.contatoId, r.nome ?? 'O contato', 'saiu')}
+                          >
+                            Pediu para sair
                           </button>
                         ) : null}
                       </div>

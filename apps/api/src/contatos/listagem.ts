@@ -29,6 +29,8 @@ export interface ConsultaListagem {
   ate?: string;
   ordem?: string;
   responsavel?: string;
+  /** Triagem do SDR: interessado | desinteressado | saiu | sem (ADR-030). */
+  triagem?: string;
 }
 
 type Ordem = (typeof ORDENS)[number];
@@ -59,6 +61,9 @@ export function completarFiltro(
   if (umDe(consulta.consentimento, CONSENTIMENTOS)) {
     filtro['lgpd.contatoComercial'] = consulta.consentimento;
   }
+  if (umDe(consulta.triagem, ['interessado', 'desinteressado', 'saiu'] as const))
+    filtro['triagem.situacao'] = consulta.triagem;
+  else if (consulta.triagem === 'sem') filtro['triagem.situacao'] = null;
   const faixa = intervalo(consulta.desde, consulta.ate);
   if (faixa) filtro.criadoEm = faixa;
   const ordem: Ordem = umDe(consulta.ordem, ORDENS) ? (consulta.ordem as Ordem) : 'recente';

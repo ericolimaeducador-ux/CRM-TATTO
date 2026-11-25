@@ -52,7 +52,7 @@ test('outro navegador consulta contatos do CRM sem copiá-los para a fila local 
     await paginaB.getByRole('link', { name: 'Contatos', exact: true }).click();
     const remoto = paginaB.getByRole('link', { name: nome, exact: true });
     await expect(remoto).toHaveAttribute('href', `/lead/${id}`);
-    await expect(remoto.locator('..')).toContainText('Salvo no CRM');
+    await expect(remoto.locator('..')).toContainText('Ainda não triado');
     const contagens = await paginaB.evaluate(async () => {
       return new Promise<{ contatos: number; operacoes: number }>((resolve, reject) => {
         const pedido = indexedDB.open('captura7');

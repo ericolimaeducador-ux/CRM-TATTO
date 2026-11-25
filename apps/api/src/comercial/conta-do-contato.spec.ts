@@ -238,6 +238,30 @@ describe('ADR-028 — conta da carteira nasce do contato qualificado', () => {
       expect(conta.campos.etapaJornada).toBe('academia');
     });
 
+    it('pediu para sair bloqueia o WhatsApp de vez e a lista separa cada grupo', async () => {
+      const quer = await lead({ nome: 'Quer Conhecer', telefone: '11911110001' });
+      const nao = await lead({ nome: 'Agora Não', telefone: '11911110002' });
+      const sair = await lead({ nome: 'Não Mande Mais', telefone: '11911110003' });
+      await lead({ nome: 'Sem Resposta', telefone: '11911110004' });
+      await triar(quer._id, 'interessado');
+      await triar(nao._id, 'desinteressado');
+      const r = await triar(sair._id, 'saiu');
+      expect(r.status).toBe(201);
+      expect(r.body.dados.triagem.situacao).toBe('saiu');
+      expect(r.body.dados.triagem.retomarEm).toBeUndefined();
+      expect(await registros.db.collection('whatsapp_bloqueios').countDocuments()).toBe(1);
+      const nomes = async (triagem: string) =>
+        (await api().get(`/v1/contatos?triagem=${triagem}`).set(head())).body.dados.map(
+          (c: { nome: string }) => c.nome,
+        );
+      expect(await nomes('interessado')).toEqual(['Quer Conhecer']);
+      expect(await nomes('desinteressado')).toEqual(['Agora Não']);
+      expect(await nomes('saiu')).toEqual(['Não Mande Mais']);
+      expect(await nomes('sem')).toEqual(['Sem Resposta']);
+      const ativas = (await contas()).filter((c) => !c.arquivado);
+      expect(ativas.map((c) => c.campos.nome)).toEqual(['Quer Conhecer']);
+    });
+
     it('representante tria os próprios contatos', async () => {
       const r = await api()
         .post('/v1/contatos')

@@ -158,9 +158,11 @@ export class ContatosController {
     @Query('ate') ate: string | undefined,
     @Query('ordem') ordem: string | undefined,
     @Query('responsavel') responsavel: string | undefined,
+    @Query('triagem') triagem: string | undefined,
     @Req() req: RequisicaoComUsuario,
   ) {
     return this.contatos.listar(exigirUsuario(req), {
+      triagem,
       cursor,
       limite,
       q,

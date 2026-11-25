@@ -75,7 +75,7 @@ export interface Contato {
   };
   /** Triagem do SDR depois do primeiro contato (ADR-029). */
   triagem?: {
-    situacao?: 'interessado' | 'desinteressado';
+    situacao?: 'interessado' | 'desinteressado' | 'saiu';
     em?: Date;
     por?: Types.ObjectId;
     motivo?: string;
@@ -157,7 +157,7 @@ export const contatoSchema = new Schema(
     triagem: {
       type: new Schema(
         {
-          situacao: { type: String, enum: ['interessado', 'desinteressado'] },
+          situacao: { type: String, enum: ['interessado', 'desinteressado', 'saiu'] },
           em: { type: Date },
           por: { type: Schema.Types.ObjectId },
           motivo: { type: String },
