@@ -21,6 +21,9 @@ interface ContatoLido {
   criadoEm?: string;
   emails?: { valor?: string }[];
   telefones?: { e164?: string; bruto?: string }[];
+  enderecos?: { cidade?: string; uf?: string; logradouro?: string; numero?: string }[];
+  pf?: { cpfMascarado?: string };
+  pj?: { cnpjMascarado?: string };
   origem?: { modo?: string };
   completude?: { score?: number };
   lgpd?: { contatoComercial?: string };
@@ -32,7 +35,32 @@ interface LinhaAuditoria {
   timestampServidor?: string;
 }
 
-type CampoEditavel = 'nome' | 'email' | 'telefone';
+type CampoEditavel = 'nome' | 'email' | 'telefone' | 'tipoPessoa' | 'cidade' | 'uf' | 'documento';
+
+const TIPOS_PESSOA: Record<string, string> = {
+  PJ: 'Estúdio (pessoa jurídica)',
+  PF: 'Tatuador autônomo (pessoa física)',
+  INDEFINIDO: 'Não informado',
+};
+
+/** Espelho da regra da API (ADR-027): o que falta para qualificar. Sem CPF/CNPJ. */
+export function faltaParaQualificar(contato: ContatoLido): string[] {
+  const faltam: string[] = [];
+  if (!contato.nome?.trim()) faltam.push('nome');
+  const meio =
+    (contato.emails ?? []).some((e) => e.valor?.includes('@')) ||
+    (contato.telefones ?? []).some((t) => t.e164);
+  if (!meio) faltam.push('WhatsApp ou e-mail');
+  const endereco = (contato.enderecos ?? []).find((e) => e.cidade?.trim() || e.uf?.trim());
+  if (!endereco?.cidade?.trim()) faltam.push('cidade');
+  if (!/^[A-Z]{2}$/i.test(endereco?.uf?.trim() ?? '')) faltam.push('UF');
+  const tipo =
+    contato.tipoPessoa === 'PF' ||
+    contato.tipoPessoa === 'PJ' ||
+    Boolean(contato.pf?.cpfMascarado || contato.pj?.cnpjMascarado);
+  if (!tipo) faltam.push('se é estúdio ou tatuador autônomo');
+  return faltam;
+}
 
 export function PaginaLead() {
   const { id = '' } = useParams();
@@ -102,6 +130,28 @@ export function PaginaLead() {
         <p className="text-base">
           Qualificar, descartar, reabrir, revogar e eliminar pedem gestor ou admin.
         </p>
+      ) : null}
+      {contato && status === 'capturado' ? (
+        <div className="cartao flex flex-col gap-2" aria-label="Para qualificar">
+          {faltaParaQualificar(contato).length ? (
+            <>
+              <p className="text-base">
+                <span className="font-semibold">Para qualificar, falta:</span>{' '}
+                {faltaParaQualificar(contato).join(', ')}.
+              </p>
+              {editar && !editando ? (
+                <button type="button" className="btn-secundario" onClick={() => setEditando(true)}>
+                  Completar dados
+                </button>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-base">
+              <span className="font-semibold">Pronto para qualificar.</span> CPF ou CNPJ só será
+              pedido quando virar cliente.
+            </p>
+          )}
+        </div>
       ) : null}
       {gerir && contato ? (
         <>
@@ -176,7 +226,17 @@ function DadosDoLead({ contato, aoEditar }: { contato: ContatoLido; aoEditar?: (
       <Linha rotulo="Nome" valor={contato.nome ?? ''} />
       <Linha rotulo="E-mail" valor={email} />
       <Linha rotulo="Telefone" valor={telefone} />
-      <Linha rotulo="Pessoa" valor={contato.tipoPessoa ?? 'INDEFINIDO'} />
+      <Linha rotulo="Tipo" valor={TIPOS_PESSOA[contato.tipoPessoa ?? 'INDEFINIDO'] ?? ''} />
+      <Linha
+        rotulo="Cidade/UF"
+        valor={[contato.enderecos?.[0]?.cidade, contato.enderecos?.[0]?.uf]
+          .filter((x) => x?.trim())
+          .join(' / ')}
+      />
+      <Linha
+        rotulo="CPF/CNPJ"
+        valor={contato.pj?.cnpjMascarado ?? contato.pf?.cpfMascarado ?? ''}
+      />
       <Linha rotulo="Origem" valor={nomeDaOrigem(contato.origem?.modo)} />
       <Linha rotulo="Criado em" valor={dataHoraBr(contato.criadoEm)} />
       {aoEditar ? (
@@ -211,6 +271,11 @@ function EdicaoDoLead({
     nome: contato.nome ?? '',
     email: contato.emails?.[0]?.valor ?? '',
     telefone: contato.telefones?.[0]?.bruto ?? contato.telefones?.[0]?.e164 ?? '',
+    tipoPessoa: contato.tipoPessoa ?? 'INDEFINIDO',
+    cidade: contato.enderecos?.[0]?.cidade ?? '',
+    uf: contato.enderecos?.[0]?.uf ?? '',
+    // O documento nunca volta aberto da API; só é enviado quando alguém digita.
+    documento: '',
   };
   const [valores, setValores] = useState(iniciais);
   const [salvando, setSalvando] = useState(false);
@@ -219,12 +284,23 @@ function EdicaoDoLead({
     setSalvando(true);
     let atual = contato;
     try {
-      for (const campo of ['nome', 'email', 'telefone'] as const) {
+      for (const campo of [
+        'nome',
+        'email',
+        'telefone',
+        'tipoPessoa',
+        'cidade',
+        'uf',
+        'documento',
+      ] as const) {
         if (valores[campo].trim() === iniciais[campo].trim()) continue;
+        const digitos = valores.documento.replace(/\D/g, '');
+        const nomeApi = campo === 'documento' ? (digitos.length > 11 ? 'cnpj' : 'cpf') : campo;
+        const valor = campo === 'uf' ? valores.uf.trim().toUpperCase() : valores[campo];
         const resposta = await fetch(urlDaApi(`/v1/contatos/${id}`), {
           method: 'PATCH',
           headers: cabecalhosDaSessao(),
-          body: JSON.stringify({ campo, valor: valores[campo], versaoConhecida: atual.versao }),
+          body: JSON.stringify({ campo: nomeApi, valor, versaoConhecida: atual.versao }),
         });
         const json = (await resposta.json()) as {
           dados?: ContatoLido;
@@ -272,6 +348,52 @@ function EdicaoDoLead({
           />
         </label>
       ))}
+      <label className="flex flex-col gap-1 text-base">
+        É estúdio ou tatuador autônomo?
+        <select
+          className="campo"
+          value={valores.tipoPessoa}
+          onChange={(evento) => setValores({ ...valores, tipoPessoa: evento.target.value })}
+        >
+          {Object.entries(TIPOS_PESSOA).map(([valor, rotulo]) => (
+            <option key={valor} value={valor}>
+              {rotulo}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="flex gap-2">
+        <label className="flex flex-1 flex-col gap-1 text-base">
+          Cidade
+          <input
+            className="campo"
+            autoComplete="address-level2"
+            value={valores.cidade}
+            onChange={(evento) => setValores({ ...valores, cidade: evento.target.value })}
+          />
+        </label>
+        <label className="flex w-20 flex-col gap-1 text-base">
+          UF
+          <input
+            className="campo"
+            maxLength={2}
+            autoComplete="address-level1"
+            value={valores.uf}
+            onChange={(evento) => setValores({ ...valores, uf: evento.target.value.toUpperCase() })}
+          />
+        </label>
+      </div>
+      <label className="flex flex-col gap-1 text-base">
+        CPF ou CNPJ (opcional; só é exigido para virar cliente)
+        <input
+          className="campo"
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder={contato.pj?.cnpjMascarado ?? contato.pf?.cpfMascarado ?? 'Somente números'}
+          value={valores.documento}
+          onChange={(evento) => setValores({ ...valores, documento: evento.target.value })}
+        />
+      </label>
       <button type="submit" className="btn disabled:opacity-40" disabled={salvando}>
         {salvando ? 'Salvando…' : 'Salvar dados'}
       </button>
