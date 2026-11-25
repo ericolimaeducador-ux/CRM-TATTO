@@ -94,6 +94,14 @@ export class CampanhasController {
   @Get(':id/auditoria') auditoria(@Param('id') id: string, @Req() req: RequisicaoComUsuario) {
     return this.campanhas.auditoria(id, usuario(req));
   }
+  /** Inclui um contato que ficou de fora por telefone repetido ou que ficou apto depois. */
+  @Post(':id/destinatarios/incluir') incluir(
+    @Param('id') id: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: RequisicaoComUsuario,
+  ) {
+    return this.campanhas.incluir(id, corpo(body), usuario(req));
+  }
   /** Modo manual: libera telefone e texto para abrir o WhatsApp Web deste destinatário. */
   @Post(':id/destinatarios/:destinatarioId/whatsapp-manual') abrirManual(
     @Param('id') id: string,

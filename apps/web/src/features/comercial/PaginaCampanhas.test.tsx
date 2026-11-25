@@ -243,9 +243,7 @@ describe('Campanhas — preparação, segurança e estados honestos', () => {
     entrar('vendedor');
     montar(`/campanhas/${ID}`);
     expect(await screen.findByRole('link', { name: 'Campanhas' })).toBeTruthy();
-    expect(
-      screen.getByText(/somente as suas campanhas e os contatos da sua carteira/),
-    ).toBeTruthy();
+    expect(screen.getByText(/todas as campanhas da equipe/)).toBeTruthy();
     await screen.findByLabelText('Selecionar Marina autorizada');
     expect(screen.queryByRole('radio', { name: /API oficial da Meta/ })).toBeNull();
     expect(screen.queryByRole('region', { name: 'Preparação do WhatsApp' })).toBeNull();

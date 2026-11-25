@@ -3,6 +3,18 @@
 Formato: contexto · decisão · alternativas consideradas · consequências · status.
 Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
+## ADR-025 — Toda a equipe vê todas as campanhas; quem ficou de fora aparece e o responsável decide incluir repetidos
+
+**Contexto.** Em 25/11/2026 o proprietário perguntou quais contatos da campanha "Pós Tattoo Week" não receberam a mensagem: "o sistema excluiu alguns mas não consigo saber quais". A prévia mostrava os motivos, mas, ao preparar, só os elegíveis entravam na fila, e os demais sumiam da tela de resultados. Na base, de 78 selecionados, 76 foram abertos no WhatsApp. Ficaram de fora um contato que divide o telefone com outro selecionado (deduplicação por número) e um cadastro duplicado de uma pessoa que já recebeu pelo outro cadastro. O proprietário pediu: "isso precisa ser ajustado, eu decidir quem mandar ou não". Escolheu "lista de quem ficou de fora" e, para número repetido, "avisar e eu escolho". Pediu também: "o ideal é todo mundo ver tudo", porque representantes não viam a campanha da gestão.
+
+**Decisão.** (1) Leitura de campanhas aberta a vendedor, gestor e admin: lista, detalhe, prévia, resultados e histórico de todas. Alterar, preparar, iniciar/pausar/cancelar, abrir conversa manual e incluir continua com quem criou a campanha ou com a gestão (`CAMPANHA_DE_OUTRA_PESSOA`, 403). Auditor continua sem acesso. (2) `GET /:id/resultados` traz `foraDaCampanha`: cada selecionado que não está na fila, ou foi excluído dela na revalidação, com motivo, telefone mascarado, "mesmo número de" e `podeIncluir`. (3) `POST /:id/destinatarios/incluir {versao, contatoId}` em rascunho, preparada ou pausada inclui o contato repetido ou o que ficou apto depois da preparação. Autorização documentada, SAIR, telefone válido e carteira são conferidos de novo e não podem ser forçados. A liberação fica em `repetidosLiberados` e em auditoria `incluir_contato`, e o evento do destinatário é `incluido_pelo_responsavel`. (4) A fila passa a ser única por `campanhaId + contatoId`: o índice único antigo por telefone é removido ao iniciar e substituído por um não único. (5) O app atualiza o perfil por `/v1/auth/eu` ao abrir, para que uma mudança de papel apareça sem sair e entrar.
+
+**Alternativas.** Não deduplicar telefone: rejeitado pelo proprietário, que preferiu ser avisado e decidir. Permitir incluir quem não tem autorização: rejeitado, a LGPD exige o aceite registrado (ADR-023 dá o caminho na ficha). Liberar alteração de qualquer campanha a qualquer pessoa: não pedido; leitura resolve "ver tudo" sem permitir envio pela campanha de outra pessoa.
+
+**Consequências.** Substitui, em ADR-024, a regra "vendedor lista e abre só as campanhas que criou". A visibilidade de contatos por carteira (ADR-011/024) não muda. O representante passa a ver nomes e telefones mascarados de contatos fora da sua carteira quando abre a campanha da gestão. Não existe papel "superadmin": administrador é o papel máximo.
+
+**Status.** aceito — 25/11/2026 — decisão do proprietário.
+
 ## ADR-024 — Admin distribui a carteira; representante faz campanha da própria carteira
 
 **Contexto.** Em 25/11/2026 o proprietário relatou que um vendedor entrou e não viu os leads capturados e digitados nem a opção Campanhas. Por desenho (ADR-011), o vendedor vê apenas contatos com `origem.vendedorAtribuido` igual ao seu id, e só ganha esse vínculo o que ele mesmo captura. Leads digitados pelo proprietário, do QR geral, Google Forms e planilha ficavam sem dono ou com o proprietário, sem nenhum caminho para repassá-los. Campanhas eram só de gestor/admin. O proprietário escolheu: o admin distribui os contatos e o vendedor faz campanhas para a própria carteira.

@@ -67,6 +67,8 @@ export interface Campanha {
   criadoPor: string;
   /** Campanha de representante: só contatos desta carteira são elegíveis. */
   carteiraDe?: string;
+  /** Contatos que quem cuida da campanha decidiu incluir mesmo com telefone repetido. */
+  repetidosLiberados?: string[];
   criadoEm: Date;
   alteradoEm: Date;
   preparadaEm?: Date;

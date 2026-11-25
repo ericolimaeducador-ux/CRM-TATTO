@@ -764,7 +764,7 @@ describe('CP — campanhas em Mongo isolado e transporte simulado', () => {
       expect(transporte).not.toHaveBeenCalled();
     });
 
-    it('representante usa só a própria carteira, só modo manual e não vê campanha alheia', async () => {
+    it('representante vê todas as campanhas, mas só altera as próprias, da própria carteira e manuais', async () => {
       const dono = { origem: { modo: 'manual', vendedorAtribuido: new Types.ObjectId(VENDEDOR) } };
       const meu = await lead(dono, '+5511999990101');
       const alheio = await lead({}, '+5511999990102');
@@ -772,10 +772,19 @@ describe('CP — campanhas em Mongo isolado e transporte simulado', () => {
       const vend = head('vendedor');
       const lista = await api().get('/v1/campanhas').set(vend);
       expect(lista.status).toBe(200);
-      expect(lista.body.registros.map((x: Campanha) => String(x._id))).not.toContain(
+      expect(lista.body.registros.map((x: Campanha) => String(x._id))).toContain(
         String(daGestao._id),
       );
-      expect((await api().get(`/v1/campanhas/${daGestao._id}`).set(vend)).status).toBe(404);
+      expect((await api().get(`/v1/campanhas/${daGestao._id}`).set(vend)).status).toBe(200);
+      expect((await api().get(`/v1/campanhas/${daGestao._id}/resultados`).set(vend)).status).toBe(
+        200,
+      );
+      const alheia = await api()
+        .patch(`/v1/campanhas/${daGestao._id}`)
+        .set(vend)
+        .send({ versao: daGestao.versao, titulo: 'Tomada' });
+      expect(alheia.status).toBe(403);
+      expect(alheia.text).toContain('CAMPANHA_DE_OUTRA_PESSOA');
       const candidatos = await api().get('/v1/campanhas/candidatos').set(vend);
       expect(candidatos.body.registros.map((x: { id: string }) => x.id)).toEqual([meu]);
       const pend = await api().get('/v1/campanhas/pendencias').set(vend);
@@ -821,11 +830,71 @@ describe('CP — campanhas em Mongo isolado e transporte simulado', () => {
       expect(transporte).not.toHaveBeenCalled();
     });
 
+    it('mostra quem ficou de fora depois de preparar e deixa incluir telefone repetido', async () => {
+      const primeira = await lead({ nome: 'Primeira Estúdio' }, '+5511999990301');
+      const repetida = await lead({ nome: 'Segunda Estúdio' }, '+5511999990301');
+      const semAceite = await lead(
+        { nome: 'Sem Aceite', lgpd: { contatoComercial: 'pendente' } },
+        '+5511999990302',
+      );
+      const c = await manualPreparada([primeira, repetida, semAceite]);
+      expect(await fila(c)).toHaveLength(1);
+      const r = await resultado(c);
+      const fora = Object.fromEntries(
+        r.foraDaCampanha.map((x: { contatoId: string }) => [x.contatoId, x]),
+      );
+      expect(fora[repetida]).toMatchObject({
+        nome: 'Segunda Estúdio',
+        motivo: 'telefone_duplicado',
+        mesmoNumeroDe: 'Primeira Estúdio',
+        podeIncluir: true,
+      });
+      expect(fora[semAceite]).toMatchObject({
+        motivo: 'sem_autorizacao_documentada',
+        podeIncluir: false,
+      });
+      expect(JSON.stringify(r.foraDaCampanha)).not.toContain('999990301');
+      const incluir = (contatoId: string, versao: number, papel = 'gestor') =>
+        api()
+          .post(`/v1/campanhas/${c._id}/destinatarios/incluir`)
+          .set(head(papel))
+          .send({ versao, contatoId });
+      expect((await incluir(semAceite, c.versao)).status).toBe(409);
+      expect((await incluir(repetida, c.versao, 'vendedor')).status).toBe(403);
+      const ok = await incluir(repetida, c.versao);
+      expect(ok.status).toBe(201);
+      expect(ok.body.registro.repetidosLiberados).toEqual([repetida]);
+      const filaDepois = await fila(c);
+      expect(filaDepois).toHaveLength(2);
+      expect(filaDepois[1]).toMatchObject({ estado: 'pendente' });
+      expect(filaDepois[1].eventos[0].codigo).toBe('incluido_pelo_responsavel');
+      expect((await incluir(repetida, ok.body.registro.versao)).status).toBe(409);
+      const depois = await resultado(c);
+      expect(depois.foraDaCampanha.map((x: { contatoId: string }) => x.contatoId)).toEqual([
+        semAceite,
+      ]);
+      // Na prévia do rascunho, o repetido liberado deixa de ser excluído.
+      const rascunho = await criar([primeira, repetida], { modo: 'manual', template: null });
+      const liberado = await api()
+        .post(`/v1/campanhas/${rascunho._id}/destinatarios/incluir`)
+        .set(head())
+        .send({ versao: rascunho.versao, contatoId: repetida });
+      expect(liberado.status).toBe(201);
+      const previa = await api()
+        .post(`/v1/campanhas/${rascunho._id}/previa`)
+        .set(head())
+        .send({ versao: liberado.body.registro.versao });
+      expect(previa.body.registro).toMatchObject({ elegiveis: 2, duplicados: 0 });
+      const preparada = await preparar(liberado.body.registro as Campanha);
+      expect(await fila(preparada)).toHaveLength(2);
+      expect(transporte).not.toHaveBeenCalled();
+    });
+
     it('revalida autorização antes de abrir e respeita papel e modo', async () => {
       const id = await lead();
       const c = await manualPreparada([id]);
       const [d] = await fila(c);
-      expect((await abrir(c, d._id, 'vendedor')).status).toBe(404);
+      expect((await abrir(c, d._id, 'vendedor')).status).toBe(403);
       await db
         .db!.collection('contatos')
         .updateOne(

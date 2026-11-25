@@ -125,6 +125,8 @@ function CampanhasGestao() {
   const [linksAtualizacao, setLinksAtualizacao] = useState<Record<string, string>>({});
   const editor = Boolean(id || novo);
   const gestao = podeGerir();
+  // Todos veem todas as campanhas; alterar e enviar é de quem criou ou da gestão.
+  const podeAlterar = gestao || !salva || salva.criadoPor === perfilLogado()?.id;
   const manual = !gestao || (form.modo ?? 'api') === 'manual';
   const ultimaManual = resultados?.ultimaAberturaManualEm
     ? Date.parse(resultados.ultimaAberturaManualEm)
@@ -136,9 +138,9 @@ function CampanhasGestao() {
           Math.ceil((ultimaManual + form.cadencia.intervaloSegundos * 1000 - agora) / 1000),
         )
       : 0;
-  const editavel = form.estado === 'rascunho';
+  const editavel = form.estado === 'rascunho' && podeAlterar;
   const bloqueado = Boolean(ocupado || carregando);
-  const prontoAcoes = Boolean(salva && !dirty && !conflito && !bloqueado);
+  const prontoAcoes = Boolean(salva && !dirty && !conflito && !bloqueado && podeAlterar);
 
   const aplicar = useCallback((campanha: Campanha) => {
     setForm(campanha);
@@ -468,6 +470,40 @@ function CampanhasGestao() {
     }
   }
 
+  /** Inclui quem ficou de fora por telefone repetido (ou ficou apto depois). Decisão de quem cuida da campanha. */
+  async function incluirContato(contatoId: string, nome: string) {
+    if (!salva || bloqueado || dirty || !podeAlterar) return;
+    setOcupado(`incluir:${contatoId}`);
+    setErro('');
+    setMensagem('');
+    try {
+      const r = await apiCampanhas<{ registro: Campanha }>(
+        `/${salva._id}/destinatarios/incluir`,
+        'POST',
+        { versao: salva.versao, contatoId },
+      );
+      aplicar(r.registro);
+      if (r.registro.estado === 'rascunho') {
+        const p = await apiCampanhas<{ registro: PreviaCampanha }>(
+          `/${r.registro._id}/previa`,
+          'POST',
+          { versao: r.registro.versao },
+        );
+        setPrevia(p.registro);
+      }
+      setMensagem(
+        r.registro.estado === 'rascunho'
+          ? `${nome} vai entrar na campanha mesmo com telefone repetido.`
+          : `${nome} entrou na fila. Use "Enviar pelo WhatsApp" quando quiser.`,
+      );
+    } catch (e) {
+      tratarErro(e);
+    } finally {
+      setOcupado('');
+      setRecarga((n) => n + 1);
+    }
+  }
+
   async function gerarLinkAtualizacao(contatoId: string, nome: string) {
     setOcupado(`atualizacao:${contatoId}`);
     setErro('');
@@ -551,8 +587,8 @@ function CampanhasGestao() {
       />
       {!gestao ? (
         <p className="tv-campaign-hint">
-          Você vê aqui somente as suas campanhas e os contatos da sua carteira. O envio é manual,
-          pelo WhatsApp Web, um contato por vez.
+          Você vê todas as campanhas da equipe. Nas suas, seleciona contatos da sua carteira e envia
+          manualmente pelo WhatsApp Web, um contato por vez.
         </p>
       ) : null}
       {config && gestao ? (
@@ -693,6 +729,12 @@ function CampanhasGestao() {
               </button>
             )}
           </div>
+          {!podeAlterar ? (
+            <p className="tv-campaign-hint" role="status">
+              Campanha criada por outra pessoa da equipe. Você pode acompanhar tudo, mas só quem a
+              criou ou a gestão pode alterar ou enviar por ela.
+            </p>
+          ) : null}
           {comparacao ? (
             <section className="tv-panel tv-campaign-section">
               <h2>Versão atual no servidor: {comparacao.versao}</h2>
@@ -1123,8 +1165,30 @@ function CampanhasGestao() {
                       <strong>{d.nome}</strong> · {d.telefoneMascarado || 'Sem telefone'}
                       <br />
                       <span>
-                        {d.elegivel ? 'Elegível nesta revisão' : motivoCampanha(d.motivo)}
+                        {d.elegivel
+                          ? d.repetidoLiberado
+                            ? `Incluído por decisão sua (mesmo número de ${d.mesmoNumeroDe})`
+                            : 'Elegível nesta revisão'
+                          : motivoCampanha(d.motivo)}
+                        {!d.elegivel && d.mesmoNumeroDe
+                          ? ` — mesmo número de ${d.mesmoNumeroDe}`
+                          : ''}
                       </span>
+                      {d.motivo === 'telefone_duplicado' && editavel ? (
+                        <>
+                          {' '}
+                          <button
+                            type="button"
+                            className="tv-small-button"
+                            disabled={!prontoAcoes}
+                            onClick={() => void incluirContato(d.contatoId, d.nome)}
+                          >
+                            {ocupado === `incluir:${d.contatoId}`
+                              ? 'Incluindo…'
+                              : 'Incluir mesmo assim'}
+                          </button>
+                        </>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -1248,6 +1312,45 @@ function CampanhasGestao() {
                     ainda se aplicam.
                   </p>
                 ) : null}
+                {resultados.foraDaCampanha?.length ? (
+                  <div className="tv-campaign-warning" aria-label="Ficaram de fora">
+                    <h3>Ficaram de fora ({resultados.foraDaCampanha.length})</h3>
+                    <p>
+                      Selecionados que não estão na fila de envio. Quem pediu SAIR ou não tem
+                      autorização só entra depois de ajustar a ficha.
+                    </p>
+                    <ul className="tv-campaign-preview">
+                      {resultados.foraDaCampanha.map((f) => (
+                        <li key={f.contatoId}>
+                          <strong>
+                            <Link to={`/lead/${f.contatoId}`}>{f.nome}</Link>
+                          </strong>{' '}
+                          · {f.telefoneMascarado || 'Sem telefone'}
+                          <br />
+                          <span>
+                            {motivoCampanha(f.motivo)}
+                            {f.mesmoNumeroDe ? ` — mesmo número de ${f.mesmoNumeroDe}` : ''}
+                          </span>
+                          {f.podeIncluir && podeAlterar ? (
+                            <>
+                              {' '}
+                              <button
+                                type="button"
+                                className="tv-small-button"
+                                disabled={bloqueado || dirty}
+                                onClick={() => void incluirContato(f.contatoId, f.nome)}
+                              >
+                                {ocupado === `incluir:${f.contatoId}`
+                                  ? 'Incluindo…'
+                                  : 'Incluir mesmo assim'}
+                              </button>
+                            </>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
                 <div className="tv-campaign-candidates">
                   {resultados.registros.map((r) => (
                     <article className="tv-campaign-result" key={r._id}>
@@ -1260,6 +1363,7 @@ function CampanhasGestao() {
                         <span>Tentativas: {r.tentativas}</span>
                       )}
                       {manual &&
+                      podeAlterar &&
                       form.estado === 'preparada' &&
                       ['pendente', 'aberto_manual'].includes(r.estado) ? (
                         <button

@@ -86,8 +86,13 @@ for (const viewport of [
       contatosIds: [],
       template: null,
     });
-    const negado = await request.get(`${API}/v1/campanhas`, {
+    // Toda a equipe vê todas as campanhas (ADR-025); auditoria continua fora.
+    const representante = await request.get(`${API}/v1/campanhas/${campanhaId}`, {
       headers: { ...headers, 'x-papel-teste': 'vendedor' },
+    });
+    expect(representante.status()).toBe(200);
+    const negado = await request.get(`${API}/v1/campanhas`, {
+      headers: { ...headers, 'x-papel-teste': 'auditor' },
     });
     expect(negado.status()).toBe(403);
   });

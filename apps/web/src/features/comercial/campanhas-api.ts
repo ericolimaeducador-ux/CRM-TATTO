@@ -44,6 +44,9 @@ export interface Campanha {
     | 'concluida'
     | 'cancelada';
   versao: number;
+  /** Quem criou: representante só altera as próprias; todos veem todas. */
+  criadoPor?: string;
+  repetidosLiberados?: string[];
   criadoEm: string;
   alteradoEm: string;
 }
@@ -96,6 +99,9 @@ export interface PreviaCampanha {
     telefoneMascarado: string;
     elegivel: boolean;
     motivo: string;
+    /** Nome de quem já usa este telefone na campanha. */
+    mesmoNumeroDe?: string;
+    repetidoLiberado?: boolean;
   }[];
   mensagem: string;
   templateCompativel: boolean;
@@ -119,8 +125,18 @@ export interface ResultadoCampanha {
   diario: number;
   proximaSaidaEm: string | null;
   modo?: ModoEnvio;
+  /** Selecionados que não estão na fila (ou foram excluídos dela), com o motivo. */
+  foraDaCampanha?: ForaDaCampanha[];
   ultimaAberturaManualEm?: string | null;
   aviso: string;
+}
+export interface ForaDaCampanha {
+  contatoId: string;
+  nome: string;
+  telefoneMascarado: string;
+  motivo: string;
+  mesmoNumeroDe: string;
+  podeIncluir: boolean;
 }
 export type ModoEnvio = 'api' | 'manual';
 
@@ -181,7 +197,8 @@ export async function apiCampanhas<T>(caminho = '', metodo = 'GET', corpo?: unkn
   } | null;
   if (!resposta.ok)
     throw new ErroCampanha(
-      resposta.status === 401 || resposta.status === 403
+      resposta.status === 401 ||
+        (resposta.status === 403 && !json?.erros?.[0]?.mensagem && !json?.mensagem)
         ? 'Sua sessão não permite esta ação. Entre com um perfil de gestor ou administrador.'
         : (json?.erros?.[0]?.mensagem ??
             json?.mensagem ??
@@ -221,6 +238,8 @@ export const MOTIVOS_CAMPANHA: Record<string, string> = {
   sem_telefone_valido: 'Sem telefone válido para WhatsApp',
   destinatario_solicitou_parada: 'Solicitou parar as mensagens',
   telefone_duplicado: 'Telefone repetido nesta campanha',
+  apto_apos_preparacao: 'Ficou apto depois da preparação; pode ser incluído',
+  fora_da_carteira: 'Fora da carteira de quem criou a campanha',
   telefone_alterado: 'Telefone alterado após a preparação',
   destinatario_respondeu: 'Resposta recebida; atendimento deve continuar com a equipe',
   campanha_cancelada: 'Campanha cancelada',
