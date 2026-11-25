@@ -84,6 +84,15 @@ export function PaginaLead() {
           <DadosDoLead contato={contato} aoEditar={editar ? () => setEditando(true) : undefined} />
         )
       ) : null}
+      {contato && editar && (contato.lgpd?.contatoComercial ?? 'pendente') === 'pendente' ? (
+        <RegistrarAceite
+          id={id}
+          aoRegistrar={(atual, texto) => {
+            if (atual) setContato(atual);
+            setMensagem(texto);
+          }}
+        />
+      ) : null}
       {gerir && podePromover(status) ? (
         <Link className="atalho" to={`/promover/${id}`}>
           Promover a cliente
@@ -270,6 +279,74 @@ function EdicaoDoLead({
         Cancelar
       </button>
     </form>
+  );
+}
+
+function RegistrarAceite({
+  id,
+  aoRegistrar,
+}: {
+  id: string;
+  aoRegistrar: (contato: ContatoLido | null, mensagem: string) => void;
+}) {
+  const [confirmado, setConfirmado] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+
+  async function registrar() {
+    setSalvando(true);
+    try {
+      const resposta = await fetch(urlDaApi(`/v1/contatos/${id}/consentimento`), {
+        method: 'POST',
+        headers: cabecalhosDaSessao(),
+        body: JSON.stringify({ contatoComercial: true, emDispositivo: new Date().toISOString() }),
+      });
+      const json = (await resposta.json()) as {
+        dados?: ContatoLido;
+        erros?: { mensagem?: string }[];
+        mensagem?: string;
+      };
+      if (!resposta.ok) {
+        aoRegistrar(null, textoDaResposta(json, 'Não registrei o aceite. Nada foi alterado.'));
+        return;
+      }
+      aoRegistrar(
+        json.dados ?? null,
+        'Aceite registrado em seu nome. O contato já pode entrar em campanhas.',
+      );
+    } catch {
+      aoRegistrar(null, 'Sem resposta do servidor. Não registrei o aceite. Tente de novo.');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="cartao flex flex-col gap-3" aria-labelledby="titulo-aceite">
+      <h2 id="titulo-aceite" className="text-lg font-semibold">
+        Aceite de contato comercial pendente
+      </h2>
+      <p className="text-base">
+        Sem este aceite o contato fica de fora das campanhas. Registre apenas depois que a pessoa
+        disser que aceita receber contato da Tela Viva. O registro fica com seu nome, data e versão
+        do termo.
+      </p>
+      <label className="flex items-start gap-2 text-base">
+        <input
+          type="checkbox"
+          checked={confirmado}
+          onChange={(evento) => setConfirmado(evento.target.checked)}
+        />
+        Confirmo que a pessoa autorizou receber contato comercial.
+      </label>
+      <button
+        type="button"
+        className="btn disabled:opacity-40"
+        disabled={!confirmado || salvando}
+        onClick={() => void registrar()}
+      >
+        {salvando ? 'Registrando…' : 'Registrar aceite'}
+      </button>
+    </div>
   );
 }
 

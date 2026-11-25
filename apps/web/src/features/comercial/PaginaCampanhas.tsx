@@ -22,6 +22,7 @@ import {
   type ResultadoCampanha,
   type TemplateCampanha,
 } from './campanhas-api';
+import { PendenciasDeCampanha } from './PendenciasCampanha';
 import './campanhas.css';
 
 const dataHora = (valor?: string | null) =>
@@ -644,7 +645,9 @@ function CampanhasGestao() {
             />
           ) : null}
         </section>
-      ) : id && salva?._id !== id ? null : (
+      ) : null}
+      {!editor ? <PendenciasDeCampanha /> : null}
+      {!editor ? null : id && salva?._id !== id ? null : (
         <>
           <div className="tv-campaign-actions">
             <Link

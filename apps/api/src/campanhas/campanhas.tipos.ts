@@ -123,7 +123,7 @@ export interface LeadCampanha {
   fundidoEm?: unknown;
   origem?: { modo?: string };
   tags?: string[];
-  telefones?: { e164?: string; principal?: boolean; whatsapp?: boolean }[];
+  telefones?: { e164?: string; bruto?: string; principal?: boolean; whatsapp?: boolean }[];
   lgpd?: {
     contatoComercial?: string;
     revogadoEm?: Date;

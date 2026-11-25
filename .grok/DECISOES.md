@@ -3,6 +3,18 @@
 Formato: contexto · decisão · alternativas consideradas · consequências · status.
 Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
+## ADR-023 — Pendências de campanha visíveis e aceite registrado na ficha
+
+**Contexto.** Em 25/11/2026 o proprietário percebeu que a campanha deixava de fora contatos com telefone inválido ou sem aceite de contato comercial, mas não havia como saber quem eram para ajustá-los. A seleção mostrava o motivo só misturado na lista paginada de candidatos, e a ficha de um contato já sincronizado não tinha como registrar o aceite.
+
+**Decisão.** `GET /v1/campanhas/pendencias` (gestor/admin) avalia os contatos ativos com a mesma regra de elegibilidade da prévia e devolve contagem por motivo, filtro por motivo, paginação de 30 e uma pista do telefone (quantidade de dígitos e final), nunca o número inteiro. Contatos descartados, fundidos ou eliminados ficam fora da lista. A leitura entra em `acessos_dados` como `campanhas_pendencias`. A tela Campanhas mostra o painel com orientação por motivo e link para a ficha. Na ficha, quem pode editar registra o aceite pendente pelo endpoint existente `POST /v1/contatos/:id/consentimento` (canal `vendedor_evento`, ADR-008), apenas depois de marcar "Confirmo que a pessoa autorizou receber contato comercial"; revogado não é reaberto por esse caminho. Quem pediu parada não tem atalho de ajuste.
+
+**Alternativas.** Incluir automaticamente quem não tem aceite: rejeitado, a campanha exige autorização documentada (ADR-019/CP-04). Mostrar o telefone completo na lista: rejeitado, a ficha já mostra a quem tem acesso e a lista é de volume. Calcular a elegibilidade no banco: adiado; a avaliação em memória cobre até 5000 contatos e avisa quando trunca.
+
+**Consequências.** O operador encontra e corrige os contatos antes de montar a campanha. O aceite registrado pelo operador vale como declaração dele, com nome, data e versão do termo na trilha; a prova mais forte continua sendo o titular marcar o aceite no QR ou no termo.
+
+**Status.** aceito — 25/11/2026 — pedido do proprietário.
+
 ## ADR-022 — Telefone digitado só com DDD + número; lista de contatos ordenável
 
 **Contexto.** Em 24/11/2026 o proprietário relatou que a captura parecia exigir o código do país no telefone e pediu que valesse só DDD + 9 dígitos do celular. A normalização do servidor já completava +55, mas a máscara do formulário guardava só os 11 primeiros dígitos: número colado ou autocompletado com +55 virava DDD 55 com o final cortado. Pediu também organizar a lista de contatos por data e ordem alfabética para localizar registros.

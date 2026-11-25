@@ -63,6 +63,22 @@ export interface CandidatoCampanha {
   elegivel: boolean;
   motivo: string;
 }
+export interface PendenciaCampanha {
+  id: string;
+  nome: string;
+  status: string;
+  origem: string;
+  criadoEm: string | null;
+  motivo: string;
+  contatoComercial: string;
+  telefoneRegistrado: string;
+}
+export interface PendenciasCampanha extends ListaCampanhas<PendenciaCampanha> {
+  contagem: Record<string, number>;
+  elegiveis: number;
+  analisados: number;
+  truncado: boolean;
+}
 export interface ListaCampanhas<T> {
   registros: T[];
   total: number;

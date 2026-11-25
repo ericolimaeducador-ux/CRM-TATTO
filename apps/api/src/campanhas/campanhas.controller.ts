@@ -20,6 +20,12 @@ export class CampanhasController {
   ) {
     return this.campanhas.candidatos(query, usuario(req));
   }
+  @Get('pendencias') pendencias(
+    @Query() query: Record<string, unknown>,
+    @Req() req: RequisicaoComUsuario,
+  ) {
+    return this.campanhas.pendencias(query, usuario(req));
+  }
   @Get() listar(@Query() query: Record<string, unknown>) {
     return this.campanhas.listar(query);
   }

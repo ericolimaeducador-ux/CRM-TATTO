@@ -24,6 +24,7 @@ import {
 const DIA = 86_400_000;
 const LEASE = 120_000;
 const MAX_PUBLICO = 2000;
+const LIMITE_PENDENCIAS = 5000;
 
 @Injectable()
 export class CampanhasService implements OnModuleInit, OnModuleDestroy {
@@ -195,6 +196,69 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       ),
     });
     return { registros, total, pagina, limite };
+  }
+  async pendencias(query: Record<string, unknown>, usuario: UsuarioSessao) {
+    const pagina = inteiro(query.pagina ?? 1, 1, 10000, 'Página');
+    const limite = 30;
+    const motivoPedido = texto(query.motivo ?? '', 60);
+    const leads = await this.contatos
+      .find(
+        { status: { $in: ['rascunho', 'capturado', 'qualificado', 'cliente'] } },
+        {
+          projection: {
+            nome: 1,
+            status: 1,
+            criadoEm: 1,
+            fundidoEm: 1,
+            origem: 1,
+            tags: 1,
+            telefones: 1,
+            lgpd: 1,
+          },
+        },
+      )
+      .sort({ criadoEm: -1, _id: -1 })
+      .limit(LIMITE_PENDENCIAS + 1)
+      .toArray();
+    const truncado = leads.length > LIMITE_PENDENCIAS;
+    const contagem: Record<string, number> = {};
+    const fora: { lead: LeadCampanha; motivo: string }[] = [];
+    let elegiveis = 0;
+    for (const lead of leads.slice(0, LIMITE_PENDENCIAS)) {
+      const { motivo } = await this.elegibilidade(lead);
+      if (!motivo) {
+        elegiveis += 1;
+        continue;
+      }
+      if (motivo === 'contato_indisponivel') continue;
+      contagem[motivo] = (contagem[motivo] ?? 0) + 1;
+      if (!motivoPedido || motivoPedido === motivo) fora.push({ lead, motivo });
+    }
+    const registros = fora
+      .slice((pagina - 1) * limite, pagina * limite)
+      .map(({ lead, motivo }) => ({
+        id: lead._id.toString(),
+        nome: lead.nome || 'Contato sem nome',
+        status: lead.status,
+        origem: lead.origem?.modo || '',
+        criadoEm: lead.criadoEm ?? null,
+        motivo,
+        contatoComercial: lead.lgpd?.contatoComercial || 'pendente',
+        telefoneRegistrado: pistaTelefone(lead.telefones),
+      }));
+    await this.acesso(usuario, 'campanhas_pendencias', registros.length, {
+      filtroHash: hmacDocumento(JSON.stringify({ motivo: motivoPedido })),
+    });
+    return {
+      registros,
+      total: fora.length,
+      pagina,
+      limite,
+      contagem,
+      elegiveis,
+      analisados: Math.min(leads.length, LIMITE_PENDENCIAS),
+      truncado,
+    };
   }
   async listar(query: Record<string, unknown>) {
     const pagina = inteiro(query.pagina ?? 1, 1, 10000, 'Página');
@@ -1138,6 +1202,14 @@ function objeto(x: unknown): Record<string, unknown> {
 }
 function normalizar(x: string) {
   return x.replace(/\r\n/g, '\n').trim();
+}
+function pistaTelefone(telefones: LeadCampanha['telefones']): string {
+  const t = telefones?.find((x) => x.principal) ?? telefones?.[0];
+  const digitos = String(t?.e164 || t?.bruto || '').replace(/\D/g, '');
+  if (!digitos) return 'Nenhum telefone registrado';
+  const fim = digitos.slice(-4);
+  const whatsapp = t?.whatsapp === false ? '; marcado como sem WhatsApp' : '';
+  return `${digitos.length} dígitos, final ${fim}${whatsapp}`;
 }
 function mascarar(x: string) {
   return `+${x.slice(1, 3)} ••••• ${x.slice(-4)}`;

@@ -256,6 +256,32 @@ describe('CP — campanhas em Mongo isolado e transporte simulado', () => {
     expect(audit?.quantidade).toBe(1);
     expect(JSON.stringify(audit)).not.toContain('Marina');
   });
+  it('lista quem ficou de fora com motivo, contagem e pista do telefone, sem número inteiro', async () => {
+    await lead({ nome: 'Elegível' });
+    const semAceite = await lead({ nome: 'Sem Aceite', lgpd: { contatoComercial: 'pendente' } });
+    const semFone = await lead({ nome: 'Fone Curto', telefones: [{ bruto: '9999-1234' }] });
+    await lead({ nome: 'Descartado', status: 'descartado', lgpd: {} });
+    const r = await api().get('/v1/campanhas/pendencias').set(head('gestor'));
+    expect(r.status).toBe(200);
+    expect(r.body.contagem).toEqual({ sem_autorizacao_documentada: 1, sem_telefone_valido: 1 });
+    expect(r.body.elegiveis).toBe(1);
+    expect(r.body.registros.map((x: { id: string }) => x.id).sort()).toEqual(
+      [semAceite, semFone].sort(),
+    );
+    const curto = r.body.registros.find((x: { id: string }) => x.id === semFone);
+    expect(curto.telefoneRegistrado).toBe('8 dígitos, final 1234');
+    expect(r.text).not.toContain('5511999990042');
+    expect(r.text).not.toContain('Descartado');
+    const filtrado = await api()
+      .get('/v1/campanhas/pendencias?motivo=sem_telefone_valido')
+      .set(head('gestor'));
+    expect(filtrado.body.registros).toHaveLength(1);
+    expect(filtrado.body.total).toBe(1);
+    const audit = await db
+      .db!.collection('acessos_dados')
+      .findOne({ acao: 'campanhas_pendencias' });
+    expect(audit).toBeTruthy();
+  });
   it('exclui autorização ausente, optout e status inválido e deduplica telefone na prévia/fila', async () => {
     const ids = [
       await lead(),
