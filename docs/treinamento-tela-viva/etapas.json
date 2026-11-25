@@ -1,0 +1,613 @@
+[
+  {
+    "id": 1,
+    "title": "Entrar no Tela Viva",
+    "steps": [
+      "Abra o endereço do CRM e informe o usuário entregue pela administração.",
+      "Digite a senha e clique em Entrar. O login não pede código do autenticador."
+    ],
+    "result": "A sessão abre a visão geral. A senha está oculta no print.",
+    "note": "",
+    "file": "prints/01.png",
+    "route": "/entrar"
+  },
+  {
+    "id": 2,
+    "title": "Reconhecer a visão geral",
+    "steps": [
+      "Observe os atalhos de captura e agenda.",
+      "Use o menu lateral para carteira, funil, propostas e demais módulos."
+    ],
+    "result": "O painel começa vazio nesta base exclusiva de treinamento.",
+    "note": "",
+    "file": "prints/02.png",
+    "route": "/"
+  },
+  {
+    "id": 3,
+    "title": "Primeiro contato na Tattoo Week",
+    "steps": [
+      "Exemplo fictício: Marina, do Estúdio Aurora, quer conhecer o portfólio.",
+      "Clique em Digitar para registrar o que já sabe; Ler QR usa a câmera."
+    ],
+    "result": "A coleta aceita informações incompletas.",
+    "note": "Dados, produto e valores deste guia são fictícios.",
+    "file": "prints/03.png",
+    "route": "/capturar"
+  },
+  {
+    "id": 4,
+    "title": "Capturar somente o nome",
+    "steps": [
+      "Preencha Nome. Não espere receber todos os documentos.",
+      "O formulário salva automaticamente; observe o indicador de sincronização."
+    ],
+    "result": "O nome já fica guardado. Não existe campo obrigatório nesta captura.",
+    "note": "",
+    "file": "prints/04.png",
+    "route": "/contatos/560417cc-8cc8-458c-baae-41525f759a27"
+  },
+  {
+    "id": 5,
+    "title": "Complementar o contato e o contexto",
+    "steps": [
+      "Abra Contato e informe o e-mail confirmado com a pessoa.",
+      "Em Observações, registre a origem e o interesse, sem dados desnecessários."
+    ],
+    "result": "O cadastro guarda contexto para o próximo atendimento.",
+    "note": "O endereço example.test não recebe mensagens reais.",
+    "file": "prints/05.png",
+    "route": "/contatos/560417cc-8cc8-458c-baae-41525f759a27"
+  },
+  {
+    "id": 6,
+    "title": "Conferir a fila de sincronização",
+    "steps": [
+      "Abra Fila para verificar pendências e falhas.",
+      "Aguarde a confirmação; salvar no aparelho e chegar ao servidor são momentos diferentes."
+    ],
+    "result": "O contato desta simulação foi sincronizado.",
+    "note": "Sem internet, a captura continua local; os módulos comerciais precisam de conexão.",
+    "file": "prints/06.png",
+    "route": "/fila"
+  },
+  {
+    "id": 7,
+    "title": "Localizar o contato salvo",
+    "steps": [
+      "Abra Contatos e encontre Marina — TREINAMENTO.",
+      "Registros locais e contatos autorizados do servidor podem aparecer na lista."
+    ],
+    "result": "A equipe consegue retomar o cadastro.",
+    "note": "",
+    "file": "prints/07.png",
+    "route": "/contatos"
+  },
+  {
+    "id": 8,
+    "title": "Conferir as autorizações do titular",
+    "steps": [
+      "Abra Autorizações do titular a partir do contato.",
+      "Explique as finalidades; registre apenas a escolha efetiva da pessoa."
+    ],
+    "result": "A tela mostra as escolhas disponíveis; o treinamento não registra consentimento real.",
+    "note": "Ter telefone ou e-mail preenchido não comprova autorização para campanha.",
+    "file": "prints/08.png",
+    "route": "/contatos/560417cc-8cc8-458c-baae-41525f759a27/termo"
+  },
+  {
+    "id": 9,
+    "title": "Conferir o status capturado",
+    "steps": [
+      "Gestor ou administrador abre o Lead.",
+      "Confira o estado: este cadastro manual já chegou como Capturado. Se estiver em Rascunho, use Marcar como capturado."
+    ],
+    "result": "O contato está capturado e pode ser qualificado.",
+    "note": "",
+    "file": "prints/09.png",
+    "route": "/lead/6b03ab1a28dcd543e49ca0a5"
+  },
+  {
+    "id": 9.5,
+    "title": "Completar os dados exigidos na promoção",
+    "steps": [
+      "Antes de qualificar, confirme nome, CPF/CNPJ válido e pelo menos um canal de contato.",
+      "Para promover a cliente, complete também logradouro, número, cidade e UF.",
+      "Nesta simulação foi usado apenas um CPF de exemplo em base descartável."
+    ],
+    "result": "Os dados necessários são completados depois da captura.",
+    "note": "Nunca copie o documento de exemplo para a base real. Não foi feita consulta externa de documento.",
+    "file": "prints/9.5.png",
+    "route": "/contatos/560417cc-8cc8-458c-baae-41525f759a27"
+  },
+  {
+    "id": 10,
+    "title": "Qualificar o interesse comercial",
+    "steps": [
+      "Confirme se o perfil e a necessidade fazem sentido para a carteira.",
+      "Clique em Qualificar; registre o diagnóstico em observações e atividades."
+    ],
+    "result": "O contato fica qualificado e a promoção passa a estar disponível.",
+    "note": "Qualificação comercial não substitui autorização de comunicação.",
+    "file": "prints/10.png",
+    "route": "/lead/6b03ab1a28dcd543e49ca0a5"
+  },
+  {
+    "id": 11,
+    "title": "Promover com confirmação da gestão",
+    "steps": [
+      "Clique em Promover a cliente no lead qualificado.",
+      "Gestor/admin usa o próprio código do autenticador e confirma a promoção."
+    ],
+    "result": "A operação exige TOTP; o login comum continua simples.",
+    "note": "A inscrição do autenticador deve ser feita em Minha conta. Nunca compartilhe seu segredo ou código.",
+    "file": "prints/11.png",
+    "route": "/promover/6b03ab1a28dcd543e49ca0a5"
+  },
+  {
+    "id": 12,
+    "title": "Confirmar o novo status cliente",
+    "steps": [
+      "Confira a mensagem O contato agora é cliente.",
+      "Na sequência, organize a instituição em Minha carteira."
+    ],
+    "result": "A promoção foi confirmada pelo servidor.",
+    "note": "Promover um contato não cria conta comercial, oportunidade ou proposta automaticamente.",
+    "file": "prints/12.png",
+    "route": "/promover/6b03ab1a28dcd543e49ca0a5"
+  },
+  {
+    "id": 13,
+    "title": "Criar a instituição na carteira",
+    "steps": [
+      "Em Minha carteira, clique em Nova conta.",
+      "Preencha instituição, segmento, classificação ABC e território.",
+      "Use prospect enquanto ainda está desenvolvendo o relacionamento."
+    ],
+    "result": "O cadastro organiza a instituição e a rotina de visitas.",
+    "note": "",
+    "file": "prints/13.png",
+    "route": "/carteira"
+  },
+  {
+    "id": 14,
+    "title": "Definir interlocutor e próxima ação",
+    "steps": [
+      "Informe o contato principal e os canais conhecidos.",
+      "Defina a próxima ação e as observações comerciais.",
+      "Clique em Salvar na carteira e aguarde a confirmação."
+    ],
+    "result": "A conta fica disponível para agenda, oportunidade e proposta.",
+    "note": "O cadastro da instituição é separado do contato capturado.",
+    "file": "prints/14.png",
+    "route": "/carteira"
+  },
+  {
+    "id": 15,
+    "title": "Abrir a visão da conta",
+    "steps": [
+      "Clique no nome da instituição na carteira.",
+      "Use os atalhos para agendar visita, criar oportunidade e consultar preços."
+    ],
+    "result": "A ficha reúne o relacionamento e o histórico comercial.",
+    "note": "",
+    "file": "prints/15.png",
+    "route": "/carteira/6b03ac1e28dcd543e49ca160"
+  },
+  {
+    "id": 16,
+    "title": "Organizar as pessoas da conta",
+    "steps": [
+      "Clique em Gerenciar contatos e Adicionar contato.",
+      "Informe nome, cargo e e-mail; mantenha o contato ativo e marque Contato padrão.",
+      "Salve para habilitar a seleção de destinatário nas propostas."
+    ],
+    "result": "Marina passa a ser uma pessoa de contato ativa e padrão da instituição.",
+    "note": "",
+    "file": "prints/16.png",
+    "route": "/carteira/6b03ac1e28dcd543e49ca160"
+  },
+  {
+    "id": 17,
+    "title": "Planejar a visita ou reunião",
+    "steps": [
+      "Abra Agenda e crie a atividade vinculada à conta.",
+      "Escolha tipo/canal, data e local; atribua responsável e colaboradores quando necessário.",
+      "Registre a próxima ação e salve."
+    ],
+    "result": "O compromisso fica planejado na agenda.",
+    "note": "",
+    "file": "prints/17.png",
+    "route": "/agenda"
+  },
+  {
+    "id": 18,
+    "title": "Registrar a visita realizada",
+    "steps": [
+      "Edite a atividade e selecione Concluída.",
+      "Preencha Resultado, Como a atividade foi realizada e Próxima ação.",
+      "Salve: concluir uma atividade registra sua realização."
+    ],
+    "result": "A equipe passa a conhecer o que ocorreu e quem deve agir.",
+    "note": "",
+    "file": "prints/18.png",
+    "route": "/agenda"
+  },
+  {
+    "id": 19,
+    "title": "Abrir a oportunidade de venda",
+    "steps": [
+      "Crie uma oportunidade ligada à conta.",
+      "Informe o valor estimado, a previsão e a próxima ação.",
+      "Escolha a etapa que representa o avanço real da negociação."
+    ],
+    "result": "A oportunidade entra no funil com previsão e valor.",
+    "note": "R$ 1.800,00 é valor didático, sem tabela comercial real.",
+    "file": "prints/19.png",
+    "route": "/oportunidades"
+  },
+  {
+    "id": 20,
+    "title": "Avançar a oportunidade no funil",
+    "steps": [
+      "No cartão, use o seletor de etapa: Prospecção, Qualificação, Apresentação e Proposta.",
+      "Avance após a ação correspondente, sem pular a confirmação com o cliente."
+    ],
+    "result": "O cartão desta simulação chegou à etapa Proposta.",
+    "note": "Mudar a etapa não cria uma proposta automaticamente.",
+    "file": "prints/20.png",
+    "route": "/oportunidades"
+  },
+  {
+    "id": 21,
+    "title": "Conferir e manter o catálogo",
+    "steps": [
+      "Gestor/admin cadastra nome, código, categoria e preço de referência.",
+      "O representante consulta o catálogo ao preparar a proposta.",
+      "Salve o produto e confira sua apresentação."
+    ],
+    "result": "O item fictício fica disponível no seletor de produtos.",
+    "note": "Antes de operar de verdade, use a tabela oficial vigente.",
+    "file": "prints/21.png",
+    "route": "/produtos"
+  },
+  {
+    "id": 22,
+    "title": "Solicitar condição comercial por cliente",
+    "steps": [
+      "Em Preços por cliente, clique em Solicitar preço.",
+      "Vincule conta e produto, informe R$ 90,00 e justifique a negociação.",
+      "Informe a validade e salve a solicitação."
+    ],
+    "result": "A gestão recebe uma condição comercial para decidir.",
+    "note": "",
+    "file": "prints/22.png",
+    "route": "/precos"
+  },
+  {
+    "id": 23,
+    "title": "Aprovar o preço com a gestão",
+    "steps": [
+      "Gestor/admin revisa o pedido e clica em Aprovar.",
+      "Registre a observação e confirme a aprovação; Reprovar exige o motivo correspondente."
+    ],
+    "result": "O preço fica aprovado e pode ter o desfecho registrado.",
+    "note": "A aprovação não altera automaticamente os itens de uma proposta.",
+    "file": "prints/23.png",
+    "route": "/precos"
+  },
+  {
+    "id": 24,
+    "title": "Criar a proposta e seus vínculos",
+    "steps": [
+      "Em Propostas, crie um novo registro.",
+      "Vincule instituição e oportunidade; selecione explicitamente Marina em Contato destinatário da proposta.",
+      "Informe validade, condições e mantenha Rascunho durante a revisão."
+    ],
+    "result": "A proposta fica ligada ao contato ativo que receberá o rascunho de e-mail.",
+    "note": "Mesmo que o nome apareça na impressão, selecione o contato para preparar o e-mail.",
+    "file": "prints/24.png",
+    "route": "/propostas"
+  },
+  {
+    "id": 25,
+    "title": "Adicionar itens e conferir o cálculo",
+    "steps": [
+      "Selecione o produto e o contato ativo da conta.",
+      "Informe 20 unidades a R$ 100,00 e desconto de 10%.",
+      "Confira subtotal de R$ 2.000,00, desconto de R$ 200,00 e total de R$ 1.800,00."
+    ],
+    "result": "O valor unitário final equivale aos R$ 90,00 aprovados.",
+    "note": "Não aplique desconto novamente sobre o preço já reduzido.",
+    "file": "prints/25.png",
+    "route": "/propostas"
+  },
+  {
+    "id": 26,
+    "title": "Revisar a proposta confirmada",
+    "steps": [
+      "Abra a proposta salva e confira instituição, contato, itens, validade e condições.",
+      "O total confirmado vem do servidor.",
+      "Use Imprimir proposta para preparar o PDF."
+    ],
+    "result": "A proposta fictícia tem total confirmado de R$ 1.800,00.",
+    "note": "",
+    "file": "prints/26.png",
+    "route": "/propostas"
+  },
+  {
+    "id": 27,
+    "title": "Preparar o e-mail da proposta",
+    "steps": [
+      "Clique em Abrir rascunho de e-mail.",
+      "No aplicativo de e-mail, confira destinatário e texto; anexe manualmente o PDF.",
+      "Somente confirme o envio após revisar o conteúdo."
+    ],
+    "result": "O CRM registra a solicitação de rascunho. A simulação não envia e-mail.",
+    "note": "Rascunho, PDF e proposta apresentada são registros diferentes; não há anexo automático nem confirmação de entrega.",
+    "file": "prints/27.png",
+    "route": "/propostas"
+  },
+  {
+    "id": 28,
+    "title": "Registrar apresentação e negociação",
+    "steps": [
+      "Depois da apresentação efetiva, edite a proposta e marque Apresentada.",
+      "No funil, mova a oportunidade para Negociação quando houver ajustes em discussão."
+    ],
+    "result": "A situação de cada registro passa a refletir o atendimento.",
+    "note": "",
+    "file": "prints/28.png",
+    "route": "/oportunidades"
+  },
+  {
+    "id": 29,
+    "title": "Registrar o aceite da proposta",
+    "steps": [
+      "Após receber a confirmação do cliente, edite a proposta e selecione Aceita.",
+      "Registre o contexto da confirmação em observações ou atividade."
+    ],
+    "result": "A proposta está aceita no CRM.",
+    "note": "Aceita não significa contrato gerado, assinatura realizada ou pedido faturado.",
+    "file": "prints/29.png",
+    "route": "/propostas"
+  },
+  {
+    "id": 30,
+    "title": "Encerrar a oportunidade como ganha",
+    "steps": [
+      "No funil, marque Ganho após confirmar o fechamento.",
+      "Em caso de recusa, use Perdido e registre o motivo na edição."
+    ],
+    "result": "A oportunidade fica ganha e alimenta os indicadores.",
+    "note": "A proposta aceita não movimenta o funil automaticamente.",
+    "file": "prints/30.png",
+    "route": "/oportunidades"
+  },
+  {
+    "id": 31,
+    "title": "Concluir a negociação de preço",
+    "steps": [
+      "Abra o preço aprovado e clique em Encerrar como ganho.",
+      "Informe o desfecho; use perdido quando a condição não resultar em fechamento.",
+      "Na conta, atualize Relacionamento para Ativo quando aplicável."
+    ],
+    "result": "Preço, oportunidade, proposta e relacionamento foram atualizados separadamente.",
+    "note": "",
+    "file": "prints/31.png",
+    "route": "/precos"
+  },
+  {
+    "id": 32,
+    "title": "Encaminhar a formalização do contrato",
+    "steps": [
+      "Crie uma tarefa de formalização externa vinculada à conta.",
+      "Defina responsável, prazo e próxima ação.",
+      "Depois do retorno, registre o resultado em atividade/observações."
+    ],
+    "result": "O CRM controla o acompanhamento da formalização externa.",
+    "note": "Não existe módulo de contratos ou assinatura neste CRM. Esta etapa documenta o encaminhamento, sem contrato fictício.",
+    "file": "prints/32.png",
+    "route": "/agenda"
+  },
+  {
+    "id": 33,
+    "title": "Programar o acompanhamento",
+    "steps": [
+      "Crie uma nova ligação, visita ou tarefa para o retorno.",
+      "Defina data e objetivo para o próximo atendimento."
+    ],
+    "result": "A jornada continua após o aceite e a formalização.",
+    "note": "",
+    "file": "prints/33.png",
+    "route": "/agenda"
+  },
+  {
+    "id": 34,
+    "title": "Conferir o painel após a jornada",
+    "steps": [
+      "Volte à visão geral e confira carteira, oportunidade ganha e compromissos.",
+      "Use os indicadores para organizar o dia e as pendências."
+    ],
+    "result": "Os dados da jornada agora aparecem nos indicadores reais desta base de treino.",
+    "note": "",
+    "file": "prints/34.png",
+    "route": "/"
+  },
+  {
+    "id": 35,
+    "title": "Criar um treinamento para a conta",
+    "steps": [
+      "Em Treinamentos, clique em Novo treinamento.",
+      "Informe título, formato, datas, conta e objetivo.",
+      "Salve e abra o evento para gerenciar as inscrições."
+    ],
+    "result": "O evento mantém vínculo com o relacionamento comercial.",
+    "note": "",
+    "file": "prints/35.png",
+    "route": "/treinamentos"
+  },
+  {
+    "id": 36,
+    "title": "Gerar o QR de inscrição do evento",
+    "steps": [
+      "Abra Inscrições por QR e gere o link do evento.",
+      "Compartilhe o QR do ambiente correto com os participantes.",
+      "Um novo token substitui o anterior."
+    ],
+    "result": "O evento ganha um link de inscrição restrito ao treinamento.",
+    "note": "Este QR é local e temporário; o celular precisa conseguir acessar o servidor.",
+    "file": "prints/36.png",
+    "route": "/treinamentos/6b03af6928dcd543e49ca468"
+  },
+  {
+    "id": 37,
+    "title": "Simular a inscrição do participante",
+    "steps": [
+      "A pessoa abre o QR/link e confere o evento.",
+      "Preenche nome/e-mail e clica em Registrar minha inscrição."
+    ],
+    "result": "A inscrição fictícia foi registrada pelo formulário público.",
+    "note": "O mesmo e-mail no mesmo evento não deve criar inscrições duplicadas.",
+    "file": "prints/37.png",
+    "route": "/inscricao-treinamento/OKmUrnCeqw9cqDdH-27mhFwHP4lONG6cePGWW5Rr-Gw"
+  },
+  {
+    "id": 38,
+    "title": "Registrar a presença",
+    "steps": [
+      "Gestor/admin localiza o participante na ficha do evento.",
+      "Clique em Marcar presente e confirme a alteração.",
+      "Use a inscrição manual para quem não usou o QR."
+    ],
+    "result": "A presença fica registrada e pode compor os relatórios.",
+    "note": "",
+    "file": "prints/38.png",
+    "route": "/treinamentos/6b03af6928dcd543e49ca468"
+  },
+  {
+    "id": 39,
+    "title": "Exportar participantes com proteção",
+    "steps": [
+      "Gestor/admin escolhe CSV ou XLSX e informa o código do autenticador.",
+      "Baixe a lista apenas para a finalidade de trabalho autorizada."
+    ],
+    "result": "A exportação de participantes exige confirmação adicional.",
+    "note": "Não compartilhe listas de participantes em canais sem controle.",
+    "file": "prints/39.png",
+    "route": "/treinamentos/6b03af6928dcd543e49ca468"
+  },
+  {
+    "id": 40,
+    "title": "Consultar relatórios comerciais",
+    "steps": [
+      "Escolha as datas inicial e final e aplique o período.",
+      "A gestão pode filtrar a carteira/representante.",
+      "Confira visitas, oportunidades, propostas, treinamentos e inscrições."
+    ],
+    "result": "Os relatórios mostram totais e resultados, sem lista pessoal de participantes.",
+    "note": "As datas usam o calendário de São Paulo; a janela máxima é 366 dias.",
+    "file": "prints/40.png",
+    "route": "/relatorios"
+  },
+  {
+    "id": 41,
+    "title": "Oferecer autocadastro pelo Meu QR",
+    "steps": [
+      "Clique em Gerar QR de autocadastro.",
+      "O titular abre o endereço e escolhe as autorizações apresentadas.",
+      "Revogue o QR se ele deixar de ser necessário."
+    ],
+    "result": "A alternativa permite que a própria pessoa cadastre seus dados.",
+    "note": "Por padrão, o QR de autocadastro vale duas horas e um cadastro. Confira o prazo e o limite configurados no ambiente. Este exemplo usa endereço local.",
+    "file": "prints/41.png",
+    "route": "/meu-qr"
+  },
+  {
+    "id": 42,
+    "title": "Ler QR com a câmera",
+    "steps": [
+      "Em Captura, use Ler QR e autorize a câmera do aparelho.",
+      "Aponte para o QR e confira os dados antes de continuar."
+    ],
+    "result": "A tela oferece a leitura por câmera.",
+    "note": "A captura de câmera física não foi exercitada neste computador; use HTTPS e confira a permissão do navegador.",
+    "file": "prints/42.png",
+    "route": "/capturar/qr"
+  },
+  {
+    "id": 43,
+    "title": "Buscar contatos para retomar atendimento",
+    "steps": [
+      "Abra Busca e pesquise um contato por dado conhecido.",
+      "Abra o resultado para consultar o lead e as ações permitidas."
+    ],
+    "result": "A pesquisa consulta os registros acessíveis à sua sessão.",
+    "note": "",
+    "file": "prints/43.png",
+    "route": "/busca"
+  },
+  {
+    "id": 44,
+    "title": "Revisar possíveis duplicatas",
+    "steps": [
+      "Confira os pares sugeridos pelo sistema.",
+      "Quando houver um par, abra a comparação e escolha os campos antes de confirmar a fusão."
+    ],
+    "result": "A deduplicação oferece revisão humana.",
+    "note": "Não foi feita fusão nesta jornada; ela exige escolha explícita e TOTP, com recuperação do absorvido por 90 dias.",
+    "file": "prints/44.png",
+    "route": "/duplicatas"
+  },
+  {
+    "id": 45,
+    "title": "Importar e exportar contatos por planilha",
+    "steps": [
+      "Abra Planilha a partir de Minha conta.",
+      "Cole CSV ou selecione CSV/XLSX e confira o resultado da importação.",
+      "Use a exportação apenas com o perfil e a confirmação exigidos."
+    ],
+    "result": "A tela reúne os recursos de planilha existentes.",
+    "note": "O guia não importa a base real nem dispara mensagens. A origem importada não comprova autorização para campanhas.",
+    "file": "prints/45.png",
+    "route": "/planilha"
+  },
+  {
+    "id": 46,
+    "title": "Administrar os acessos da equipe",
+    "steps": [
+      "Administrador informa nome, usuário, senha inicial e perfil.",
+      "Crie uma conta individual para cada colaborador.",
+      "Revise os acessos existentes e confirme operações sensíveis quando solicitado."
+    ],
+    "result": "Cada pessoa trabalha com seu perfil e permissões.",
+    "note": "A simulação apenas mostra esta tela; não cria acesso na base da equipe.",
+    "file": "prints/46.png",
+    "route": "/usuarios"
+  },
+  {
+    "id": 47,
+    "title": "Cuidar da própria sessão",
+    "steps": [
+      "Use Minha conta para trocar senha, configurar o autenticador e confirmar operações sensíveis.",
+      "Ao concluir o trabalho em aparelho compartilhado, clique em Sair."
+    ],
+    "result": "As configurações pessoais ficam separadas da captura.",
+    "note": "Nunca fotografe segredo de autenticador, senha ou token.",
+    "file": "prints/47.png",
+    "route": "/minha-conta"
+  },
+  {
+    "id": 48,
+    "title": "Usar o CRM no celular",
+    "steps": [
+      "Abra o menu para alternar entre as seções.",
+      "Mantenha a captura acessível na rotina de visita.",
+      "Confira a conexão antes de salvar registros comerciais."
+    ],
+    "result": "A mesma aplicação oferece navegação móvel.",
+    "note": "O modo offline atende captura e fila; carteira e propostas exigem conexão.",
+    "file": "prints/48.png",
+    "route": "/"
+  }
+]
