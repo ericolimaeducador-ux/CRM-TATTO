@@ -31,6 +31,9 @@ export interface Escrita {
 
 const LIMITE_ATRIBUICAO = 500;
 
+/** Desinteressado volta a ser lembrado depois de 6 meses (ADR-029). */
+export const RETOMADA_DESINTERESSADO_DIAS = 180;
+
 @Injectable()
 export class ContatosService {
   constructor(
@@ -128,6 +131,63 @@ export class ContatosService {
     }
     await publicarContatoAlterado({ contatoId: id, autorId: usuario.id });
     return { http: 200, dados: gravado, avisos: patch.avisos, antes };
+  }
+
+  /**
+   * Triagem do SDR (ADR-029): interessado entra na carteira; desinteressado sai das
+   * campanhas e volta a ser lembrado em 6 meses. Um clique, sem exigir dados.
+   */
+  async triar(id: string, situacaoBruta: unknown, motivoBruto: unknown, usuario: UsuarioSessao) {
+    if (situacaoBruta !== 'interessado' && situacaoBruta !== 'desinteressado')
+      throw new RespostaComErro(
+        422,
+        'TRIAGEM_INVALIDA',
+        'Escolha Interessado ou Desinteressado. Nada foi alterado.',
+        null,
+      );
+    const motivo = typeof motivoBruto === 'string' ? motivoBruto.trim().slice(0, 500) : '';
+    const antes = await this.exigir(id, usuario, 'editar_contato');
+    const agora = new Date();
+    const retomarEm =
+      situacaoBruta === 'desinteressado'
+        ? new Date(agora.getTime() + RETOMADA_DESINTERESSADO_DIAS * 86_400_000)
+        : undefined;
+    const triagem = {
+      situacao: situacaoBruta,
+      em: agora,
+      por: new Types.ObjectId(usuario.id),
+      ...(motivo ? { motivo } : {}),
+      ...(retomarEm ? { retomarEm } : {}),
+    };
+    const r = await this.contatos.updateOne(
+      { _id: id, versao: antes.versao },
+      {
+        $set: { triagem, alteradoEm: agora, alteradoPor: new Types.ObjectId(usuario.id) },
+        $inc: { versao: 1 },
+      },
+    );
+    if (r.matchedCount === 0)
+      throw new RespostaComErro(
+        422,
+        'CONFLITO_VERSAO',
+        'O contato mudou enquanto a triagem era registrada. Abra de novo e tente outra vez.',
+        null,
+      );
+    const anterior = (antes as { triagem?: { situacao?: string } }).triagem?.situacao ?? null;
+    await this.conexao.collection('contatos_auditoria').insertOne({
+      contatoId: new Types.ObjectId(id),
+      versao: Number(antes.versao ?? 0) + 1,
+      campo: 'triagem',
+      valorAnterior: anterior,
+      valorNovo: situacaoBruta,
+      autor: new Types.ObjectId(usuario.id),
+      autorNome: pseudonimizarAutor(usuario.nome ?? ''),
+      timestampServidor: agora,
+      motivo: 'triagem_sdr',
+      origem: 'api',
+    });
+    await publicarContatoAlterado({ contatoId: id, autorId: usuario.id });
+    return { dados: plano(await this.contatos.findById(id).lean()), avisos: [], erros: [] };
   }
 
   async atribuir(idsBrutos: unknown, responsavelBruto: unknown, usuario: UsuarioSessao) {

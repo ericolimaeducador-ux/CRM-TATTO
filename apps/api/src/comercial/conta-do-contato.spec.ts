@@ -168,4 +168,86 @@ describe('ADR-028 — conta da carteira nasce do contato qualificado', () => {
     expect(String(depois._id)).toBe(String(conta._id));
     expect(depois.arquivado).toBe(false);
   });
+
+  describe('ADR-029 — triagem do SDR e qualificação na carteira', () => {
+    const triar = (id: string, situacao: string, motivo?: string, papel = 'gestor') =>
+      api().post(`/v1/contatos/${id}/triagem`).set(head(papel)).send({ situacao, motivo });
+
+    it('interessado entra na carteira com um clique, sem cidade, UF ou tipo', async () => {
+      const r = await api()
+        .post('/v1/contatos')
+        .set(head())
+        .send({ nome: 'Só Nome e Zap', telefone: '11944443333' });
+      const id = r.body.dados._id as string;
+      expect((await triar(id, 'talvez')).status).toBe(422);
+      const ok = await triar(id, 'interessado');
+      expect(ok.status).toBe(201);
+      expect(ok.body.dados.triagem.situacao).toBe('interessado');
+      const [conta] = await contas();
+      expect(conta.campos).toMatchObject({
+        contatoOrigemId: id,
+        nome: 'Só Nome e Zap',
+        trilha: 'funil',
+        etapaJornada: 'conversa',
+      });
+      const trilha = await registros.db
+        .collection('contatos_auditoria')
+        .findOne({ campo: 'triagem', valorNovo: 'interessado' });
+      expect(trilha).toBeTruthy();
+    });
+
+    it('desinteressado arquiva a conta, guarda o motivo e volta em 6 meses', async () => {
+      const c = await lead({ nome: 'Mudou de Ideia' });
+      await triar(c._id, 'interessado');
+      const r = await triar(c._id, 'desinteressado', 'Já usa outra marca');
+      expect(r.status).toBe(201);
+      expect(r.body.dados.triagem.motivo).toBe('Já usa outra marca');
+      const dias =
+        (Date.parse(r.body.dados.triagem.retomarEm) - Date.parse(r.body.dados.triagem.em)) /
+        86_400_000;
+      expect(Math.round(dias)).toBe(180);
+      const [conta] = await contas();
+      expect(conta.arquivado).toBe(true);
+    });
+
+    it('adormecer marca retomada em 60 dias; funil limpa; proposta exige documento e endereço', async () => {
+      const c = await lead({ nome: 'Estúdio Lento' });
+      await triar(c._id, 'interessado');
+      let [conta] = await contas();
+      const patch = (corpo: Record<string, unknown>) =>
+        api()
+          .patch(`/v1/comercial/contas/${String(conta._id)}`)
+          .set(head())
+          .send({ versao: conta.versao, ...corpo });
+      const dormiu = await patch({ trilha: 'adormecido' });
+      expect(dormiu.status).toBe(200);
+      [conta] = await contas();
+      const dias = (Date.parse(String(conta.campos.retomarEm)) - Date.now()) / 86_400_000;
+      expect(Math.round(dias)).toBeGreaterThanOrEqual(59);
+      expect(Math.round(dias)).toBeLessThanOrEqual(60);
+      expect((await patch({ trilha: 'funil' })).status).toBe(200);
+      [conta] = await contas();
+      expect(conta.campos.retomarEm).toBeUndefined();
+      expect((await patch({ etapaJornada: 'academia' })).status).toBe(200);
+      [conta] = await contas();
+      const barrado = await patch({ etapaJornada: 'proposta' });
+      expect(barrado.status).toBe(422);
+      expect(barrado.text).toContain('CPF ou CNPJ');
+      expect(barrado.text).toContain('endereço');
+      [conta] = await contas();
+      expect(conta.campos.etapaJornada).toBe('academia');
+    });
+
+    it('representante tria os próprios contatos', async () => {
+      const r = await api()
+        .post('/v1/contatos')
+        .set(head('vendedor'))
+        .send({ nome: 'Do Representante', telefone: '11933332222' });
+      expect((await triar(r.body.dados._id, 'interessado', undefined, 'vendedor')).status).toBe(
+        201,
+      );
+      const [conta] = await contas();
+      expect(conta.donoId).toBe(VENDEDOR);
+    });
+  });
 });

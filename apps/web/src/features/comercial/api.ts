@@ -53,6 +53,10 @@ export interface Registro {
   contatoTelefone?: string;
   /** Conta criada a partir do contato qualificado (ADR-028). */
   contatoOrigemId?: string;
+  /** Qualificação na carteira (ADR-029). */
+  trilha?: string;
+  etapaJornada?: string;
+  retomarEm?: string;
   pessoas?: PessoaConta[];
   contatoId?: string;
   endereco?: string;
@@ -129,6 +133,15 @@ export const ETAPAS = [
   'perdido',
 ];
 export const ROTULOS: Record<string, string> = {
+  funil: 'Funil',
+  nutrir: 'Nutrir',
+  adormecido: 'Adormecido',
+  conversa: 'Conversa de 15 min',
+  academia: 'Academia Pele Rara',
+  amostras: 'Amostras enviadas',
+  experiencia: 'Experiência de Uso',
+  devolutiva: 'Devolutiva',
+  parceiro_ativo: 'Parceiro ativo',
   prospeccao: 'Prospecção',
   qualificacao: 'Qualificação',
   apresentacao: 'Apresentação',

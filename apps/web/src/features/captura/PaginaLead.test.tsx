@@ -114,40 +114,30 @@ describe('ficha do lead', () => {
     expect(screen.queryByRole('link', { name: 'Promover a cliente' })).toBeNull();
   });
 
-  it('diz o que falta para qualificar, sem pedir CPF, e envia cidade, UF e tipo', async () => {
+  it('triagem do SDR: Interessado com um clique, sem exigir cidade, UF ou CPF', async () => {
     const fetchMock = montar({ ...gabriel, status: 'capturado' });
-    const aviso = await screen.findByLabelText('Para qualificar');
-    expect(aviso.textContent).toContain('cidade, UF, se é estúdio ou tatuador autônomo');
-    expect(aviso.textContent).not.toMatch(/CPF|CNPJ/);
-    fireEvent.click(screen.getByRole('button', { name: 'Completar dados' }));
-    fireEvent.change(screen.getByLabelText('Cidade'), { target: { value: 'Campinas' } });
-    fireEvent.change(screen.getByLabelText('UF'), { target: { value: 'sp' } });
-    fireEvent.change(screen.getByLabelText('É estúdio ou tatuador autônomo?'), {
-      target: { value: 'PJ' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar dados' }));
-    await screen.findByText('Dados salvos.');
-    const enviados = fetchMock.mock.calls
-      .filter((chamada) => chamada[1]?.method === 'PATCH')
-      .map((chamada) => JSON.parse(String(chamada[1]?.body)) as { campo: string; valor: string });
-    expect(enviados.map((x) => [x.campo, x.valor])).toEqual([
-      ['tipoPessoa', 'PJ'],
-      ['cidade', 'Campinas'],
-      ['uf', 'SP'],
-    ]);
+    const bloco = await screen.findByLabelText('Triagem');
+    expect(bloco.textContent).toContain('ainda não respondeu');
+    expect(bloco.textContent).not.toMatch(/CPF|CNPJ|cidade/);
+    fireEvent.click(screen.getByRole('button', { name: 'Interessado' }));
+    await screen.findByText(/entrou na carteira/);
+    const triagem = fetchMock.mock.calls.find((chamada) => String(chamada[0]).endsWith('/triagem'));
+    expect(JSON.parse(String(triagem?.[1]?.body))).toEqual({ situacao: 'interessado' });
   });
 
-  it('pronto para qualificar quando tem contato, cidade, UF e tipo', async () => {
-    montar({
-      ...gabriel,
-      status: 'capturado',
-      tipoPessoa: 'PF',
-      enderecos: [{ cidade: 'Campinas', uf: 'SP' }],
+  it('desinteressado envia o motivo e mostra a data de retomada', async () => {
+    const fetchMock = montar({ ...gabriel, status: 'capturado' });
+    await screen.findByLabelText('Triagem');
+    fireEvent.change(screen.getByLabelText('Motivo, se desinteressado (opcional)'), {
+      target: { value: 'Já usa outra marca' },
     });
-    expect((await screen.findByLabelText('Para qualificar')).textContent).toContain(
-      'Pronto para qualificar',
-    );
-    expect(screen.queryByRole('button', { name: 'Completar dados' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Desinteressado' }));
+    await screen.findByText(/volta a ser lembrado em 6 meses/);
+    const triagem = fetchMock.mock.calls.find((chamada) => String(chamada[0]).endsWith('/triagem'));
+    expect(JSON.parse(String(triagem?.[1]?.body))).toEqual({
+      situacao: 'desinteressado',
+      motivo: 'Já usa outra marca',
+    });
   });
 
   it('edita o telefone pela API com a versão conhecida', async () => {

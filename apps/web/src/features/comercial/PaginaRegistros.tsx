@@ -95,12 +95,14 @@ export function PaginaRegistros({ secao }: { secao: Secao }) {
   const busca = params.get('q') ?? '';
   const status = params.get('status') ?? '';
   const etapa = params.get('etapa') ?? '';
+  const trilha = params.get('trilha') ?? '';
   const query = new URLSearchParams({
     pagina: String(pagina),
     limite: '30',
     ...(busca ? { q: busca } : {}),
     ...(status ? { status } : {}),
     ...(etapa ? { etapa } : {}),
+    ...(trilha ? { trilha } : {}),
     ...(arquivados ? { arquivados: 'true' } : {}),
     ...(params.get('contaId') ? { contaId: params.get('contaId') ?? '' } : {}),
   });
@@ -401,6 +403,18 @@ export function PaginaRegistros({ secao }: { secao: Secao }) {
                 ))}
               </select>
             ) : null}
+            {secao === 'contas' ? (
+              <select
+                aria-label="Filtrar por caminho"
+                value={trilha}
+                onChange={(e) => alterarFiltro('trilha', e.target.value)}
+              >
+                <option value="">Todos os caminhos</option>
+                <option value="funil">Funil</option>
+                <option value="nutrir">Nutrir</option>
+                <option value="adormecido">Adormecido</option>
+              </select>
+            ) : null}
             {secao === 'oportunidades' ? (
               <select
                 aria-label="Filtrar por etapa"
@@ -665,9 +679,13 @@ export function PaginaRegistros({ secao }: { secao: Secao }) {
                     <td>
                       {secao === 'contas' ? (
                         <>
-                          <span>{rotulo(r.segmento)}</span>
+                          <Selo valor={r.trilha}>{rotulo(r.trilha ?? 'funil')}</Selo>
                           <small className="tv-cell-subtext">
-                            {r.especialidade || 'Área não informada'}
+                            {(r.trilha ?? 'funil') === 'adormecido'
+                              ? `Retomar em ${dataFormatada(r.retomarEm, true)}`
+                              : (r.trilha ?? 'funil') === 'funil'
+                                ? rotulo(r.etapaJornada ?? 'conversa')
+                                : r.proximaAcao || 'Defina a próxima ação'}
                           </small>
                         </>
                       ) : secao === 'produtos' ? (

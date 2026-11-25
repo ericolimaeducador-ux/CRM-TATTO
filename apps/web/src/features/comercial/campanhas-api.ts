@@ -118,6 +118,8 @@ export interface ResultadoCampanha {
     motivo: string;
     tentativas: number;
     respondeuEm: string | null;
+    /** Triagem do SDR no contato (ADR-029). */
+    triagem?: string;
   }[];
   total: number;
   pagina: number;
@@ -238,6 +240,7 @@ export const MOTIVOS_CAMPANHA: Record<string, string> = {
   sem_telefone_valido: 'Sem telefone válido para WhatsApp',
   destinatario_solicitou_parada: 'Solicitou parar as mensagens',
   telefone_duplicado: 'Telefone repetido nesta campanha',
+  desinteressado: 'Marcado como desinteressado; volta a ser lembrado em 6 meses',
   apto_apos_preparacao: 'Ficou apto depois da preparação; pode ser incluído',
   fora_da_carteira: 'Fora da carteira de quem criou a campanha',
   telefone_alterado: 'Telefone alterado após a preparação',

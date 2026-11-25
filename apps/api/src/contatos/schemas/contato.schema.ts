@@ -73,6 +73,14 @@ export interface Contato {
     revogadoEm?: Date;
     eliminadoEm?: Date;
   };
+  /** Triagem do SDR depois do primeiro contato (ADR-029). */
+  triagem?: {
+    situacao?: 'interessado' | 'desinteressado';
+    em?: Date;
+    por?: Types.ObjectId;
+    motivo?: string;
+    retomarEm?: Date;
+  };
   criadoPor?: Types.ObjectId;
   criadoEm?: Date;
   alteradoPor?: Types.ObjectId;
@@ -146,6 +154,18 @@ export const contatoSchema = new Schema(
       ],
     },
     lgpd: { type: lgpdSchema, default: () => ({}) },
+    triagem: {
+      type: new Schema(
+        {
+          situacao: { type: String, enum: ['interessado', 'desinteressado'] },
+          em: { type: Date },
+          por: { type: Schema.Types.ObjectId },
+          motivo: { type: String },
+          retomarEm: { type: Date },
+        },
+        { _id: false },
+      ),
+    },
     conflito: {
       type: new Schema(
         {

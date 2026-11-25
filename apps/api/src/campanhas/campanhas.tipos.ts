@@ -130,6 +130,7 @@ export interface LeadCampanha {
   origem?: { modo?: string; vendedorAtribuido?: unknown };
   tags?: string[];
   telefones?: { e164?: string; bruto?: string; principal?: boolean; whatsapp?: boolean }[];
+  triagem?: { situacao?: string; retomarEm?: Date };
   lgpd?: {
     contatoComercial?: string;
     revogadoEm?: Date;

@@ -3,6 +3,24 @@
 Formato: contexto · decisão · alternativas consideradas · consequências · status.
 Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
+## ADR-029 — Triagem do SDR antes da carteira; qualificação na carteira por caminho (Funil, Nutrir, Adormecido)
+
+**Contexto.** Em 25/11/2026, ao começar a qualificar, o proprietário apontou que a ordem estava invertida: "passar o contato para futuro cliente deveria ser anterior à sua qualificação". Contatos responderam à campanha dizendo que queriam conhecer o portfólio. O dossiê "Tela Viva × Pele Rara — Canal Estúdios de Tatuagem" define a jornada do estúdio: lead → primeiro contato (enviado/respondeu) → conversa de 15 min → Academia → amostras → Experiência de Uso → devolutiva → proposta → parceiro ativo. O proprietário respondeu a um questionário de oito perguntas com as escolhas registradas abaixo.
+
+**Decisão.**
+1. **Triagem do SDR no contato:** `triagem.situacao` = interessado | desinteressado, com autor, data, motivo opcional e `retomarEm`. Fica em `POST /v1/contatos/:id/triagem`, aberta a quem pode editar o contato (representante na própria carteira, gestão em todos), não exige nenhum dado e é auditada em `contatos_auditoria` (campo `triagem`). Os botões ficam na lista da campanha e na ficha.
+2. **Interessado** entra na carteira na hora (conta automática do ADR-028, agora disparada pela triagem; qualificado/cliente continuam disparando).
+3. **Desinteressado** arquiva a conta, sai das campanhas com o motivo `desinteressado` e volta a ser elegível em **6 meses** (`retomarEm`).
+4. **Qualificação na carteira:** `trilha` = funil | nutrir | adormecido (padrão funil). No funil, `etapaJornada` segue as etapas 3 a 9 do dossiê (conversa, academia, amostras, experiencia, devolutiva, proposta, parceiro_ativo; padrão conversa). Adormecer define `retomarEm` em **60 dias** se nenhuma data for informada; sair de adormecido limpa a data. A carteira mostra o caminho e a etapa (ou a data de retomada) e filtra por caminho.
+5. **CPF/CNPJ e endereço completo** são exigidos só para avançar à **Proposta** (ou Parceiro ativo), com erro `DADOS_PARA_PROPOSTA`.
+6. A ficha troca o aviso "Para qualificar, falta…" pelo bloco de Triagem. O status de cadastro (capturado/qualificado/cliente) continua existindo como marco de dados.
+
+**Alternativas.** Usar o status "qualificado" como interessado: rejeitado, porque exigia cidade, UF e tipo antes da conversa. Descartar o desinteressado: rejeitado pelo proprietário, que prefere retomar em 6 meses. Tela própria de triagem: preterida em favor dos botões na campanha e na ficha.
+
+**Consequências.** "Responderam" passa a ter registro (KPI "taxa de resposta" do dossiê). A retomada dos adormecidos e dos desinteressados aparece pela data; uma lista "Retomar hoje" na tela inicial fica como próximo passo. Não há migração: nenhum contato tinha triagem nem conta.
+
+**Status.** aceito — 25/11/2026 — respostas do proprietário ao questionário.
+
 ## ADR-028 — Contatos é o cadastro único; a conta da carteira nasce do contato qualificado
 
 **Contexto.** O CRM tinha dois cadastros paralelos: Contatos (92 leads da captura) e "Contas e estúdios" (módulo de vendas, vazio). A tela inicial e a carteira mostravam zero, embora a base estivesse cheia, e o proprietário achou a navegação confusa (ADR-026). Ele aprovou que Contatos fosse a base única. Na hora de implementar, ficou claro que todo o módulo de vendas (agenda, oportunidades, propostas, preços por cliente, dono do registro e e-mails) depende da conta. Diante das duas opções, "Conta automática" ou "Reforma completa", o proprietário escolheu a conta automática.

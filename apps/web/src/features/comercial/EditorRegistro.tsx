@@ -52,6 +52,21 @@ const CAMPOS: Record<Secao, Campo[]> = {
         'outro',
       ],
     },
+    { chave: 'trilha', titulo: 'Caminho na carteira', opcoes: ['funil', 'nutrir', 'adormecido'] },
+    {
+      chave: 'etapaJornada',
+      titulo: 'Etapa da jornada',
+      opcoes: [
+        'conversa',
+        'academia',
+        'amostras',
+        'experiencia',
+        'devolutiva',
+        'proposta',
+        'parceiro_ativo',
+      ],
+    },
+    { chave: 'retomarEm', titulo: 'Retomar em (adormecido)', tipo: 'data' },
     { chave: 'classificacao', titulo: 'Classificação da carteira', opcoes: ['A', 'B', 'C'] },
     { chave: 'status', titulo: 'Relacionamento', opcoes: ['prospect', 'ativo', 'inativo'] },
     { chave: 'especialidade', titulo: 'Especialidade / área de atuação' },
@@ -150,7 +165,14 @@ const CAMPOS: Record<Secao, Campo[]> = {
   ],
 };
 const PADROES: Record<Secao, Record<string, string>> = {
-  contas: { segmento: 'outro', classificacao: 'B', status: 'prospect', frequenciaVisitaDias: '30' },
+  contas: {
+    segmento: 'outro',
+    classificacao: 'B',
+    status: 'prospect',
+    frequenciaVisitaDias: '30',
+    trilha: 'funil',
+    etapaJornada: 'conversa',
+  },
   produtos: { categoria: 'outro', unidade: 'unidade', precoCentavos: '0' },
   oportunidades: { etapa: 'prospeccao', probabilidade: '10', valorCentavos: '0' },
   atividades: { tipo: 'visita', canal: 'presencial', status: 'planejada' },

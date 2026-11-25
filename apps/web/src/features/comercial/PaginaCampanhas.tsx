@@ -475,6 +475,40 @@ function CampanhasGestao() {
     }
   }
 
+  /** Triagem do SDR direto da campanha: Interessado vai para a carteira (ADR-029). */
+  async function triar(
+    contatoId: string,
+    nome: string,
+    situacao: 'interessado' | 'desinteressado',
+  ) {
+    if (bloqueado) return;
+    setOcupado(`triagem:${contatoId}`);
+    setErro('');
+    setMensagem('');
+    try {
+      const resposta = await fetch(urlDaApi(`/v1/contatos/${contatoId}/triagem`), {
+        method: 'POST',
+        headers: cabecalhosDaSessao(),
+        body: JSON.stringify({ situacao }),
+      });
+      const json = (await resposta.json().catch(() => null)) as {
+        erros?: { mensagem?: string }[];
+      } | null;
+      if (!resposta.ok)
+        throw new Error(json?.erros?.[0]?.mensagem ?? 'Não foi possível registrar a triagem.');
+      setMensagem(
+        situacao === 'interessado'
+          ? `${nome} entrou na carteira (Funil · Conversa de 15 min).`
+          : `${nome} marcado como desinteressado. Volta a ser lembrado em 6 meses.`,
+      );
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível registrar a triagem.');
+    } finally {
+      setOcupado('');
+      setRecarga((n) => n + 1);
+    }
+  }
+
   /** Envio manual: registra "Enviei" ou "Não enviei" para saber quem falta mandar. */
   async function confirmarEnvio(destinatarioId: string, nome: string, enviado: boolean) {
     if (!salva || bloqueado) return;
@@ -1002,6 +1036,39 @@ function CampanhasGestao() {
                           Desfazer envio
                         </button>
                       ) : null}
+                      <div className="tv-row-actions" aria-label={`Triagem: ${r.nome ?? ''}`}>
+                        {r.triagem ? (
+                          <Selo valor={r.triagem}>
+                            {r.triagem === 'interessado' ? 'Interessado' : 'Desinteressado'}
+                          </Selo>
+                        ) : (
+                          <small>Respondeu?</small>
+                        )}
+                        {r.triagem !== 'interessado' ? (
+                          <button
+                            type="button"
+                            className="tv-small-button"
+                            disabled={bloqueado}
+                            onClick={() =>
+                              void triar(r.contatoId, r.nome ?? 'O contato', 'interessado')
+                            }
+                          >
+                            Interessado
+                          </button>
+                        ) : null}
+                        {r.triagem !== 'desinteressado' ? (
+                          <button
+                            type="button"
+                            className="tv-small-button"
+                            disabled={bloqueado}
+                            onClick={() =>
+                              void triar(r.contatoId, r.nome ?? 'O contato', 'desinteressado')
+                            }
+                          >
+                            Desinteressado
+                          </button>
+                        ) : null}
+                      </div>
                       {manual && gestao ? (
                         <div className="tv-row-actions">
                           <button

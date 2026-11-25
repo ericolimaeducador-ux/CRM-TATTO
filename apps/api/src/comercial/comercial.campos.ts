@@ -1,4 +1,4 @@
-﻿import { RespostaComErro } from '../contatos/erros-http';
+import { RespostaComErro } from '../contatos/erros-http';
 import { ETAPAS, TIPOS, type TipoComercial } from './comercial.schema';
 import { randomUUID } from 'node:crypto';
 
@@ -54,6 +54,18 @@ const ENUMS: Record<TipoComercial, Record<string, string[]>> = {
     ],
     classificacao: ['A', 'B', 'C'],
     status: ['prospect', 'ativo', 'inativo'],
+    // Qualificação na carteira (ADR-029).
+    trilha: ['funil', 'nutrir', 'adormecido'],
+    // Jornada do estúdio do dossiê (etapas 3 a 9).
+    etapaJornada: [
+      'conversa',
+      'academia',
+      'amostras',
+      'experiencia',
+      'devolutiva',
+      'proposta',
+      'parceiro_ativo',
+    ],
   },
   produtos: {
     categoria: [
@@ -89,6 +101,8 @@ export const PADROES: Record<TipoComercial, Record<string, unknown>> = {
     classificacao: 'B',
     status: 'prospect',
     frequenciaVisitaDias: 30,
+    trilha: 'funil',
+    etapaJornada: 'conversa',
   },
   produtos: { nome: '', categoria: 'outro', unidade: 'unidade', precoCentavos: 0 },
   oportunidades: { titulo: '', etapa: 'prospeccao', valorCentavos: 0, probabilidade: 10 },
@@ -109,7 +123,7 @@ const NUMEROS: Record<TipoComercial, Record<string, [number, number]>> = {
   participantes: {},
 };
 const DATAS: Record<TipoComercial, string[]> = {
-  contas: ['proximaVisita'],
+  contas: ['proximaVisita', 'retomarEm'],
   produtos: [],
   oportunidades: ['previsao'],
   atividades: ['data'],

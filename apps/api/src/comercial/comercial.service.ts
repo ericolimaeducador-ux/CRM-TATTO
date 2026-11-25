@@ -14,6 +14,8 @@ import {
   type TipoComercial,
 } from './comercial.schema';
 
+/** Contato adormecido na carteira volta para a lista em 60 dias (ADR-029). */
+const RETOMADA_ADORMECIDO_DIAS = 60;
 type Doc = DocumentoComercial & { _id: Types.ObjectId };
 const GESTAO = ['admin', 'gestor'];
 const FILTROS_AUDITAVEIS = [
@@ -22,6 +24,7 @@ const FILTROS_AUDITAVEIS = [
   'status',
   'treinamentoId',
   'produtoId',
+  'trilha',
   'arquivados',
   'pagina',
   'limite',
@@ -63,6 +66,9 @@ export class ComercialService implements OnModuleInit, OnModuleDestroy {
           enderecos: 1,
           origem: 1,
           fundidoEm: 1,
+          triagem: 1,
+          pf: 1,
+          pj: 1,
           'lgpd.eliminadoEm': 1,
         },
       },
@@ -73,11 +79,16 @@ export class ComercialService implements OnModuleInit, OnModuleDestroy {
         .findOne({ tipo: 'contas', 'campos.contatoOrigemId': contatoId })
         .lean<Doc | null>();
       const agora = new Date();
+      // Interessado na triagem do SDR entra na carteira (ADR-029). Desinteressado,
+      // descartado, fundido ou eliminado sai (conta arquivada, histórico preservado).
+      const situacao = String(contato?.triagem?.situacao ?? '');
       const ativo =
         contato &&
         !contato.fundidoEm &&
         !contato.lgpd?.eliminadoEm &&
-        ['qualificado', 'cliente'].includes(String(contato.status));
+        contato.status !== 'descartado' &&
+        situacao !== 'desinteressado' &&
+        (situacao === 'interessado' || ['qualificado', 'cliente'].includes(String(contato.status)));
       if (!ativo) {
         if (!conta || conta.arquivado) return;
         const r = await this.registros.updateOne(
@@ -103,9 +114,9 @@ export class ComercialService implements OnModuleInit, OnModuleDestroy {
       const vendedor = (contato.origem as { vendedorAtribuido?: unknown } | undefined)
         ?.vendedorAtribuido;
       const donoId = vendedor ? String(vendedor) : (conta?.donoId ?? autorId);
-      const situacao = contato.status === 'cliente' ? { status: 'ativo' } : {};
+      const ativa = contato.status === 'cliente' ? { status: 'ativo' } : {};
       if (!conta) {
-        const campos = { ...PADROES.contas, ...espelho, status: 'prospect', ...situacao };
+        const campos = { ...PADROES.contas, ...espelho, status: 'prospect', ...ativa };
         try {
           await this.registros.create({
             tipo: 'contas',
@@ -125,7 +136,7 @@ export class ComercialService implements OnModuleInit, OnModuleDestroy {
           continue;
         }
       }
-      const novos: Record<string, unknown> = { ...espelho, ...situacao };
+      const novos: Record<string, unknown> = { ...espelho, ...ativa };
       const mudou = Object.keys(novos).filter(
         (k) => JSON.stringify(conta.campos[k]) !== JSON.stringify(novos[k]),
       );
@@ -192,7 +203,7 @@ export class ComercialService implements OnModuleInit, OnModuleDestroy {
         'pessoas.email',
       ].map((campo) => ({ [`campos.${campo}`]: busca }));
     }
-    for (const campo of ['contaId', 'etapa', 'status', 'treinamentoId', 'produtoId']) {
+    for (const campo of ['contaId', 'etapa', 'status', 'treinamentoId', 'produtoId', 'trilha']) {
       if (!query[campo]) continue;
       if (typeof query[campo] !== 'string' || query[campo].length > 100) falha('Filtro inválido.');
       filtro[`campos.${campo}`] = query[campo];
@@ -347,6 +358,7 @@ export class ComercialService implements OnModuleInit, OnModuleDestroy {
       falha('O arquivamento precisa ser verdadeiro ou falso.');
     const alteracoes = sanitizar(tipo, corpo);
     const campos = { ...antes.campos, ...alteracoes };
+    if (tipo === 'contas') await this.regrasDaTrilha(antes, alteracoes, campos);
     if (
       tipo === 'atividades' &&
       ('responsavelId' in alteracoes || 'colaboradoresIds' in alteracoes)
@@ -389,6 +401,52 @@ export class ComercialService implements OnModuleInit, OnModuleDestroy {
     if (!doc)
       falha('Outra alteração foi gravada primeiro. Atualize a tela.', 'CONFLITO_VERSAO', 409);
     return { registro: vista(doc as Doc) };
+  }
+  /**
+   * Qualificação na carteira (ADR-029): adormecer marca a retomada em 60 dias (se não
+   * vier data); voltar ao funil ou nutrir limpa a retomada. Proposta e parceiro ativo
+   * exigem CPF/CNPJ e endereço completo na ficha do contato.
+   */
+  private async regrasDaTrilha(
+    antes: Doc,
+    alteracoes: Record<string, unknown>,
+    campos: Record<string, unknown>,
+  ) {
+    if ('trilha' in alteracoes && alteracoes.trilha !== antes.campos.trilha) {
+      if (campos.trilha === 'adormecido' && !('retomarEm' in alteracoes))
+        campos.retomarEm = new Date(Date.now() + RETOMADA_ADORMECIDO_DIAS * 86_400_000)
+          .toISOString()
+          .slice(0, 10);
+      if (campos.trilha !== 'adormecido' && !('retomarEm' in alteracoes)) delete campos.retomarEm;
+    }
+    const etapa = String(campos.etapaJornada ?? '');
+    const mudouEtapa =
+      'etapaJornada' in alteracoes && alteracoes.etapaJornada !== antes.campos.etapaJornada;
+    if (!mudouEtapa || !['proposta', 'parceiro_ativo'].includes(etapa)) return;
+    const origem =
+      typeof antes.campos.contatoOrigemId === 'string' ? antes.campos.contatoOrigemId : '';
+    if (!origem) return;
+    const contato = await this.conexao
+      .collection('contatos')
+      .findOne(
+        { _id: new Types.ObjectId(origem) },
+        { projection: { 'pf.cpfHash': 1, 'pj.cnpjHash': 1, enderecos: 1 } },
+      );
+    const documento = Boolean(contato?.pf?.cpfHash || contato?.pj?.cnpjHash);
+    const endereco = ((contato?.enderecos ?? []) as Record<string, string>[]).some(
+      (e) => e.logradouro && e.numero && e.cidade && e.uf,
+    );
+    if (!documento || !endereco)
+      falha(
+        `Para avançar à proposta, complete na ficha do contato: ${[
+          !documento ? 'CPF ou CNPJ' : '',
+          !endereco ? 'endereço (rua, número, cidade e UF)' : '',
+        ]
+          .filter(Boolean)
+          .join(' e ')}. A etapa não mudou.`,
+        'DADOS_PARA_PROPOSTA',
+        422,
+      );
   }
   async decidirPreco(
     id: string,

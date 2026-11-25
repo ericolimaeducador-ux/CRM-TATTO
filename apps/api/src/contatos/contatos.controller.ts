@@ -48,6 +48,16 @@ export class ContatosController {
     return this.contatos.atribuir(corpo?.ids, corpo?.responsavelId, exigirUsuario(req));
   }
 
+  @Post(':id/triagem')
+  @Papel(...PERFIL_PERMISSOES.editar_contato)
+  triar(
+    @Param('id') id: string,
+    @Body() corpo: { situacao?: unknown; motivo?: unknown },
+    @Req() req: RequisicaoComUsuario,
+  ) {
+    return this.contatos.triar(id, corpo?.situacao, corpo?.motivo, exigirUsuario(req));
+  }
+
   @Patch(':id')
   @Papel(...PERFIL_PERMISSOES.editar_contato)
   async patch(
