@@ -133,13 +133,20 @@ export class TransicaoService {
       }
     }
     if (para === 'qualificado' || para === 'cliente') {
-      if (!aptoQualificado(doc)) {
+      const faltam = faltaParaQualificar(doc);
+      if (faltam.length) {
         return {
           codigo: 'CAMPOS_OBRIGATORIOS_TRANSICAO',
-          mensagem:
-            'Para qualificar, precisa de nome, CPF ou CNPJ válido e um e-mail ou telefone. O contato continua salvo no status atual.',
+          mensagem: `Para qualificar, falta: ${faltam.join(', ')}. O contato continua salvo no status atual.`,
         };
       }
+    }
+    if (para === 'cliente' && !temDocumento(doc)) {
+      return {
+        codigo: 'CAMPOS_OBRIGATORIOS_TRANSICAO',
+        mensagem:
+          'Para virar cliente, informe um CPF ou CNPJ válido (para a nota fiscal). O contato continua qualificado.',
+      };
     }
     if (para === 'cliente' && !temEndereco(doc)) {
       return {
@@ -173,16 +180,31 @@ function scoreAtual(doc: Record<string, unknown>): number {
   return (copia.completude as { score: number }).score;
 }
 
-function aptoQualificado(doc: Record<string, unknown>): boolean {
-  const nome = typeof doc.nome === 'string' && doc.nome.trim().length > 0;
-  const pf = doc.pf as { cpfHash?: string } | undefined;
-  const pj = doc.pj as { cnpjHash?: string } | undefined;
-  const documento = Boolean(pf?.cpfHash || pj?.cnpjHash);
+/**
+ * Qualificar = interesse confirmado (ADR-027): nome, WhatsApp ou e-mail, cidade, UF e se é
+ * estúdio (PJ) ou tatuador autônomo (PF). CPF/CNPJ só é exigido para virar cliente.
+ */
+export function faltaParaQualificar(doc: Record<string, unknown>): string[] {
+  const faltam: string[] = [];
+  if (!(typeof doc.nome === 'string' && doc.nome.trim())) faltam.push('nome');
   const emails = (doc.emails as { valor?: string }[] | undefined) ?? [];
   const telefones = (doc.telefones as { e164?: string }[] | undefined) ?? [];
-  const meio =
-    emails.some((item) => item.valor?.includes('@')) || telefones.some((item) => item.e164);
-  return nome && documento && meio;
+  if (!emails.some((item) => item.valor?.includes('@')) && !telefones.some((item) => item.e164))
+    faltam.push('WhatsApp ou e-mail');
+  const endereco = ((doc.enderecos as EnderecoMinimo[] | undefined) ?? []).find(
+    (item) => item.cidade?.trim() || item.uf?.trim(),
+  );
+  if (!endereco?.cidade?.trim()) faltam.push('cidade');
+  if (!/^[A-Z]{2}$/i.test(endereco?.uf?.trim() ?? '')) faltam.push('UF');
+  const tipo = doc.tipoPessoa === 'PF' || doc.tipoPessoa === 'PJ' || temDocumento(doc);
+  if (!tipo) faltam.push('se é estúdio ou tatuador autônomo');
+  return faltam;
+}
+
+function temDocumento(doc: Record<string, unknown>): boolean {
+  const pf = doc.pf as { cpfHash?: string } | undefined;
+  const pj = doc.pj as { cnpjHash?: string } | undefined;
+  return Boolean(pf?.cpfHash || pj?.cnpjHash);
 }
 
 function temEndereco(doc: Record<string, unknown>): boolean {

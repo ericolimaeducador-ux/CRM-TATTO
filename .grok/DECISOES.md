@@ -3,6 +3,18 @@
 Formato: contexto · decisão · alternativas consideradas · consequências · status.
 Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
+## ADR-027 — Qualificar sem CPF/CNPJ; documento só para virar cliente
+
+**Contexto.** Em 25/11/2026 o proprietário avisou que ia começar a qualificar os leads da Tattoo Week. A regra exigia nome, CPF ou CNPJ válido e e-mail ou telefone. Na base, nenhum dos 92 leads ativos tinha CPF/CNPJ, nenhum tinha cidade/UF e 89 estavam sem tipo de pessoa: ninguém podia ser qualificado. A ficha do lead só editava nome, e-mail e telefone. Entre as opções apresentadas, o proprietário escolheu "Sem CPF/CNPJ".
+
+**Decisão.** Qualificar passa a significar interesse confirmado e exige nome, WhatsApp ou e-mail, cidade, UF e o tipo (estúdio = PJ, tatuador autônomo = PF; um CPF/CNPJ informado também define o tipo). Virar cliente continua exigindo endereço completo e confirmação TOTP, e passa a exigir explicitamente CPF ou CNPJ válido (nota fiscal). A mensagem de recusa lista exatamente o que falta. A ficha mostra "Para qualificar, falta: …" ou "Pronto para qualificar", com o botão "Completar dados", e edita tipo, cidade, UF e CPF/CNPJ (opcional, nunca exibido aberto). Qualificar continua sendo de gestor ou admin.
+
+**Alternativas.** Manter o CPF/CNPJ: bloqueava 100% da base. Exigir só nome e contato: rejeitado, porque cidade e tipo são o mínimo para distribuir a carteira e planejar visitas.
+
+**Consequências.** A unicidade por CPF entre qualificados continua valendo quando o documento existe. Integrações que recebem a promoção a cliente não mudam, porque o cliente continua tendo documento. Testes que qualificavam sem cidade/UF passaram a informá-las.
+
+**Status.** aceito — 25/11/2026 — decisão do proprietário.
+
 ## ADR-026 — Navegação por tarefa e "falta mandar" de verdade no envio manual
 
 **Contexto.** Em 25/11/2026, depois do merge do PR #24, o proprietário relatou: "não aparece o que preciso", "a navegação e experiência está péssima, muito confusa", e pediu para saber quem não entrou na campanha e a quem falta mandar WhatsApp. Navegando o CRM em produção (tela de 1366×543), encontramos: (1) um menu com 18 itens soltos sob um único título, em que Contatos, Campanhas e Duplicatas ficavam abaixo da dobra; (2) a tela inicial e a busca do topo apontando para "Minha carteira" (contas comerciais, com 0 registros), enquanto a base real da equipe, com 92 contatos, fica em Contatos; (3) uma faixa "Sincronizado" ocupando o topo de todas as páginas mesmo sem pendência; (4) na campanha preparada, a situação do envio no fim de uma página longa, depois de um formulário já congelado; (5) no envio manual, todos os contatos marcados como "Aberto no WhatsApp", sem como saber quem de fato recebeu.
