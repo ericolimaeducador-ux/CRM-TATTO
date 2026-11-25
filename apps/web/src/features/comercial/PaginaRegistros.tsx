@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
@@ -300,7 +300,12 @@ export function PaginaRegistros({ secao }: { secao: Secao }) {
         titulo={config.titulo}
         descricao={config.descricao}
         acao={
-          escrita ? (
+          secao === 'contas' ? (
+            <Link className="tv-button tv-button-primary" to="/contatos">
+              <Icone nome="contatos" />
+              Qualificar contatos
+            </Link>
+          ) : escrita ? (
             <button className="tv-button tv-button-primary" onClick={() => setEditor('novo')}>
               <Icone nome="mais" />
               {config.nova}
@@ -308,6 +313,13 @@ export function PaginaRegistros({ secao }: { secao: Secao }) {
           ) : undefined
         }
       />
+      {secao === 'contas' ? (
+        <p className="tv-campaign-hint">
+          A carteira se forma sozinha: quando um contato é qualificado, ele entra aqui com nome,
+          WhatsApp, e-mail, cidade e tipo da ficha. Para incluir alguém, qualifique o contato em{' '}
+          <Link to="/contatos">Contatos</Link>.
+        </p>
+      ) : null}
       <AvisoDados erro={lista.erro} carregando={lista.carregando} atualizar={lista.atualizar} />
       {secao === 'produtos' ? (
         <aside className="tv-product-note">
@@ -412,17 +424,26 @@ export function PaginaRegistros({ secao }: { secao: Secao }) {
                 ? 'Nenhum registro arquivado.'
                 : busca || status || etapa
                   ? 'Nenhum resultado para esta seleção.'
-                  : `Um novo capítulo para sua ${secao === 'contas' ? 'carteira' : 'rotina'}.`
+                  : secao === 'contas'
+                    ? 'Nenhum contato qualificado ainda.'
+                    : 'Um novo capítulo para sua rotina.'
             }
             texto={
               arquivados
                 ? 'Os registros arquivados aparecerão aqui para consulta ou restauração.'
                 : busca || status || etapa
                   ? 'Experimente outra busca ou remova os filtros.'
-                  : 'Comece com uma informação. Complete os detalhes conforme o relacionamento cresce.'
+                  : secao === 'contas'
+                    ? 'Abra um lead em Contatos, complete cidade, UF e tipo e clique em Qualificar. Ele aparece aqui na hora.'
+                    : 'Comece com uma informação. Complete os detalhes conforme o relacionamento cresce.'
             }
             acao={
-              escrita && !arquivados ? (
+              secao === 'contas' && !arquivados ? (
+                <Link className="tv-button tv-button-light" to="/contatos">
+                  <Icone nome="contatos" />
+                  Ir para Contatos
+                </Link>
+              ) : escrita && !arquivados ? (
                 <button className="tv-button tv-button-light" onClick={() => setEditor('novo')}>
                   <Icone nome="mais" />
                   {config.nova}

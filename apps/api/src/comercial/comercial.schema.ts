@@ -120,6 +120,14 @@ export const comercialSchema = new Schema<DocumentoComercial>(
 );
 comercialSchema.index({ tipo: 1, donoId: 1, arquivado: 1, alteradoEm: -1 });
 comercialSchema.index({ tipo: 1, 'campos.contaId': 1 });
+// Conta criada a partir do contato qualificado (ADR-028): no máximo uma por contato.
+comercialSchema.index(
+  { 'campos.contatoOrigemId': 1 },
+  {
+    unique: true,
+    partialFilterExpression: { tipo: 'contas', 'campos.contatoOrigemId': { $exists: true } },
+  },
+);
 // Busca e histórico de preço por conta e produto; não há índice único porque
 // propostas/condições históricas precisam coexistir e ser auditáveis.
 comercialSchema.index({

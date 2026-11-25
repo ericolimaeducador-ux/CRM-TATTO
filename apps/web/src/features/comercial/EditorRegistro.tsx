@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
   apiComercial,
@@ -13,6 +14,17 @@ import {
   type Secao,
 } from './api';
 import { Icone } from './componentes';
+
+/** Campos que a conta espelha da ficha do contato (ADR-028); editados só na ficha. */
+const ESPELHADOS = new Set([
+  'nome',
+  'cidade',
+  'uf',
+  'segmento',
+  'contatoNome',
+  'contatoEmail',
+  'contatoTelefone',
+]);
 
 type Campo = {
   chave: string;
@@ -479,71 +491,83 @@ export function EditorRegistro({
               ) : null}
             </section>
           ) : null}
+          {secao === 'contas' && registro?.contatoOrigemId ? (
+            <p className="tv-help-text">
+              Nome, WhatsApp, e-mail, cidade, UF e tipo vêm da ficha do contato e se atualizam
+              sozinhos. Para mudá-los,{' '}
+              <Link to={`/lead/${registro.contatoOrigemId}`}>abra a ficha do contato</Link>.
+            </p>
+          ) : null}
           <div className="tv-form-grid">
-            {CAMPOS[secao].map((c) => {
-              const valor = valores[c.chave] ?? '';
-              const opcoes = c.referencia
-                ? (refs[c.referencia] ?? []).filter(
-                    (r) =>
-                      c.referencia !== 'oportunidades' ||
-                      !valores.contaId ||
-                      r.contaId === valores.contaId,
-                  )
-                : [];
-              return (
-                <label
-                  key={c.chave}
-                  className={`tv-field ${c.amplo || c.tipo === 'texto-longo' ? 'tv-field-wide' : ''}`}
-                >
-                  <span>{c.titulo}</span>
-                  {c.opcoes ? (
-                    <select value={valor} onChange={(e) => mudar(c.chave, e.target.value)}>
-                      {c.opcoes.map((o) => (
-                        <option key={o} value={o}>
-                          {rotulo(o)}
-                        </option>
-                      ))}
-                    </select>
-                  ) : c.referencia ? (
-                    <select value={valor} onChange={(e) => mudar(c.chave, e.target.value)}>
-                      <option value="">Sem vínculo por enquanto</option>
-                      {valor && !opcoes.some((o) => o._id === valor) ? (
-                        <option value={valor}>Vínculo atual</option>
-                      ) : null}
-                      {opcoes.map((o) => (
-                        <option value={o._id} key={o._id}>
-                          {nomeRegistro(o)}
-                        </option>
-                      ))}
-                    </select>
-                  ) : c.tipo === 'texto-longo' ? (
-                    <textarea
-                      value={valor}
-                      rows={3}
-                      maxLength={4000}
-                      onChange={(e) => mudar(c.chave, e.target.value)}
-                    />
-                  ) : (
-                    <input
-                      type={
-                        c.tipo === 'numero' || c.tipo === 'dinheiro'
-                          ? 'number'
-                          : c.tipo === 'horario'
-                            ? 'datetime-local'
-                            : c.tipo === 'data'
-                              ? 'date'
-                              : 'text'
-                      }
-                      value={valor}
-                      maxLength={c.chave === 'uf' ? 2 : 500}
-                      step={c.tipo === 'dinheiro' ? '0.01' : '1'}
-                      min={c.tipo === 'numero' || c.tipo === 'dinheiro' ? 0 : undefined}
-                      onChange={(e) => mudar(c.chave, e.target.value)}
-                    />
-                  )}
-                </label>
-              );
-            })}
+            {CAMPOS[secao]
+              .filter(
+                (c) =>
+                  !(secao === 'contas' && registro?.contatoOrigemId && ESPELHADOS.has(c.chave)),
+              )
+              .map((c) => {
+                const valor = valores[c.chave] ?? '';
+                const opcoes = c.referencia
+                  ? (refs[c.referencia] ?? []).filter(
+                      (r) =>
+                        c.referencia !== 'oportunidades' ||
+                        !valores.contaId ||
+                        r.contaId === valores.contaId,
+                    )
+                  : [];
+                return (
+                  <label
+                    key={c.chave}
+                    className={`tv-field ${c.amplo || c.tipo === 'texto-longo' ? 'tv-field-wide' : ''}`}
+                  >
+                    <span>{c.titulo}</span>
+                    {c.opcoes ? (
+                      <select value={valor} onChange={(e) => mudar(c.chave, e.target.value)}>
+                        {c.opcoes.map((o) => (
+                          <option key={o} value={o}>
+                            {rotulo(o)}
+                          </option>
+                        ))}
+                      </select>
+                    ) : c.referencia ? (
+                      <select value={valor} onChange={(e) => mudar(c.chave, e.target.value)}>
+                        <option value="">Sem vínculo por enquanto</option>
+                        {valor && !opcoes.some((o) => o._id === valor) ? (
+                          <option value={valor}>Vínculo atual</option>
+                        ) : null}
+                        {opcoes.map((o) => (
+                          <option value={o._id} key={o._id}>
+                            {nomeRegistro(o)}
+                          </option>
+                        ))}
+                      </select>
+                    ) : c.tipo === 'texto-longo' ? (
+                      <textarea
+                        value={valor}
+                        rows={3}
+                        maxLength={4000}
+                        onChange={(e) => mudar(c.chave, e.target.value)}
+                      />
+                    ) : (
+                      <input
+                        type={
+                          c.tipo === 'numero' || c.tipo === 'dinheiro'
+                            ? 'number'
+                            : c.tipo === 'horario'
+                              ? 'datetime-local'
+                              : c.tipo === 'data'
+                                ? 'date'
+                                : 'text'
+                        }
+                        value={valor}
+                        maxLength={c.chave === 'uf' ? 2 : 500}
+                        step={c.tipo === 'dinheiro' ? '0.01' : '1'}
+                        min={c.tipo === 'numero' || c.tipo === 'dinheiro' ? 0 : undefined}
+                        onChange={(e) => mudar(c.chave, e.target.value)}
+                      />
+                    )}
+                  </label>
+                );
+              })}
           </div>
           {secao === 'propostas' ? (
             <div className="tv-proposal-contact">

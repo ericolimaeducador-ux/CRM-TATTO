@@ -7,6 +7,7 @@ import { aplicarCompletude } from './completude-contato';
 import type { Contato } from './schemas/contato.schema';
 import { ContatosService } from './contatos.service';
 import { RespostaComErro } from './erros-http';
+import { publicarContatoAlterado } from './contato-alterado';
 import { publicarPromocaoCliente } from './promocao-publicada';
 import type { UsuarioSessao } from './sessao.middleware';
 
@@ -64,6 +65,8 @@ export class TransicaoService {
       string,
       unknown
     >;
+    // A carteira acompanha o status: qualificar cria a conta, descartar arquiva (ADR-028).
+    await publicarContatoAlterado({ contatoId: id, autorId: usuario.id });
     if (para === 'cliente') {
       publicarPromocaoCliente({
         contatoId: id,

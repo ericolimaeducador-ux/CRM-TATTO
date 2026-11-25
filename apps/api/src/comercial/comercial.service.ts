@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types, type HydratedDocument } from 'mongoose';
 import { randomBytes } from 'node:crypto';
 import { hmacDocumento } from '../seguranca/cifra';
 import type { UsuarioSessao } from '../contatos/sessao.middleware';
+import { aoAlterarContato } from '../contatos/contato-alterado';
 import { paraCsv, paraXlsx } from '../exportacao/tabela';
 import { falha, PADROES, sanitizar, tipoValido, totalizar } from './comercial.campos';
 import {
@@ -26,12 +27,135 @@ const FILTROS_AUDITAVEIS = [
   'limite',
 ];
 @Injectable()
-export class ComercialService {
+export class ComercialService implements OnModuleInit, OnModuleDestroy {
   private readonly limiteInscricao = new Map<string, { inicio: number; quantidade: number }>();
+  private desligarSincronizacao?: () => void;
   constructor(
     @InjectModel('Comercial') private readonly registros: Model<DocumentoComercial>,
     @InjectConnection() private readonly conexao: Connection,
   ) {}
+  onModuleInit() {
+    this.desligarSincronizacao = aoAlterarContato((e) =>
+      this.sincronizarContaDoContato(e.contatoId, e.autorId),
+    );
+  }
+  onModuleDestroy() {
+    this.desligarSincronizacao?.();
+  }
+
+  /**
+   * Contatos é o cadastro único (ADR-028). A conta da carteira é criada quando o contato
+   * é qualificado e espelha nome, WhatsApp, e-mail, cidade, UF, tipo e responsável.
+   * Campos só comerciais (classificação, especialidade, próxima ação) continuam na conta.
+   * Contato descartado, fundido ou eliminado arquiva a conta, sem apagar histórico.
+   */
+  async sincronizarContaDoContato(contatoId: string, autorId: string): Promise<void> {
+    if (!/^[a-f\d]{24}$/i.test(contatoId)) return;
+    const contato = await this.conexao.collection('contatos').findOne(
+      { _id: new Types.ObjectId(contatoId) },
+      {
+        projection: {
+          nome: 1,
+          status: 1,
+          tipoPessoa: 1,
+          emails: 1,
+          telefones: 1,
+          enderecos: 1,
+          origem: 1,
+          fundidoEm: 1,
+          'lgpd.eliminadoEm': 1,
+        },
+      },
+    );
+    const autor = { id: autorId, papel: 'admin', nome: 'sincronizacao' } as UsuarioSessao;
+    for (let tentativa = 0; tentativa < 3; tentativa++) {
+      const conta = await this.registros
+        .findOne({ tipo: 'contas', 'campos.contatoOrigemId': contatoId })
+        .lean<Doc | null>();
+      const agora = new Date();
+      const ativo =
+        contato &&
+        !contato.fundidoEm &&
+        !contato.lgpd?.eliminadoEm &&
+        ['qualificado', 'cliente'].includes(String(contato.status));
+      if (!ativo) {
+        if (!conta || conta.arquivado) return;
+        const r = await this.registros.updateOne(
+          { _id: conta._id, versao: conta.versao },
+          {
+            $set: { arquivado: true, alteradoEm: agora, alteradoPor: autorId },
+            $inc: { versao: 1 },
+            $push: {
+              auditoria: evento(
+                'arquivar_do_contato',
+                autor,
+                conta.versao + 1,
+                { arquivado: true },
+                agora,
+              ),
+            },
+          },
+        );
+        if (r.matchedCount) return;
+        continue;
+      }
+      const espelho = camposDoContato(contatoId, contato as Record<string, unknown>);
+      const vendedor = (contato.origem as { vendedorAtribuido?: unknown } | undefined)
+        ?.vendedorAtribuido;
+      const donoId = vendedor ? String(vendedor) : (conta?.donoId ?? autorId);
+      const situacao = contato.status === 'cliente' ? { status: 'ativo' } : {};
+      if (!conta) {
+        const campos = { ...PADROES.contas, ...espelho, status: 'prospect', ...situacao };
+        try {
+          await this.registros.create({
+            tipo: 'contas',
+            campos,
+            donoId,
+            versao: 1,
+            arquivado: false,
+            criadoEm: agora,
+            alteradoEm: agora,
+            criadoPor: autorId,
+            alteradoPor: autorId,
+            auditoria: [evento('criar_do_contato', autor, 1, campos, agora)],
+          });
+          return;
+        } catch (erro) {
+          if (!isDuplicateKey(erro)) throw erro;
+          continue;
+        }
+      }
+      const novos: Record<string, unknown> = { ...espelho, ...situacao };
+      const mudou = Object.keys(novos).filter(
+        (k) => JSON.stringify(conta.campos[k]) !== JSON.stringify(novos[k]),
+      );
+      if (!mudou.length && conta.donoId === donoId && !conta.arquivado) return;
+      const alterados = Object.fromEntries(mudou.map((k) => [k, novos[k]]));
+      const r = await this.registros.updateOne(
+        { _id: conta._id, versao: conta.versao },
+        {
+          $set: {
+            campos: { ...conta.campos, ...novos },
+            donoId,
+            arquivado: false,
+            alteradoEm: agora,
+            alteradoPor: autorId,
+          },
+          $inc: { versao: 1 },
+          $push: {
+            auditoria: evento(
+              'sincronizar_contato',
+              autor,
+              conta.versao + 1,
+              { ...alterados, ...(conta.donoId !== donoId ? { donoId } : {}) },
+              agora,
+            ),
+          },
+        },
+      );
+      if (r.matchedCount) return;
+    }
+  }
 
   private escopo(tipo: TipoComercial, usuario: UsuarioSessao): Record<string, unknown> {
     return {
@@ -1199,4 +1323,35 @@ function evento(
     campos: Object.keys(campos),
     resumoHash: hmacDocumento(JSON.stringify(campos)),
   };
+}
+
+/** O que a conta espelha da ficha do contato. Vazio não apaga o que a conta já tinha. */
+function camposDoContato(contatoId: string, c: Record<string, unknown>): Record<string, unknown> {
+  const texto = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  const principal = <T extends { principal?: boolean }>(lista: unknown): T | undefined => {
+    const itens = Array.isArray(lista) ? (lista as T[]) : [];
+    return itens.find((x) => x.principal) ?? itens[0];
+  };
+  const email = principal<{ valor?: string; principal?: boolean }>(c.emails);
+  const telefone = principal<{ e164?: string; bruto?: string; principal?: boolean }>(c.telefones);
+  const endereco = (Array.isArray(c.enderecos) ? c.enderecos[0] : undefined) as
+    { cidade?: string; uf?: string } | undefined;
+  const segmento =
+    c.tipoPessoa === 'PJ'
+      ? 'estudio_tatuagem'
+      : c.tipoPessoa === 'PF'
+        ? 'profissional_autonomo'
+        : '';
+  const campos: Record<string, unknown> = {
+    contatoOrigemId: contatoId,
+    nome: texto(c.nome) || 'Contato sem nome',
+    contatoNome: texto(c.nome),
+    contatoEmail: texto(email?.valor),
+    contatoTelefone: texto(telefone?.e164) || texto(telefone?.bruto),
+    cidade: texto(endereco?.cidade),
+    uf: texto(endereco?.uf).toUpperCase(),
+    ...(segmento ? { segmento } : {}),
+  };
+  for (const k of Object.keys(campos)) if (campos[k] === '') delete campos[k];
+  return campos;
 }

@@ -1,4 +1,5 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { publicarContatoAlterado } from './contato-alterado';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Types, type Model } from 'mongoose';
 import { podeAcessarCarteira } from '../auth/perfil-permissoes';
@@ -125,6 +126,7 @@ export class ContatosService {
         await this.marcarConflito(id, campo, valor, versaoConhecida, atual),
       );
     }
+    await publicarContatoAlterado({ contatoId: id, autorId: usuario.id });
     return { http: 200, dados: gravado, avisos: patch.avisos, antes };
   }
 
@@ -206,6 +208,7 @@ export class ContatosService {
         motivo: 'atribuicao_carteira',
         origem: 'api',
       });
+      await publicarContatoAlterado({ contatoId: String(atual._id), autorId: usuario.id });
     }
     return {
       dados: {

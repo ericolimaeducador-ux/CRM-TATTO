@@ -3,6 +3,18 @@
 Formato: contexto · decisão · alternativas consideradas · consequências · status.
 Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
+## ADR-028 — Contatos é o cadastro único; a conta da carteira nasce do contato qualificado
+
+**Contexto.** O CRM tinha dois cadastros paralelos: Contatos (92 leads da captura) e "Contas e estúdios" (módulo de vendas, vazio). A tela inicial e a carteira mostravam zero, embora a base estivesse cheia, e o proprietário achou a navegação confusa (ADR-026). Ele aprovou que Contatos fosse a base única. Na hora de implementar, ficou claro que todo o módulo de vendas (agenda, oportunidades, propostas, preços por cliente, dono do registro e e-mails) depende da conta. Diante das duas opções, "Conta automática" ou "Reforma completa", o proprietário escolheu a conta automática.
+
+**Decisão.** Só se cadastra pessoa em Contatos. A Carteira deixa de ter "Nova conta" e passa a mostrar "Qualificar contatos". Quando um contato vira qualificado ou cliente, o módulo de vendas cria uma conta ligada a ele (`campos.contatoOrigemId`, índice único parcial), espelhando nome, WhatsApp, e-mail, cidade, UF e tipo (PJ → estúdio de tatuagem, PF → profissional autônomo). O dono da conta é o responsável do contato; sem responsável, quem qualificou. Editar a ficha ou trocar o responsável atualiza a conta. Descartar, fundir ou eliminar o contato arquiva a conta, e reabrir e qualificar de novo restaura a mesma conta. Classificação, especialidade, frequência de visita e próxima ação continuam só na conta e não são sobrescritos. O aviso interno `contato-alterado` é aguardado, para que a carteira já mostre a conta logo após qualificar; uma falha dele só é registrada no log e nunca desfaz a gravação do contato. A auditoria da conta registra `criar_do_contato`, `sincronizar_contato` e `arquivar_do_contato`, com autor em HMAC. A tela de edição da conta esconde os campos espelhados e leva à ficha, a ficha ganha "Ver na carteira" e a tela inicial passa a contar "Qualificados na carteira".
+
+**Alternativas.** Reforma completa (vendas apontando direto para o contato): o modelo mais limpo, mas com risco alto em telas que funcionam. Pode ser feita depois, sobre o vínculo `contatoOrigemId`. Copiar sem sincronizar: os dados divergiriam.
+
+**Consequências.** Como não havia contas, não há migração. Contas criadas manualmente antes desta decisão (nenhuma hoje) continuam editáveis por completo. Lead capturado não aparece na carteira até ser qualificado.
+
+**Status.** aceito — 25/11/2026 — decisão do proprietário.
+
 ## ADR-027 — Qualificar sem CPF/CNPJ; documento só para virar cliente
 
 **Contexto.** Em 25/11/2026 o proprietário avisou que ia começar a qualificar os leads da Tattoo Week. A regra exigia nome, CPF ou CNPJ válido e e-mail ou telefone. Na base, nenhum dos 92 leads ativos tinha CPF/CNPJ, nenhum tinha cidade/UF e 89 estavam sem tipo de pessoa: ninguém podia ser qualificado. A ficha do lead só editava nome, e-mail e telefone. Entre as opções apresentadas, o proprietário escolheu "Sem CPF/CNPJ".

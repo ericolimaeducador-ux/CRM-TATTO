@@ -121,6 +121,11 @@ export function PaginaLead() {
           }}
         />
       ) : null}
+      {contato && (status === 'qualificado' || status === 'cliente') ? (
+        <Link className="atalho" to={`/carteira?q=${encodeURIComponent(contato.nome ?? '')}`}>
+          Ver na carteira
+        </Link>
+      ) : null}
       {gerir && podePromover(status) ? (
         <Link className="atalho" to={`/promover/${id}`}>
           Promover a cliente

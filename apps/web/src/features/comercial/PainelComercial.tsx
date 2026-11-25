@@ -18,7 +18,7 @@ export function PainelComercial() {
   const i = dados?.indicadores;
   const cards = [
     {
-      nome: 'Contas na carteira',
+      nome: 'Qualificados na carteira',
       valor: i?.contas,
       detalhe: 'Relacionamentos em construção',
       icone: 'contas',
