@@ -224,6 +224,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
             tags: 1,
             telefones: 1,
             lgpd: 1,
+            triagem: 1,
           },
         },
       )
@@ -562,7 +563,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
           );
         const contato = await this.contatos.findOne(
           { _id: linha.contatoId },
-          { projection: { nome: 1 } },
+          { projection: { nome: 1, 'triagem.situacao': 1 } },
         );
         const publico: Partial<Destinatario> = { ...linha };
         delete publico.telefoneHash;
@@ -570,6 +571,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
         return {
           ...publico,
           nome: contato?.nome || 'Contato sem nome',
+          triagem: contato?.triagem?.situacao ?? '',
           respondeuEm: resposta?.em ?? null,
         };
       }),
@@ -967,6 +969,11 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       return { motivo: 'contato_indisponivel' };
     if (carteiraDe && String(lead.origem?.vendedorAtribuido ?? '') !== carteiraDe)
       return { motivo: 'fora_da_carteira' };
+    if (
+      lead.triagem?.situacao === 'desinteressado' &&
+      (!lead.triagem.retomarEm || lead.triagem.retomarEm > this.agora())
+    )
+      return { motivo: 'desinteressado' };
     if (
       lead.lgpd?.contatoComercial !== 'concedido' ||
       !lead.lgpd.consentimentos?.some(

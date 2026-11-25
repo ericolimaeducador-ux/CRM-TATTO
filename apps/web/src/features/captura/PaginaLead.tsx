@@ -27,6 +27,7 @@ interface ContatoLido {
   origem?: { modo?: string };
   completude?: { score?: number };
   lgpd?: { contatoComercial?: string };
+  triagem?: { situacao?: string; motivo?: string; retomarEm?: string };
 }
 
 interface LinhaAuditoria {
@@ -42,25 +43,6 @@ const TIPOS_PESSOA: Record<string, string> = {
   PF: 'Tatuador autônomo (pessoa física)',
   INDEFINIDO: 'Não informado',
 };
-
-/** Espelho da regra da API (ADR-027): o que falta para qualificar. Sem CPF/CNPJ. */
-export function faltaParaQualificar(contato: ContatoLido): string[] {
-  const faltam: string[] = [];
-  if (!contato.nome?.trim()) faltam.push('nome');
-  const meio =
-    (contato.emails ?? []).some((e) => e.valor?.includes('@')) ||
-    (contato.telefones ?? []).some((t) => t.e164);
-  if (!meio) faltam.push('WhatsApp ou e-mail');
-  const endereco = (contato.enderecos ?? []).find((e) => e.cidade?.trim() || e.uf?.trim());
-  if (!endereco?.cidade?.trim()) faltam.push('cidade');
-  if (!/^[A-Z]{2}$/i.test(endereco?.uf?.trim() ?? '')) faltam.push('UF');
-  const tipo =
-    contato.tipoPessoa === 'PF' ||
-    contato.tipoPessoa === 'PJ' ||
-    Boolean(contato.pf?.cpfMascarado || contato.pj?.cnpjMascarado);
-  if (!tipo) faltam.push('se é estúdio ou tatuador autônomo');
-  return faltam;
-}
 
 export function PaginaLead() {
   const { id = '' } = useParams();
@@ -131,27 +113,15 @@ export function PaginaLead() {
           Qualificar, descartar, reabrir, revogar e eliminar pedem gestor ou admin.
         </p>
       ) : null}
-      {contato && status === 'capturado' ? (
-        <div className="cartao flex flex-col gap-2" aria-label="Para qualificar">
-          {faltaParaQualificar(contato).length ? (
-            <>
-              <p className="text-base">
-                <span className="font-semibold">Para qualificar, falta:</span>{' '}
-                {faltaParaQualificar(contato).join(', ')}.
-              </p>
-              {editar && !editando ? (
-                <button type="button" className="btn-secundario" onClick={() => setEditando(true)}>
-                  Completar dados
-                </button>
-              ) : null}
-            </>
-          ) : (
-            <p className="text-base">
-              <span className="font-semibold">Pronto para qualificar.</span> CPF ou CNPJ só será
-              pedido quando virar cliente.
-            </p>
-          )}
-        </div>
+      {contato && editar && status !== 'descartado' ? (
+        <Triagem
+          id={id}
+          contato={contato}
+          aoTriar={(atual, texto) => {
+            if (atual) setContato(atual);
+            setMensagem(texto);
+          }}
+        />
       ) : null}
       {gerir && contato ? (
         <>
@@ -538,4 +508,102 @@ async function carregarTrilha(
     return;
   }
   definirTrilha(json.dados ?? []);
+}
+
+/** Triagem do SDR (ADR-029): Interessado entra na carteira; Desinteressado volta em 6 meses. */
+function Triagem({
+  id,
+  contato,
+  aoTriar,
+}: {
+  id: string;
+  contato: ContatoLido;
+  aoTriar: (contato: ContatoLido | null, mensagem: string) => void;
+}) {
+  const [motivo, setMotivo] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const situacao = contato.triagem?.situacao ?? '';
+  async function triar(nova: 'interessado' | 'desinteressado') {
+    setSalvando(true);
+    try {
+      const resposta = await fetch(urlDaApi(`/v1/contatos/${id}/triagem`), {
+        method: 'POST',
+        headers: cabecalhosDaSessao(),
+        body: JSON.stringify({ situacao: nova, ...(motivo.trim() ? { motivo } : {}) }),
+      });
+      const json = (await resposta.json()) as {
+        dados?: ContatoLido;
+        erros?: { mensagem?: string }[];
+        mensagem?: string;
+      };
+      if (!resposta.ok) {
+        aoTriar(null, textoDaResposta(json, 'Não registrei a triagem. Nada foi alterado.'));
+        return;
+      }
+      aoTriar(
+        json.dados ?? null,
+        nova === 'interessado'
+          ? 'Interessado: o contato entrou na carteira (Funil · Conversa de 15 min).'
+          : 'Desinteressado: sai das campanhas e volta a ser lembrado em 6 meses.',
+      );
+      setMotivo('');
+    } catch {
+      aoTriar(null, 'Sem resposta do servidor. Não registrei a triagem.');
+    } finally {
+      setSalvando(false);
+    }
+  }
+  return (
+    <div className="cartao flex flex-col gap-2" aria-label="Triagem">
+      <p className="text-base">
+        <span className="font-semibold">Triagem:</span>{' '}
+        {situacao === 'interessado'
+          ? 'interessado, já está na carteira.'
+          : situacao === 'desinteressado'
+            ? `desinteressado${contato.triagem?.motivo ? ` (${contato.triagem.motivo})` : ''}${
+                contato.triagem?.retomarEm
+                  ? `, retomar em ${new Date(contato.triagem.retomarEm).toLocaleDateString('pt-BR')}`
+                  : ''
+              }.`
+            : 'ainda não respondeu ou não foi avaliado.'}
+      </p>
+      {situacao === 'interessado' ? (
+        <Link className="atalho" to={`/carteira?q=${encodeURIComponent(contato.nome ?? '')}`}>
+          Ver na carteira
+        </Link>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        {situacao !== 'interessado' ? (
+          <button
+            type="button"
+            className="btn disabled:opacity-40"
+            disabled={salvando}
+            onClick={() => void triar('interessado')}
+          >
+            Interessado
+          </button>
+        ) : null}
+        {situacao !== 'desinteressado' ? (
+          <button
+            type="button"
+            className="btn-secundario disabled:opacity-40"
+            disabled={salvando}
+            onClick={() => void triar('desinteressado')}
+          >
+            Desinteressado
+          </button>
+        ) : null}
+      </div>
+      {situacao !== 'desinteressado' ? (
+        <label className="flex flex-col gap-1 text-base">
+          Motivo, se desinteressado (opcional)
+          <input
+            className="campo"
+            value={motivo}
+            onChange={(evento) => setMotivo(evento.target.value)}
+          />
+        </label>
+      ) : null}
+    </div>
+  );
 }

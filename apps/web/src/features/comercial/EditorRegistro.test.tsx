@@ -96,3 +96,37 @@ describe('propostas comerciais Tela Viva', () => {
     expect(salvo).not.toHaveBeenCalled();
   });
 });
+
+describe('conta criada a partir do contato (ADR-028)', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it('esconde os campos que vêm da ficha e leva até ela', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => resposta({ registros: [], total: 0 })),
+    );
+    const { MemoryRouter } = await import('react-router-dom');
+    render(
+      <MemoryRouter>
+        <EditorRegistro
+          secao="contas"
+          registro={{
+            ...base,
+            secao: 'contas',
+            nome: 'Estúdio da Feira',
+            cidade: 'Campinas',
+            classificacao: 'B',
+            contatoOrigemId: '507f1f77bcf86cd799439099',
+          }}
+          aoFechar={vi.fn()}
+          aoSalvar={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByLabelText('Nome da instituição')).toBeNull();
+    expect(screen.queryByLabelText('Cidade')).toBeNull();
+    expect(screen.getByLabelText('Classificação da carteira')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'abra a ficha do contato' }).getAttribute('href')).toBe(
+      '/lead/507f1f77bcf86cd799439099',
+    );
+  });
+});

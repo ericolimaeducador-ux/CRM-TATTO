@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   dataFormatada,
@@ -43,10 +43,19 @@ export function DetalheConta() {
             : 'O contexto que ajuda você a preparar a próxima conversa.'
         }
         acao={
-          r && podeEscrever() ? (
-            <button className="tv-button tv-button-light" onClick={() => setEditando(true)}>
-              Editar conta
-            </button>
+          r ? (
+            <span className="tv-row-actions">
+              {r.contatoOrigemId ? (
+                <Link className="tv-button tv-button-light" to={`/lead/${r.contatoOrigemId}`}>
+                  Abrir ficha do contato
+                </Link>
+              ) : null}
+              {podeEscrever() ? (
+                <button className="tv-button tv-button-light" onClick={() => setEditando(true)}>
+                  Editar conta
+                </button>
+              ) : null}
+            </span>
           ) : undefined
         }
       />

@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types, type HydratedDocument } from 'mongoose';
 import { randomBytes } from 'node:crypto';
 import { hmacDocumento } from '../seguranca/cifra';
 import type { UsuarioSessao } from '../contatos/sessao.middleware';
+import { aoAlterarContato } from '../contatos/contato-alterado';
 import { paraCsv, paraXlsx } from '../exportacao/tabela';
 import { falha, PADROES, sanitizar, tipoValido, totalizar } from './comercial.campos';
 import {
@@ -13,6 +14,8 @@ import {
   type TipoComercial,
 } from './comercial.schema';
 
+/** Contato adormecido na carteira volta para a lista em 60 dias (ADR-029). */
+const RETOMADA_ADORMECIDO_DIAS = 60;
 type Doc = DocumentoComercial & { _id: Types.ObjectId };
 const GESTAO = ['admin', 'gestor'];
 const FILTROS_AUDITAVEIS = [
@@ -21,17 +24,149 @@ const FILTROS_AUDITAVEIS = [
   'status',
   'treinamentoId',
   'produtoId',
+  'trilha',
   'arquivados',
   'pagina',
   'limite',
 ];
 @Injectable()
-export class ComercialService {
+export class ComercialService implements OnModuleInit, OnModuleDestroy {
   private readonly limiteInscricao = new Map<string, { inicio: number; quantidade: number }>();
+  private desligarSincronizacao?: () => void;
   constructor(
     @InjectModel('Comercial') private readonly registros: Model<DocumentoComercial>,
     @InjectConnection() private readonly conexao: Connection,
   ) {}
+  onModuleInit() {
+    this.desligarSincronizacao = aoAlterarContato((e) =>
+      this.sincronizarContaDoContato(e.contatoId, e.autorId),
+    );
+  }
+  onModuleDestroy() {
+    this.desligarSincronizacao?.();
+  }
+
+  /**
+   * Contatos é o cadastro único (ADR-028). A conta da carteira é criada quando o contato
+   * é qualificado e espelha nome, WhatsApp, e-mail, cidade, UF, tipo e responsável.
+   * Campos só comerciais (classificação, especialidade, próxima ação) continuam na conta.
+   * Contato descartado, fundido ou eliminado arquiva a conta, sem apagar histórico.
+   */
+  async sincronizarContaDoContato(contatoId: string, autorId: string): Promise<void> {
+    if (!/^[a-f\d]{24}$/i.test(contatoId)) return;
+    const contato = await this.conexao.collection('contatos').findOne(
+      { _id: new Types.ObjectId(contatoId) },
+      {
+        projection: {
+          nome: 1,
+          status: 1,
+          tipoPessoa: 1,
+          emails: 1,
+          telefones: 1,
+          enderecos: 1,
+          origem: 1,
+          fundidoEm: 1,
+          triagem: 1,
+          pf: 1,
+          pj: 1,
+          'lgpd.eliminadoEm': 1,
+        },
+      },
+    );
+    const autor = { id: autorId, papel: 'admin', nome: 'sincronizacao' } as UsuarioSessao;
+    for (let tentativa = 0; tentativa < 3; tentativa++) {
+      const conta = await this.registros
+        .findOne({ tipo: 'contas', 'campos.contatoOrigemId': contatoId })
+        .lean<Doc | null>();
+      const agora = new Date();
+      // Interessado na triagem do SDR entra na carteira (ADR-029). Desinteressado,
+      // descartado, fundido ou eliminado sai (conta arquivada, histórico preservado).
+      const situacao = String(contato?.triagem?.situacao ?? '');
+      const ativo =
+        contato &&
+        !contato.fundidoEm &&
+        !contato.lgpd?.eliminadoEm &&
+        contato.status !== 'descartado' &&
+        situacao !== 'desinteressado' &&
+        (situacao === 'interessado' || ['qualificado', 'cliente'].includes(String(contato.status)));
+      if (!ativo) {
+        if (!conta || conta.arquivado) return;
+        const r = await this.registros.updateOne(
+          { _id: conta._id, versao: conta.versao },
+          {
+            $set: { arquivado: true, alteradoEm: agora, alteradoPor: autorId },
+            $inc: { versao: 1 },
+            $push: {
+              auditoria: evento(
+                'arquivar_do_contato',
+                autor,
+                conta.versao + 1,
+                { arquivado: true },
+                agora,
+              ),
+            },
+          },
+        );
+        if (r.matchedCount) return;
+        continue;
+      }
+      const espelho = camposDoContato(contatoId, contato as Record<string, unknown>);
+      const vendedor = (contato.origem as { vendedorAtribuido?: unknown } | undefined)
+        ?.vendedorAtribuido;
+      const donoId = vendedor ? String(vendedor) : (conta?.donoId ?? autorId);
+      const ativa = contato.status === 'cliente' ? { status: 'ativo' } : {};
+      if (!conta) {
+        const campos = { ...PADROES.contas, ...espelho, status: 'prospect', ...ativa };
+        try {
+          await this.registros.create({
+            tipo: 'contas',
+            campos,
+            donoId,
+            versao: 1,
+            arquivado: false,
+            criadoEm: agora,
+            alteradoEm: agora,
+            criadoPor: autorId,
+            alteradoPor: autorId,
+            auditoria: [evento('criar_do_contato', autor, 1, campos, agora)],
+          });
+          return;
+        } catch (erro) {
+          if (!isDuplicateKey(erro)) throw erro;
+          continue;
+        }
+      }
+      const novos: Record<string, unknown> = { ...espelho, ...ativa };
+      const mudou = Object.keys(novos).filter(
+        (k) => JSON.stringify(conta.campos[k]) !== JSON.stringify(novos[k]),
+      );
+      if (!mudou.length && conta.donoId === donoId && !conta.arquivado) return;
+      const alterados = Object.fromEntries(mudou.map((k) => [k, novos[k]]));
+      const r = await this.registros.updateOne(
+        { _id: conta._id, versao: conta.versao },
+        {
+          $set: {
+            campos: { ...conta.campos, ...novos },
+            donoId,
+            arquivado: false,
+            alteradoEm: agora,
+            alteradoPor: autorId,
+          },
+          $inc: { versao: 1 },
+          $push: {
+            auditoria: evento(
+              'sincronizar_contato',
+              autor,
+              conta.versao + 1,
+              { ...alterados, ...(conta.donoId !== donoId ? { donoId } : {}) },
+              agora,
+            ),
+          },
+        },
+      );
+      if (r.matchedCount) return;
+    }
+  }
 
   private escopo(tipo: TipoComercial, usuario: UsuarioSessao): Record<string, unknown> {
     return {
@@ -68,7 +203,7 @@ export class ComercialService {
         'pessoas.email',
       ].map((campo) => ({ [`campos.${campo}`]: busca }));
     }
-    for (const campo of ['contaId', 'etapa', 'status', 'treinamentoId', 'produtoId']) {
+    for (const campo of ['contaId', 'etapa', 'status', 'treinamentoId', 'produtoId', 'trilha']) {
       if (!query[campo]) continue;
       if (typeof query[campo] !== 'string' || query[campo].length > 100) falha('Filtro inválido.');
       filtro[`campos.${campo}`] = query[campo];
@@ -223,6 +358,7 @@ export class ComercialService {
       falha('O arquivamento precisa ser verdadeiro ou falso.');
     const alteracoes = sanitizar(tipo, corpo);
     const campos = { ...antes.campos, ...alteracoes };
+    if (tipo === 'contas') await this.regrasDaTrilha(antes, alteracoes, campos);
     if (
       tipo === 'atividades' &&
       ('responsavelId' in alteracoes || 'colaboradoresIds' in alteracoes)
@@ -265,6 +401,52 @@ export class ComercialService {
     if (!doc)
       falha('Outra alteração foi gravada primeiro. Atualize a tela.', 'CONFLITO_VERSAO', 409);
     return { registro: vista(doc as Doc) };
+  }
+  /**
+   * Qualificação na carteira (ADR-029): adormecer marca a retomada em 60 dias (se não
+   * vier data); voltar ao funil ou nutrir limpa a retomada. Proposta e parceiro ativo
+   * exigem CPF/CNPJ e endereço completo na ficha do contato.
+   */
+  private async regrasDaTrilha(
+    antes: Doc,
+    alteracoes: Record<string, unknown>,
+    campos: Record<string, unknown>,
+  ) {
+    if ('trilha' in alteracoes && alteracoes.trilha !== antes.campos.trilha) {
+      if (campos.trilha === 'adormecido' && !('retomarEm' in alteracoes))
+        campos.retomarEm = new Date(Date.now() + RETOMADA_ADORMECIDO_DIAS * 86_400_000)
+          .toISOString()
+          .slice(0, 10);
+      if (campos.trilha !== 'adormecido' && !('retomarEm' in alteracoes)) delete campos.retomarEm;
+    }
+    const etapa = String(campos.etapaJornada ?? '');
+    const mudouEtapa =
+      'etapaJornada' in alteracoes && alteracoes.etapaJornada !== antes.campos.etapaJornada;
+    if (!mudouEtapa || !['proposta', 'parceiro_ativo'].includes(etapa)) return;
+    const origem =
+      typeof antes.campos.contatoOrigemId === 'string' ? antes.campos.contatoOrigemId : '';
+    if (!origem) return;
+    const contato = await this.conexao
+      .collection('contatos')
+      .findOne(
+        { _id: new Types.ObjectId(origem) },
+        { projection: { 'pf.cpfHash': 1, 'pj.cnpjHash': 1, enderecos: 1 } },
+      );
+    const documento = Boolean(contato?.pf?.cpfHash || contato?.pj?.cnpjHash);
+    const endereco = ((contato?.enderecos ?? []) as Record<string, string>[]).some(
+      (e) => e.logradouro && e.numero && e.cidade && e.uf,
+    );
+    if (!documento || !endereco)
+      falha(
+        `Para avançar à proposta, complete na ficha do contato: ${[
+          !documento ? 'CPF ou CNPJ' : '',
+          !endereco ? 'endereço (rua, número, cidade e UF)' : '',
+        ]
+          .filter(Boolean)
+          .join(' e ')}. A etapa não mudou.`,
+        'DADOS_PARA_PROPOSTA',
+        422,
+      );
   }
   async decidirPreco(
     id: string,
@@ -1199,4 +1381,35 @@ function evento(
     campos: Object.keys(campos),
     resumoHash: hmacDocumento(JSON.stringify(campos)),
   };
+}
+
+/** O que a conta espelha da ficha do contato. Vazio não apaga o que a conta já tinha. */
+function camposDoContato(contatoId: string, c: Record<string, unknown>): Record<string, unknown> {
+  const texto = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  const principal = <T extends { principal?: boolean }>(lista: unknown): T | undefined => {
+    const itens = Array.isArray(lista) ? (lista as T[]) : [];
+    return itens.find((x) => x.principal) ?? itens[0];
+  };
+  const email = principal<{ valor?: string; principal?: boolean }>(c.emails);
+  const telefone = principal<{ e164?: string; bruto?: string; principal?: boolean }>(c.telefones);
+  const endereco = (Array.isArray(c.enderecos) ? c.enderecos[0] : undefined) as
+    { cidade?: string; uf?: string } | undefined;
+  const segmento =
+    c.tipoPessoa === 'PJ'
+      ? 'estudio_tatuagem'
+      : c.tipoPessoa === 'PF'
+        ? 'profissional_autonomo'
+        : '';
+  const campos: Record<string, unknown> = {
+    contatoOrigemId: contatoId,
+    nome: texto(c.nome) || 'Contato sem nome',
+    contatoNome: texto(c.nome),
+    contatoEmail: texto(email?.valor),
+    contatoTelefone: texto(telefone?.e164) || texto(telefone?.bruto),
+    cidade: texto(endereco?.cidade),
+    uf: texto(endereco?.uf).toUpperCase(),
+    ...(segmento ? { segmento } : {}),
+  };
+  for (const k of Object.keys(campos)) if (campos[k] === '') delete campos[k];
+  return campos;
 }

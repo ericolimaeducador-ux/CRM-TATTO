@@ -313,6 +313,30 @@ describe('CP — campanhas em Mongo isolado e transporte simulado', () => {
       await db.db!.collection('acessos_dados').countDocuments({ acao: 'campanhas_previa' }),
     ).toBe(1);
   });
+  it('desinteressado fica fora das campanhas até a data de retomada', async () => {
+    const amanha = new Date(instante.getTime() + 86_400_000);
+    const ontem = new Date(instante.getTime() - 86_400_000);
+    const fora = await lead(
+      { triagem: { situacao: 'desinteressado', retomarEm: amanha } },
+      '+5511999990501',
+    );
+    const volta = await lead(
+      { triagem: { situacao: 'desinteressado', retomarEm: ontem } },
+      '+5511999990502',
+    );
+    const c = await criar([fora, volta]);
+    const p = await api()
+      .post(`/v1/campanhas/${c._id}/previa`)
+      .set(head())
+      .send({ versao: c.versao });
+    const motivos = Object.fromEntries(
+      p.body.registro.destinatarios.map((d: { contatoId: string; motivo: string }) => [
+        d.contatoId,
+        d.motivo,
+      ]),
+    );
+    expect(motivos).toEqual({ [fora]: 'desinteressado', [volta]: '' });
+  });
   it('não congela sem template verificado e recusa parâmetros/header/categoria/status/corpo incompatível', async () => {
     const id = await lead();
     let c = await criar([id], { template: null });
