@@ -3,6 +3,18 @@
 Formato: contexto · decisão · alternativas consideradas · consequências · status.
 Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
+## ADR-024 — Admin distribui a carteira; representante faz campanha da própria carteira
+
+**Contexto.** Em 25/11/2026 o proprietário relatou que um vendedor entrou e não viu os leads capturados e digitados nem a opção Campanhas. Por desenho (ADR-011), o vendedor vê apenas contatos com `origem.vendedorAtribuido` igual ao seu id, e só ganha esse vínculo o que ele mesmo captura. Leads digitados pelo proprietário, do QR geral, Google Forms e planilha ficavam sem dono ou com o proprietário, sem nenhum caminho para repassá-los. Campanhas eram só de gestor/admin. O proprietário escolheu: o admin distribui os contatos e o vendedor faz campanhas para a própria carteira.
+
+**Decisão.** Nova permissão `atribuir_carteira` (gestor, admin). `POST /v1/contatos/atribuir` recebe de 1 a 500 ids e o responsável (pessoa ativa com papel vendedor, gestor ou admin) ou `sem` para tirar o responsável; ignora contatos eliminados ou fundidos, incrementa a versão e grava uma linha `responsavel` em `contatos_auditoria` com `motivo: atribuicao_carteira`. A listagem aceita `responsavel=sem|<id>` só para quem não é vendedor. A tela Contatos ganha, para a gestão, o filtro Responsável, a seleção por contato, "Selecionar todos os listados" e "Passar para". O vendedor continua restrito à própria carteira. Campanhas aceita o vendedor: ele lista e abre só as campanhas que criou, os candidatos e as pendências vêm só da sua carteira, a campanha nasce em modo manual com `carteiraDe` e qualquer contato fora dela sai como `fora_da_carteira` na prévia e de novo ao abrir a conversa. O vendedor não escolhe a API oficial, não inicia envio automático e não gera link de atualização cadastral.
+
+**Alternativas.** Todos veem todos: rejeitado pelo proprietário, a saída de um vendedor levaria a base inteira. Fila "sem dono" com autoatribuição: não escolhida agora; pode ser acrescentada sobre o mesmo endpoint. Liberar a API oficial ao vendedor: rejeitado, o número e o limite diário da Meta são da empresa.
+
+**Consequências.** O proprietário precisa distribuir os contatos que já existem para que cada vendedor os veja: filtrar "Sem responsável" (e os que estão com ele), selecionar e passar. Contas, oportunidades e visitas do módulo comercial continuam com a atribuição própria, já existente. Uma campanha da gestão continua podendo incluir qualquer contato elegível.
+
+**Status.** aceito — 25/11/2026 — decisão do proprietário.
+
 ## ADR-023 — Pendências de campanha visíveis e aceite registrado na ficha
 
 **Contexto.** Em 25/11/2026 o proprietário percebeu que a campanha deixava de fora contatos com telefone inválido ou sem aceite de contato comercial, mas não havia como saber quem eram para ajustá-los. A seleção mostrava o motivo só misturado na lista paginada de candidatos, e a ficha de um contato já sincronizado não tinha como registrar o aceite.

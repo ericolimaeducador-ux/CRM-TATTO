@@ -65,6 +65,8 @@ export interface Campanha {
   estado: EstadoCampanha;
   versao: number;
   criadoPor: string;
+  /** Campanha de representante: só contatos desta carteira são elegíveis. */
+  carteiraDe?: string;
   criadoEm: Date;
   alteradoEm: Date;
   preparadaEm?: Date;
@@ -121,7 +123,7 @@ export interface LeadCampanha {
   status?: string;
   criadoEm?: Date;
   fundidoEm?: unknown;
-  origem?: { modo?: string };
+  origem?: { modo?: string; vendedorAtribuido?: unknown };
   tags?: string[];
   telefones?: { e164?: string; bruto?: string; principal?: boolean; whatsapp?: boolean }[];
   lgpd?: {

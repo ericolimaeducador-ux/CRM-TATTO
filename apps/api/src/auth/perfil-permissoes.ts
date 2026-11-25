@@ -10,6 +10,7 @@ export const PERFIL_PERMISSOES = {
   transicionar_cliente: ['gestor', 'admin'],
   fundir: ['gestor', 'admin'],
   exportar: ['gestor', 'admin'],
+  atribuir_carteira: ['gestor', 'admin'],
   gerenciar_usuarios: ['admin'],
 } as const;
 

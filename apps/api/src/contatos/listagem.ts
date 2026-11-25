@@ -28,6 +28,7 @@ export interface ConsultaListagem {
   desde?: string;
   ate?: string;
   ordem?: string;
+  responsavel?: string;
 }
 
 type Ordem = (typeof ORDENS)[number];
@@ -35,6 +36,17 @@ type Ordem = (typeof ORDENS)[number];
 export function filtroDaCarteira(usuario: UsuarioSessao): Record<string, unknown> {
   if (usuario.papel !== 'vendedor') return {};
   return { 'origem.vendedorAtribuido': new Types.ObjectId(usuario.id) };
+}
+
+export function aplicarResponsavel(
+  filtro: Record<string, unknown>,
+  usuario: UsuarioSessao,
+  responsavel: string | undefined,
+): void {
+  if (usuario.papel === 'vendedor' || !responsavel) return;
+  if (responsavel === 'sem') filtro['origem.vendedorAtribuido'] = null;
+  else if (Types.ObjectId.isValid(responsavel))
+    filtro['origem.vendedorAtribuido'] = new Types.ObjectId(responsavel);
 }
 
 export function completarFiltro(
@@ -122,6 +134,7 @@ export async function executarListagem(
 ) {
   const limite = Math.min(Math.max(Number(consulta.limite) || 20, 1), 100);
   const filtro = filtroDaCarteira(usuario);
+  aplicarResponsavel(filtro, usuario, consulta.responsavel);
   const busca = textoDeBusca(consulta.q);
   if (busca) {
     filtro.$or = [

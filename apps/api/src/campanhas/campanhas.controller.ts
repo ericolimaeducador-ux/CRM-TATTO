@@ -5,7 +5,7 @@ import { falha } from '../comercial/comercial.campos';
 import { CampanhasService } from './campanhas.service';
 
 @Controller('v1/campanhas')
-@Papel('gestor', 'admin')
+@Papel('vendedor', 'gestor', 'admin')
 export class CampanhasController {
   constructor(private readonly campanhas: CampanhasService) {}
   @Get('configuracao') configuracao() {
@@ -26,14 +26,14 @@ export class CampanhasController {
   ) {
     return this.campanhas.pendencias(query, usuario(req));
   }
-  @Get() listar(@Query() query: Record<string, unknown>) {
-    return this.campanhas.listar(query);
+  @Get() listar(@Query() query: Record<string, unknown>, @Req() req: RequisicaoComUsuario) {
+    return this.campanhas.listar(query, usuario(req));
   }
   @Post() criar(@Body() body: Record<string, unknown>, @Req() req: RequisicaoComUsuario) {
     return this.campanhas.criar(corpo(body), usuario(req));
   }
-  @Get(':id') obter(@Param('id') id: string) {
-    return this.campanhas.obter(id);
+  @Get(':id') obter(@Param('id') id: string, @Req() req: RequisicaoComUsuario) {
+    return this.campanhas.obter(id, usuario(req));
   }
   @Patch(':id') editar(
     @Param('id') id: string,
@@ -91,8 +91,8 @@ export class CampanhasController {
   ) {
     return this.campanhas.resultados(id, query, usuario(req));
   }
-  @Get(':id/auditoria') auditoria(@Param('id') id: string) {
-    return this.campanhas.auditoria(id);
+  @Get(':id/auditoria') auditoria(@Param('id') id: string, @Req() req: RequisicaoComUsuario) {
+    return this.campanhas.auditoria(id, usuario(req));
   }
   /** Modo manual: libera telefone e texto para abrir o WhatsApp Web deste destinatário. */
   @Post(':id/destinatarios/:destinatarioId/whatsapp-manual') abrirManual(

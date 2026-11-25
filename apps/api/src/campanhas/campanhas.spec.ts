@@ -21,9 +21,10 @@ import {
 } from './campanhas.tipos';
 
 const ADMIN = '507f1f77bcf86cd799439121';
-const head = (papel = 'admin') => ({
+const VENDEDOR = '507f1f77bcf86cd799439555';
+const head = (papel = 'admin', id = papel === 'vendedor' ? VENDEDOR : ADMIN) => ({
   'x-papel-teste': papel,
-  'x-usuario-id': ADMIN,
+  'x-usuario-id': id,
   'x-autor-nome': 'Gestão QA',
 });
 const vars = [
@@ -186,9 +187,8 @@ describe('CP — campanhas em Mongo isolado e transporte simulado', () => {
   async function resultado(c: Campanha) {
     return (await api().get(`/v1/campanhas/${c._id}/resultados`).set(head())).body.registro;
   }
-  it('nega anônimo/vendedor/auditor e permite gestão; salva rascunho sem configuração', async () => {
-    for (const papel of ['vendedor', 'auditor'])
-      expect((await api().get('/v1/campanhas').set(head(papel))).status).toBe(403);
+  it('nega anônimo/auditor e permite gestão; salva rascunho sem configuração', async () => {
+    expect((await api().get('/v1/campanhas').set(head('auditor'))).status).toBe(403);
     expect((await api().get('/v1/campanhas')).status).toBe(403);
     delete process.env.WHATSAPP_WABA_ID;
     process.env.CAMPANHAS_WHATSAPP_ATIVO = 'false';
@@ -764,11 +764,68 @@ describe('CP — campanhas em Mongo isolado e transporte simulado', () => {
       expect(transporte).not.toHaveBeenCalled();
     });
 
+    it('representante usa só a própria carteira, só modo manual e não vê campanha alheia', async () => {
+      const dono = { origem: { modo: 'manual', vendedorAtribuido: new Types.ObjectId(VENDEDOR) } };
+      const meu = await lead(dono, '+5511999990101');
+      const alheio = await lead({}, '+5511999990102');
+      const daGestao = await criar([alheio]);
+      const vend = head('vendedor');
+      const lista = await api().get('/v1/campanhas').set(vend);
+      expect(lista.status).toBe(200);
+      expect(lista.body.registros.map((x: Campanha) => String(x._id))).not.toContain(
+        String(daGestao._id),
+      );
+      expect((await api().get(`/v1/campanhas/${daGestao._id}`).set(vend)).status).toBe(404);
+      const candidatos = await api().get('/v1/campanhas/candidatos').set(vend);
+      expect(candidatos.body.registros.map((x: { id: string }) => x.id)).toEqual([meu]);
+      const pend = await api().get('/v1/campanhas/pendencias').set(vend);
+      expect(pend.status).toBe(200);
+      expect(
+        (await api().post('/v1/campanhas').set(vend).send({ titulo: 'API', modo: 'api' })).status,
+      ).toBe(403);
+      const criada = await api()
+        .post('/v1/campanhas')
+        .set(vend)
+        .send({ titulo: 'Minha carteira', contatosIds: [meu, alheio] });
+      expect(criada.status).toBe(201);
+      const c = criada.body.registro as Campanha;
+      expect(c.modo).toBe('manual');
+      const previa = await api()
+        .post(`/v1/campanhas/${c._id}/previa`)
+        .set(vend)
+        .send({ versao: c.versao });
+      const motivos = Object.fromEntries(
+        previa.body.registro.destinatarios.map((d: { contatoId: string; motivo: string }) => [
+          d.contatoId,
+          d.motivo,
+        ]),
+      );
+      expect(motivos).toEqual({ [meu]: '', [alheio]: 'fora_da_carteira' });
+      expect(
+        (
+          await api()
+            .patch(`/v1/campanhas/${c._id}`)
+            .set(vend)
+            .send({ versao: c.versao, modo: 'api' })
+        ).status,
+      ).toBe(403);
+      const preparada = await api()
+        .post(`/v1/campanhas/${c._id}/preparar`)
+        .set(vend)
+        .send({ versao: c.versao, confirmarPublico: true });
+      expect(preparada.status).toBeLessThan(300);
+      const [d] = await fila(preparada.body.registro as Campanha);
+      expect(String(d.contatoId)).toBe(meu);
+      const aberto = await abrir(preparada.body.registro as Campanha, d._id, 'vendedor');
+      expect(aberto.status).toBe(201);
+      expect(transporte).not.toHaveBeenCalled();
+    });
+
     it('revalida autorização antes de abrir e respeita papel e modo', async () => {
       const id = await lead();
       const c = await manualPreparada([id]);
       const [d] = await fila(c);
-      expect((await abrir(c, d._id, 'vendedor')).status).toBe(403);
+      expect((await abrir(c, d._id, 'vendedor')).status).toBe(404);
       await db
         .db!.collection('contatos')
         .updateOne(

@@ -232,12 +232,23 @@ describe('Campanhas — preparação, segurança e estados honestos', () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/templates'))).toBe(false);
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/iniciar'))).toBe(false);
   });
-  it.each(['vendedor', 'auditor'])('não mostra menu e não consulta API para %s', async (papel) => {
-    entrar(papel);
+  it('não mostra menu e não consulta API para auditor', async () => {
+    entrar('auditor');
     montar();
-    expect(screen.getByText('Acesso da gestão')).toBeTruthy();
+    expect(screen.getByText('Entre para usar campanhas')).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Campanhas' })).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('representante vê o menu, só a própria carteira e não escolhe a API oficial', async () => {
+    entrar('vendedor');
+    montar(`/campanhas/${ID}`);
+    expect(await screen.findByRole('link', { name: 'Campanhas' })).toBeTruthy();
+    expect(
+      screen.getByText(/somente as suas campanhas e os contatos da sua carteira/),
+    ).toBeTruthy();
+    await screen.findByLabelText('Selecionar Marina autorizada');
+    expect(screen.queryByRole('radio', { name: /API oficial da Meta/ })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Preparação do WhatsApp' })).toBeNull();
   });
   it('seleção é individual, inelegível não pode ser marcado e prévia conta telefone repetido', async () => {
     montar(`/campanhas/${ID}`);

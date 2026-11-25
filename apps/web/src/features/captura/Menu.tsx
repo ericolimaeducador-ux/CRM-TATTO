@@ -30,7 +30,7 @@ export function Menu({ aoNavegar }: { aoNavegar?: () => void }) {
           {texto}
         </NavLink>
       ))}
-      {podeGerir() ? (
+      {podeGerir() || perfil?.papel === 'vendedor' ? (
         <NavLink className="tv-nav-link" to="/campanhas" onClick={aoNavegar}>
           <Icone nome="contatos" />
           Campanhas

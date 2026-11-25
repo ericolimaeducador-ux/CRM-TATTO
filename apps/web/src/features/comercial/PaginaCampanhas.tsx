@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { cabecalhosDaSessao, perfilLogado, podeGerir } from '@/lib/offline/sessao';
+
+const podeUsarCampanhas = () => {
+  const papel = perfilLogado()?.papel;
+  return papel === 'vendedor' || podeGerir();
+};
 import { urlDaApi } from '@/lib/api-url';
 import { CabecalhoPagina, Icone, Selo } from './componentes';
 import { Modal } from './EditorRegistro';
@@ -63,7 +68,7 @@ export function PaginaCampanhas() {
       window.removeEventListener('storage', atualizar);
     };
   }, []);
-  if (!podeGerir())
+  if (!podeUsarCampanhas())
     return (
       <div className="tv-page">
         <CabecalhoPagina
@@ -71,9 +76,10 @@ export function PaginaCampanhas() {
           descricao="WhatsApp para contatos selecionados, com revisão e acompanhamento."
         />
         <section className="tv-panel tv-campaign-section">
-          <h2>Acesso da gestão</h2>
+          <h2>Entre para usar campanhas</h2>
           <p>
-            Entre com um perfil de gestor ou administrador para preparar e acompanhar campanhas.
+            Entre com seu usuário para preparar campanhas. Representantes enviam para a própria
+            carteira pelo WhatsApp Web; a gestão também pode usar a API oficial.
           </p>
           <Link className="tv-button tv-button-primary" to="/entrar">
             Entrar no Tela Viva
@@ -118,7 +124,8 @@ function CampanhasGestao() {
   const [linkManual, setLinkManual] = useState<{ nome: string; url: string } | null>(null);
   const [linksAtualizacao, setLinksAtualizacao] = useState<Record<string, string>>({});
   const editor = Boolean(id || novo);
-  const manual = (form.modo ?? 'api') === 'manual';
+  const gestao = podeGerir();
+  const manual = !gestao || (form.modo ?? 'api') === 'manual';
   const ultimaManual = resultados?.ultimaAberturaManualEm
     ? Date.parse(resultados.ultimaAberturaManualEm)
     : 0;
@@ -296,7 +303,7 @@ function CampanhasGestao() {
         contatosIds: form.contatosIds,
         template: form.template,
         cadencia: form.cadencia,
-        modo: form.modo ?? 'api',
+        modo: gestao ? (form.modo ?? 'api') : 'manual',
         ...(salva ? { versao: salva.versao } : {}),
       };
       const r = await apiCampanhas<{ registro: Campanha }>(
@@ -542,7 +549,13 @@ function CampanhasGestao() {
           ) : undefined
         }
       />
-      {config ? (
+      {!gestao ? (
+        <p className="tv-campaign-hint">
+          Você vê aqui somente as suas campanhas e os contatos da sua carteira. O envio é manual,
+          pelo WhatsApp Web, um contato por vez.
+        </p>
+      ) : null}
+      {config && gestao ? (
         <section className="tv-panel tv-campaign-section" aria-label="Preparação do WhatsApp">
           <h2>
             {config.envioAtivo ? 'Envio habilitado no ambiente' : 'Envio desativado no ambiente'}
@@ -717,7 +730,7 @@ function CampanhasGestao() {
                 da feira.
               </p>
               <fieldset disabled={!editavel || bloqueado} className="tv-campaign-fields">
-                <fieldset className="tv-campaign-mode">
+                <fieldset className="tv-campaign-mode" hidden={!gestao}>
                   <legend>Como enviar</legend>
                   <label className="tv-campaign-confirm">
                     <input
@@ -1269,7 +1282,7 @@ function CampanhasGestao() {
                               : 'Abrir de novo'}
                         </button>
                       ) : null}
-                      {manual ? (
+                      {manual && gestao ? (
                         <div className="tv-row-actions">
                           <button
                             type="button"

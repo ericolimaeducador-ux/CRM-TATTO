@@ -199,6 +199,67 @@ describe('API de contatos', () => {
     expect(JSON.stringify(alheio.body)).toContain('PAPEL_INSUFICIENTE');
   });
 
+  it('gestor atribui contatos sem responsável; vendedor passa a ver e não se atribui', async () => {
+    const http = () => request(app.getHttpServer());
+    const conexao = app.get<Connection>(getConnectionToken());
+    const GESTOR = new Types.ObjectId().toHexString();
+    await conexao.collection('usuarios').insertOne({
+      _id: new Types.ObjectId(OUTRO),
+      login: 'vendedor-atribuicao',
+      nome: 'Vendedor Novo',
+      papel: 'vendedor',
+      ativo: true,
+    });
+    const criado = await http().post('/v1/contatos').set(cabecalho('gestor', GESTOR)).send({
+      nome: 'Lead da Feira',
+    });
+    const id = criado.body.dados._id as string;
+    await conexao
+      .collection('contatos')
+      .updateOne({ _id: new Types.ObjectId(id) }, { $unset: { 'origem.vendedorAtribuido': '' } });
+    const semDono = await http()
+      .get('/v1/contatos?responsavel=sem&limite=100')
+      .set(cabecalho('gestor', GESTOR));
+    expect(semDono.body.dados.map((c: { _id: string }) => c._id)).toContain(id);
+    const antes = await http().get(`/v1/contatos/${id}`).set(cabecalho('vendedor', OUTRO));
+    expect(antes.status).toBe(403);
+    const proprio = await http()
+      .post('/v1/contatos/atribuir')
+      .set(cabecalho('vendedor', OUTRO))
+      .send({ ids: [id], responsavelId: OUTRO });
+    expect(proprio.status).toBe(403);
+    const inativo = await http()
+      .post('/v1/contatos/atribuir')
+      .set(cabecalho('gestor', GESTOR))
+      .send({ ids: [id], responsavelId: new Types.ObjectId().toHexString() });
+    expect(inativo.status).toBe(422);
+    for (const corpo of [
+      { ids: [], responsavelId: OUTRO },
+      { ids: [{ $ne: null }], responsavelId: OUTRO },
+    ])
+      expect(
+        (await http().post('/v1/contatos/atribuir').set(cabecalho('gestor', GESTOR)).send(corpo))
+          .status,
+      ).toBe(422);
+    const ok = await http()
+      .post('/v1/contatos/atribuir')
+      .set(cabecalho('gestor', GESTOR))
+      .send({ ids: [id, id], responsavelId: OUTRO });
+    expect(ok.status).toBe(201);
+    expect(ok.body.dados).toEqual({ atribuidos: 1, semMudanca: 0, naoEncontrados: 0 });
+    const depois = await http().get(`/v1/contatos/${id}`).set(cabecalho('vendedor', OUTRO));
+    expect(depois.status).toBe(200);
+    const doVendedor = await http()
+      .get(`/v1/contatos?responsavel=sem&limite=100`)
+      .set(cabecalho('vendedor', OUTRO));
+    expect(doVendedor.body.dados.map((c: { _id: string }) => c._id)).toEqual([id]);
+    const trilha = await conexao
+      .collection('contatos_auditoria')
+      .findOne({ contatoId: new Types.ObjectId(id), campo: 'responsavel' });
+    expect(trilha?.valorNovo).toBe(OUTRO);
+    expect(trilha?.motivo).toBe('atribuicao_carteira');
+  });
+
   it('rejeita lote acima de 100 e registra a profundidade da fila', async () => {
     const grande = await request(app.getHttpServer())
       .post('/v1/contatos/lote')

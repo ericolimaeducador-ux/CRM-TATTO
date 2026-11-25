@@ -152,7 +152,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
   async candidatos(query: Record<string, unknown>, usuario: UsuarioSessao) {
     const pagina = inteiro(query.pagina ?? 1, 1, 10000, 'Página');
     const limite = 30;
-    const filtro: Record<string, unknown> = {};
+    const filtro: Record<string, unknown> = { ...carteiraDoPapel(usuario) };
     const busca = texto(query.q ?? '', 100);
     if (busca)
       filtro.nome = { $regex: busca.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
@@ -203,7 +203,10 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     const motivoPedido = texto(query.motivo ?? '', 60);
     const leads = await this.contatos
       .find(
-        { status: { $in: ['rascunho', 'capturado', 'qualificado', 'cliente'] } },
+        {
+          status: { $in: ['rascunho', 'capturado', 'qualificado', 'cliente'] },
+          ...carteiraDoPapel(usuario),
+        },
         {
           projection: {
             nome: 1,
@@ -260,20 +263,22 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       truncado,
     };
   }
-  async listar(query: Record<string, unknown>) {
+  async listar(query: Record<string, unknown>, usuario: UsuarioSessao) {
     const pagina = inteiro(query.pagina ?? 1, 1, 10000, 'Página');
+    const escopo = escopoCampanhas(usuario);
     const [registros, total] = await Promise.all([
       this.campanhas
-        .find({}, { projection: { auditoria: 0 } })
+        .find(escopo, { projection: { auditoria: 0 } })
         .sort({ criadoEm: -1, _id: -1 })
         .skip((pagina - 1) * 30)
         .limit(30)
         .toArray(),
-      this.campanhas.countDocuments(),
+      this.campanhas.countDocuments(escopo),
     ]);
     return { registros, total, pagina, limite: 30 };
   }
   async criar(body: Record<string, unknown>, usuario: UsuarioSessao) {
+    exigirModoDoPapel(usuario, campos(body), 'manual');
     const agora = this.agora();
     const doc: Campanha = {
       _id: new Types.ObjectId(),
@@ -285,6 +290,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       ...campos(body),
       estado: 'rascunho',
       versao: 1,
+      ...(usuario.papel === 'vendedor' ? { modo: 'manual' as const, carteiraDe: usuario.id } : {}),
       criadoPor: usuario.id,
       criadoEm: agora,
       alteradoEm: agora,
@@ -293,21 +299,22 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     await this.campanhas.insertOne(doc);
     return { registro: doc };
   }
-  async obter(id: string) {
-    return { registro: await this.ler(id) };
+  async obter(id: string, usuario: UsuarioSessao) {
+    return { registro: await this.ler(id, usuario) };
   }
   async editar(id: string, body: Record<string, unknown>, usuario: UsuarioSessao) {
-    const c = await this.lerVersao(id, body);
+    const c = await this.lerVersao(id, body, usuario);
     if (c.estado !== 'rascunho')
       falha(
         'Somente rascunhos podem ser editados. O público de uma campanha preparada está congelado.',
         'CAMPANHA_ESTADO',
         409,
       );
+    exigirModoDoPapel(usuario, campos(body), modoDe(c));
     return { registro: await this.atualizar(c, campos(body), 'editar', usuario.id) };
   }
   async previa(id: string, body: Record<string, unknown>, usuario: UsuarioSessao) {
-    const c = await this.lerVersao(id, body);
+    const c = await this.lerVersao(id, body, usuario);
     const previa = await this.calcularPrevia(c);
     await this.acesso(usuario, 'campanhas_previa', previa.destinatarios.length, {
       campanhaId: c._id,
@@ -331,7 +338,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     }[] = [];
     for (const id of c.contatosIds) {
       const lead = await this.contatos.findOne({ _id: new Types.ObjectId(id) });
-      const e = await this.elegibilidade(lead);
+      const e = await this.elegibilidade(lead, c.carteiraDe);
       let motivo = e.motivo;
       if (!motivo && e.hash && vistos.has(e.hash)) motivo = 'telefone_duplicado';
       if (!motivo && e.hash) vistos.add(e.hash);
@@ -355,7 +362,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     };
   }
   async preparar(id: string, body: Record<string, unknown>, usuario: UsuarioSessao) {
-    let c = await this.lerVersao(id, body);
+    let c = await this.lerVersao(id, body, usuario);
     if (!['rascunho', 'preparando'].includes(c.estado))
       falha('A campanha já foi preparada ou encerrada.', 'CAMPANHA_ESTADO', 409);
     if (!c.contatosIds.length) falha('Selecione explicitamente os contatos desta campanha.');
@@ -414,7 +421,13 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     body: Record<string, unknown>,
     usuario: UsuarioSessao,
   ) {
-    const c = await this.lerVersao(id, body);
+    const c = await this.lerVersao(id, body, usuario);
+    if (usuario.papel === 'vendedor' && acao === 'iniciar')
+      falha(
+        'O envio automático pela API é iniciado pela gestão. Use o envio manual pelo WhatsApp Web.',
+        'PAPEL_INSUFICIENTE',
+        403,
+      );
     const esperados = {
       iniciar: ['preparada'],
       pausar: ['em_andamento'],
@@ -462,7 +475,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     };
   }
   async resultados(id: string, query: Record<string, unknown>, usuario: UsuarioSessao) {
-    const c = await this.ler(id);
+    const c = await this.ler(id, usuario);
     await this.conciliarRecibos(c._id);
     const pagina = inteiro(query.pagina ?? 1, 1, 10000, 'Página');
     const [grupos, linhas, total, respostas] = await Promise.all([
@@ -551,8 +564,8 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       },
     };
   }
-  async auditoria(id: string) {
-    const c = await this.ler(id);
+  async auditoria(id: string, usuario: UsuarioSessao) {
+    const c = await this.ler(id, usuario);
     return { registro: { eventos: c.auditoria } };
   }
 
@@ -562,7 +575,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
    * quem clica enviar é o gestor, no próprio WhatsApp.
    */
   async abrirManual(id: string, destinatarioId: string, usuario: UsuarioSessao) {
-    const c = await this.ler(id);
+    const c = await this.ler(id, usuario);
     if (modoDe(c) !== 'manual')
       falha('Esta campanha usa a API oficial; o envio é automático.', 'CAMPANHA_NAO_MANUAL', 422);
     if (c.estado !== 'preparada')
@@ -581,7 +594,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
     if (!['pendente', 'aberto_manual'].includes(trabalho.estado))
       falha('Este destinatário não está mais na fila de envio.', 'DESTINATARIO_ESTADO', 409);
     const lead = await this.contatos.findOne({ _id: trabalho.contatoId });
-    const e = await this.elegibilidade(lead);
+    const e = await this.elegibilidade(lead, c.carteiraDe);
     if (e.motivo || e.hash !== trabalho.telefoneHash) {
       const motivo = e.motivo || 'telefone_alterado';
       await this.finalizar(trabalho, 'excluido', motivo);
@@ -660,14 +673,17 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       em: this.agora(),
     });
   }
-  private async ler(id: string) {
+  private async ler(id: string, usuario?: UsuarioSessao) {
     if (!/^[a-f\d]{24}$/i.test(id)) falha('Campanha não encontrada.', 'CAMPANHA_AUSENTE', 404);
-    const c = await this.campanhas.findOne({ _id: new Types.ObjectId(id) });
+    const c = await this.campanhas.findOne({
+      _id: new Types.ObjectId(id),
+      ...(usuario ? escopoCampanhas(usuario) : {}),
+    });
     if (!c) falha('Campanha não encontrada.', 'CAMPANHA_AUSENTE', 404);
     return c;
   }
-  private async lerVersao(id: string, body: Record<string, unknown>) {
-    const c = await this.ler(id);
+  private async lerVersao(id: string, body: Record<string, unknown>, usuario?: UsuarioSessao) {
+    const c = await this.ler(id, usuario);
     if (body.versao !== c.versao)
       falha('A campanha foi alterada. Atualize antes de tentar novamente.', 'CAMPANHA_VERSAO', 409);
     return c;
@@ -715,7 +731,7 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       );
     return t;
   }
-  private async elegibilidade(lead: LeadCampanha | null) {
+  private async elegibilidade(lead: LeadCampanha | null, carteiraDe?: string) {
     if (
       !lead ||
       !['rascunho', 'capturado', 'qualificado', 'cliente'].includes(lead.status ?? '') ||
@@ -724,6 +740,8 @@ export class CampanhasService implements OnModuleInit, OnModuleDestroy {
       lead.lgpd?.revogadoEm
     )
       return { motivo: 'contato_indisponivel' };
+    if (carteiraDe && String(lead.origem?.vendedorAtribuido ?? '') !== carteiraDe)
+      return { motivo: 'fora_da_carteira' };
     if (
       lead.lgpd?.contatoComercial !== 'concedido' ||
       !lead.lgpd.consentimentos?.some(
@@ -1202,6 +1220,22 @@ function objeto(x: unknown): Record<string, unknown> {
 }
 function normalizar(x: string) {
   return x.replace(/\r\n/g, '\n').trim();
+}
+function escopoCampanhas(usuario: UsuarioSessao): Record<string, unknown> {
+  return usuario.papel === 'vendedor' ? { criadoPor: usuario.id } : {};
+}
+function carteiraDoPapel(usuario: UsuarioSessao): Record<string, unknown> {
+  return usuario.papel === 'vendedor'
+    ? { 'origem.vendedorAtribuido': new Types.ObjectId(usuario.id) }
+    : {};
+}
+function exigirModoDoPapel(usuario: UsuarioSessao, patch: Partial<Campanha>, atual: ModoEnvio) {
+  if (usuario.papel === 'vendedor' && (patch.modo ?? atual) !== 'manual')
+    falha(
+      'Representantes usam o envio manual pelo WhatsApp Web. A API oficial fica com a gestão.',
+      'PAPEL_INSUFICIENTE',
+      403,
+    );
 }
 function pistaTelefone(telefones: LeadCampanha['telefones']): string {
   const t = telefones?.find((x) => x.principal) ?? telefones?.[0];
