@@ -88,6 +88,8 @@ describe('captura da fase 1', () => {
         telefone: '11977776666',
         email: 'promo@exemplo.com',
         cpf: '39053344705',
+        cidade: 'São Paulo',
+        uf: 'SP',
       });
     expect(criado.body.dados.status).toBe('capturado');
     const id = criado.body.dados._id as string;
@@ -128,6 +130,8 @@ describe('captura da fase 1', () => {
         telefone: '11977775555',
         email: 'tardia@exemplo.com',
         cpf: '11144477735',
+        cidade: 'São Paulo',
+        uf: 'SP',
       });
     const id = criado.body.dados._id as string;
     const primeira = await request(app.getHttpServer())
@@ -184,6 +188,43 @@ describe('captura da fase 1', () => {
       .get('/v1/exportacoes')
       .set(cabecalho('gestor'));
     expect(exportacao.status).toBe(403);
+  });
+
+  it('qualifica sem CPF/CNPJ quando tem contato, cidade, UF e tipo; cliente exige documento', async () => {
+    const criado = await request(app.getHttpServer())
+      .post('/v1/contatos')
+      .set(cabecalho('gestor'))
+      .send({ nome: 'Estúdio Feira', telefone: '11955554444' });
+    const id = criado.body.dados._id as string;
+    const transicao = (para: string, extra: Record<string, string> = {}) =>
+      request(app.getHttpServer())
+        .post(`/v1/contatos/${id}/transicao`)
+        .set({ ...cabecalho('gestor'), ...extra })
+        .send({ para });
+    const falta = await transicao('qualificado');
+    expect(falta.status).toBe(422);
+    const texto = JSON.stringify(falta.body);
+    expect(texto).toContain('cidade');
+    expect(texto).toContain('UF');
+    expect(texto).toContain('estúdio ou tatuador autônomo');
+    expect(texto).not.toContain('CPF');
+    let versao = criado.body.dados.versao as number;
+    for (const [campo, valor] of [
+      ['cidade', 'Campinas'],
+      ['uf', 'SP'],
+      ['tipoPessoa', 'PJ'],
+    ]) {
+      const r = await request(app.getHttpServer())
+        .patch(`/v1/contatos/${id}`)
+        .set(cabecalho('gestor'))
+        .send({ campo, valor, versaoConhecida: versao });
+      expect(r.status).toBe(200);
+      versao = r.body.dados.versao as number;
+    }
+    expect((await transicao('qualificado')).status).toBe(201);
+    const semDocumento = await transicao('cliente', { 'x-step-up-teste': '1' });
+    expect(semDocumento.status).toBe(422);
+    expect(JSON.stringify(semDocumento.body)).toContain('CPF ou CNPJ');
   });
 
   it('não oferece exclusão física nem alteração da trilha', async () => {

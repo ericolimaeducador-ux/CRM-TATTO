@@ -114,6 +114,42 @@ describe('ficha do lead', () => {
     expect(screen.queryByRole('link', { name: 'Promover a cliente' })).toBeNull();
   });
 
+  it('diz o que falta para qualificar, sem pedir CPF, e envia cidade, UF e tipo', async () => {
+    const fetchMock = montar({ ...gabriel, status: 'capturado' });
+    const aviso = await screen.findByLabelText('Para qualificar');
+    expect(aviso.textContent).toContain('cidade, UF, se é estúdio ou tatuador autônomo');
+    expect(aviso.textContent).not.toMatch(/CPF|CNPJ/);
+    fireEvent.click(screen.getByRole('button', { name: 'Completar dados' }));
+    fireEvent.change(screen.getByLabelText('Cidade'), { target: { value: 'Campinas' } });
+    fireEvent.change(screen.getByLabelText('UF'), { target: { value: 'sp' } });
+    fireEvent.change(screen.getByLabelText('É estúdio ou tatuador autônomo?'), {
+      target: { value: 'PJ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar dados' }));
+    await screen.findByText('Dados salvos.');
+    const enviados = fetchMock.mock.calls
+      .filter((chamada) => chamada[1]?.method === 'PATCH')
+      .map((chamada) => JSON.parse(String(chamada[1]?.body)) as { campo: string; valor: string });
+    expect(enviados.map((x) => [x.campo, x.valor])).toEqual([
+      ['tipoPessoa', 'PJ'],
+      ['cidade', 'Campinas'],
+      ['uf', 'SP'],
+    ]);
+  });
+
+  it('pronto para qualificar quando tem contato, cidade, UF e tipo', async () => {
+    montar({
+      ...gabriel,
+      status: 'capturado',
+      tipoPessoa: 'PF',
+      enderecos: [{ cidade: 'Campinas', uf: 'SP' }],
+    });
+    expect((await screen.findByLabelText('Para qualificar')).textContent).toContain(
+      'Pronto para qualificar',
+    );
+    expect(screen.queryByRole('button', { name: 'Completar dados' })).toBeNull();
+  });
+
   it('edita o telefone pela API com a versão conhecida', async () => {
     const fetchMock = montar(gabriel);
     fireEvent.click(await screen.findByRole('button', { name: 'Editar dados' }));
