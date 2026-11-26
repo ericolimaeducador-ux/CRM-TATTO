@@ -3,6 +3,18 @@
 Formato: contexto · decisão · alternativas consideradas · consequências · status.
 Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
+## ADR-033 — Busca de contatos acha telefone com ou sem máscara
+
+**Contexto.** Em 26/11/2026 o proprietário relatou que digitar parte do telefone, ou o número inteiro com 11 dígitos, não achava o contato. A busca comparava o texto digitado literalmente com `telefones.e164` (`+5511987654321`) e `telefones.bruto` (como foi digitado, ex.: `(11) 98765-4321`). Número digitado com máscara não casava com o e164; número só com dígitos não casava com o bruto — e cadastro cujo telefone ficou sem e164 (incompleto ou importado) só tem o bruto.
+
+**Decisão.** Quando a busca contém só dígitos e sinais de telefone (espaço, parênteses, `+`, `-`, `.`, `/`) e tem ao menos 4 dígitos, a API (`filtroDeBusca` em `listagem.ts`) casa também pelos dígitos, ignorando a máscara gravada (`\D*` entre dígitos). `+55` e `0` iniciais digitados são ignorados. Número de celular com 11 dígitos também acha o mesmo número gravado sem o 9. A busca local (contatos do aparelho) usa a mesma regra. Nome e e-mail continuam como antes.
+
+**Alternativas consideradas.** Gravar um campo só de dígitos e indexar: exige migração da base para resolver o que a consulta resolve; fica para quando o volume pedir.
+
+**Consequências.** A consulta por telefone continua sem índice (já era regex sem âncora); aceitável no volume atual.
+
+**Status.** aceito — 26/11/2026 — pedido do proprietário.
+
 ## ADR-032 — Campanha mostra também quem nunca foi incluído
 
 **Contexto.** Em 25/11/2026 o proprietário perguntou onde estavam os contatos que não receberam o WhatsApp: a base tinha 92 contatos ativos e só 76 foram abertos, mas a lista "Ficaram de fora" (ADR-025) mostrava 2. Ela só considera quem foi selecionado para a campanha. Os outros 14 nunca foram selecionados: 10 sem autorização registrada, 3 sem telefone válido e 1 apto, cadastrado depois da preparação.

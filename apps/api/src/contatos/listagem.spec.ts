@@ -1,5 +1,6 @@
 import {
   completarFiltro,
+  filtroDeBusca,
   inicioDaSemanaEmSaoPaulo,
   inicioDoDiaEmSaoPaulo,
   semSegredoDeDocumento,
@@ -31,5 +32,31 @@ describe('listagem de cadastros', () => {
     const domingo = new Date('2026-09-27T15:00:00.000Z');
     expect(inicioDoDiaEmSaoPaulo(domingo).toISOString()).toBe('2026-09-27T03:00:00.000Z');
     expect(inicioDaSemanaEmSaoPaulo(domingo).toISOString()).toBe('2026-09-21T03:00:00.000Z');
+  });
+
+  describe('busca por telefone', () => {
+    const acha = (q: string, valor: string) =>
+      (filtroDeBusca(q) ?? []).some((condicao) =>
+        Object.values(condicao).some((re) => re instanceof RegExp && re.test(valor)),
+      );
+
+    it.each([
+      ['11987654321', '+5511987654321'],
+      ['11987654321', '(11) 98765-4321'],
+      ['(11) 98765-4321', '+5511987654321'],
+      ['98765', '(11) 98765-4321'],
+      ['4321', '+5511987654321'],
+      ['+55 11 98765-4321', '(11) 98765-4321'],
+      ['011 98765-4321', '+5511987654321'],
+      ['11987654321', '(11) 8765-4321'],
+    ])('"%s" acha "%s"', (q, valor) => {
+      expect(acha(q, valor)).toBe(true);
+    });
+
+    it('não confunde número diferente nem trata nome como telefone', () => {
+      expect(acha('11987654320', '+5511987654321')).toBe(false);
+      expect(acha('Ana', '+5511987654321')).toBe(false);
+      expect(filtroDeBusca('   ')).toBeUndefined();
+    });
   });
 });

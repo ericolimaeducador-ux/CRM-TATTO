@@ -131,6 +131,46 @@ export function inicioDaSemanaEmSaoPaulo(agora: Date): Date {
   return new Date(dia.getTime() - voltar * 24 * 60 * 60 * 1000);
 }
 
+/**
+ * Condições da busca livre. Texto casa com nome, e-mail e telefone como está gravado.
+ * Quando o que se digitou parece telefone, casa pelos dígitos, ignorando a máscara dos
+ * dois lados: "11987654321", "(11) 98765-4321" e "98765" acham "+5511987654321" e
+ * também o bruto "(11) 98765-4321" de um cadastro que ficou sem e164.
+ */
+export function filtroDeBusca(q: string | undefined): Record<string, unknown>[] | undefined {
+  const busca = textoDeBusca(q);
+  if (!busca) return undefined;
+  const condicoes: Record<string, unknown>[] = [
+    { nome: busca },
+    { 'emails.valor': busca },
+    { 'telefones.e164': busca },
+    { 'telefones.bruto': busca },
+  ];
+  const digitos = padraoDeTelefone(q);
+  if (digitos) {
+    condicoes.push({ 'telefones.e164': digitos }, { 'telefones.bruto': digitos });
+  }
+  return condicoes;
+}
+
+function padraoDeTelefone(q: string | undefined): RegExp | undefined {
+  const limpo = q?.trim().slice(0, 80) ?? '';
+  if (!/^[\d\s()+\-./]+$/.test(limpo)) return undefined;
+  let digitos = limpo.replace(/\D/g, '').replace(/^0+/, '');
+  // +55 é opcional no que se digita: o bruto quase nunca tem, o e164 sempre tem.
+  if (digitos.startsWith('55') && (digitos.length === 12 || digitos.length === 13)) {
+    digitos = digitos.slice(2);
+  }
+  if (digitos.length < 4) return undefined;
+  const alternativas = [digitos];
+  // Celular antigo gravado sem o 9 (DDD + 8 dígitos) também é achado pelo número com 9.
+  if (digitos.length === 11 && digitos[2] === '9') {
+    alternativas.push(digitos.slice(0, 2) + digitos.slice(3));
+  }
+  const entreDigitos = (valor: string) => valor.split('').join('\\D*');
+  return new RegExp(alternativas.map(entreDigitos).join('|'));
+}
+
 export async function executarListagem(
   contatos: Model<Contato>,
   conexao: Connection,
@@ -140,15 +180,8 @@ export async function executarListagem(
   const limite = Math.min(Math.max(Number(consulta.limite) || 20, 1), 100);
   const filtro = filtroDaCarteira(usuario);
   aplicarResponsavel(filtro, usuario, consulta.responsavel);
-  const busca = textoDeBusca(consulta.q);
-  if (busca) {
-    filtro.$or = [
-      { nome: busca },
-      { 'emails.valor': busca },
-      { 'telefones.e164': busca },
-      { 'telefones.bruto': busca },
-    ];
-  }
+  const condicoesDeBusca = filtroDeBusca(consulta.q);
+  if (condicoesDeBusca) filtro.$or = condicoesDeBusca;
   const { ordem, sort } = completarFiltro(filtro, consulta);
   const semCursor: Record<string, unknown> = { ...filtro };
   aplicarCursor(filtro, consulta.cursor, ordem);
