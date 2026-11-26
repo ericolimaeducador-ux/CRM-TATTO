@@ -3,6 +3,16 @@
 Formato: contexto · decisão · alternativas consideradas · consequências · status.
 Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
+## ADR-035 — Link de cadastro abre fora do CRM
+
+**Contexto.** Em 26/11/2026 o proprietário testou o link de completar cadastro (ADR-034) e ele abriu dentro do CRM completo, com menu lateral, busca e navegação. O tatuador veria o programa interno. A página `/atualizar-cadastro` não estava na lista de páginas públicas do `Layout`, que já tirava o CRM de `/p`, `/termo` e `/inscricao-treinamento`.
+
+**Decisão.** As páginas públicas ficam numa lista única (`PUBLICAS` em `Layout.tsx`), que passa a incluir `atualizar-cadastro`. Nelas aparece só a marca e o formulário: sem menu, busca, barra de sincronização ou link. O logo deixa de ser link para `/`, que levava para a entrada do CRM. Teste de layout cobre as quatro páginas públicas.
+
+**Consequências.** Toda página nova aberta por quem está fora da equipe precisa entrar em `PUBLICAS`. Os dados internos continuavam protegidos pelo login (a API recusa sem sessão), mas o visitante via a estrutura do programa.
+
+**Status.** aceito — 26/11/2026 — pedido do proprietário.
+
 ## ADR-034 — Link pessoal completa o cadastro inteiro, gerado na ficha
 
 **Contexto.** Em 26/11/2026 o proprietário pediu um link para os estúdios completarem todos os dados, entrando direto na ficha de cada um. O link de atualização existente só trazia nome, e-mail, telefone, cidade e UF, e só podia ser gerado dentro de uma campanha de envio manual. Sem CNPJ/CPF e endereço, o estúdio não pode ser promovido a cliente.
