@@ -615,9 +615,29 @@ function dataDeEntrada(valor: string): string {
 function correspondeAosFiltrosLocais(item: ContatoLocal, filtros: FiltrosDaLista): boolean {
   const busca = normalizar(filtros.q);
   const dados = Object.values(item.campos).join(' ');
-  if (busca && !normalizar(dados).includes(busca)) return false;
+  if (
+    busca &&
+    !normalizar(dados).includes(busca) &&
+    !casaTelefone(Object.values(item.campos), filtros.q)
+  )
+    return false;
   const data = dataLocal(item.atualizadoEm);
   return (!filtros.desde || data >= filtros.desde) && (!filtros.ate || data <= filtros.ate);
+}
+
+/** Telefone digitado com ou sem máscara casa pelos dígitos, como na busca do CRM. */
+function casaTelefone(valores: unknown[], q: string): boolean {
+  const limpo = q.trim();
+  if (!/^[\d\s()+\-./]+$/.test(limpo)) return false;
+  let digitos = limpo.replace(/\D/g, '').replace(/^0+/, '');
+  if (digitos.startsWith('55') && (digitos.length === 12 || digitos.length === 13))
+    digitos = digitos.slice(2);
+  if (digitos.length < 4) return false;
+  return valores.some((valor) =>
+    String(valor ?? '')
+      .replace(/\D/g, '')
+      .includes(digitos),
+  );
 }
 
 function compararLocais(a: ContatoLocal, b: ContatoLocal, ordem: Ordem): number {
