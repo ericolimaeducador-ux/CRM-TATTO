@@ -5,6 +5,7 @@ import { textoDaResposta } from '@/lib/texto-resposta';
 import { cabecalhosDaSessao, perfilLogado, podeAuditar, podeGerir } from '@/lib/offline/sessao';
 import { dataHoraBr } from '@/lib/datas';
 import { AcoesSensiveis } from './AcoesSensiveis';
+import { LinkDeCadastro } from './LinkDeCadastro';
 import { useEquipe } from '../comercial/api';
 import {
   acoesDeStatus,
@@ -106,6 +107,13 @@ export function PaginaLead() {
               setMensagem(texto);
             }}
           />
+          {gerir ? (
+            <LinkDeCadastro
+              id={id}
+              nome={painel.nome?.trim() ?? ''}
+              telefone={painel.telefones?.find((t) => t.e164)?.e164}
+            />
+          ) : null}
           {mensagem ? (
             <p className="text-base font-semibold" role="status">
               {mensagem}
