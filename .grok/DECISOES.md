@@ -3,6 +3,18 @@
 Formato: contexto · decisão · alternativas consideradas · consequências · status.
 Status: `proposto` | `aceito` | `substituído por ADR-NNN`.
 
+## ADR-034 — Link pessoal completa o cadastro inteiro, gerado na ficha
+
+**Contexto.** Em 26/11/2026 o proprietário pediu um link para os estúdios completarem todos os dados, entrando direto na ficha de cada um. O link de atualização existente só trazia nome, e-mail, telefone, cidade e UF, e só podia ser gerado dentro de uma campanha de envio manual. Sem CNPJ/CPF e endereço, o estúdio não pode ser promovido a cliente.
+
+**Decisão.** O link pessoal (`/atualizar-cadastro/:token`, 7 dias, um envio) passa a aceitar tipo (empresa/estúdio ou pessoa física), CNPJ ou CPF, razão social, nome fantasia e endereço completo (CEP, rua, número, complemento, bairro, cidade, UF), com preenchimento automático pelo CEP (ViaCEP, chamado pelo navegador, só o CEP). Cada campo é gravado pelas mesmas regras da ficha (`montarPatch`): documento cifrado com hash e máscara, completude e status recalculados, autoria "atualização pelo titular". CPF/CNPJ inválido volta para o titular corrigir sem gastar o link; documento já usado em outro cadastro devolve o link e pede para falar com quem enviou (409); documento em branco mantém o que já existe. A leitura do link nunca devolve o documento inteiro, só a máscara. A ficha do contato ganha "Gerar link para completar cadastro" (gestor/admin), que copia o link e oferece "Enviar pelo WhatsApp" com mensagem pronta.
+
+**Alternativas consideradas.** Formulário público genérico com busca por CNPJ: exporia se um CNPJ está na base e não saberia a qual ficha aplicar. Google Forms: dados fora do sistema e sem ligação com a ficha.
+
+**Consequências.** Quem tem o link vê os dados atuais do contato (exceto documento) e pode alterá-los uma vez; por isso o link é pessoal e só gestão emite. Status pode subir (ex.: qualificado) quando o cadastro fica completo; a promoção a cliente continua exigindo o código do autenticador.
+
+**Status.** aceito — 26/11/2026 — pedido do proprietário.
+
 ## ADR-033 — Busca de contatos acha telefone com ou sem máscara
 
 **Contexto.** Em 26/11/2026 o proprietário relatou que digitar parte do telefone, ou o número inteiro com 11 dígitos, não achava o contato. A busca comparava o texto digitado literalmente com `telefones.e164` (`+5511987654321`) e `telefones.bruto` (como foi digitado, ex.: `(11) 98765-4321`). Número digitado com máscara não casava com o e164; número só com dígitos não casava com o bruto — e cadastro cujo telefone ficou sem e164 (incompleto ou importado) só tem o bruto.
