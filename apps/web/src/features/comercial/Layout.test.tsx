@@ -27,3 +27,22 @@ it('reinicia rolagem ao trocar seção e preserva posição ao mudar só a query
   expect(rolar).toHaveBeenCalledOnce();
   expect(rolar).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'instant' });
 });
+
+it.each(['/atualizar-cadastro/abc', '/p/abc', '/inscricao-treinamento/abc', '/termo'])(
+  'página pública %s abre sem menu, busca nem atalho para o CRM',
+  (caminho) => {
+    const { container } = render(
+      <MemoryRouter initialEntries={[caminho]}>
+        <Layout>
+          <p>Formulário</p>
+        </Layout>
+      </MemoryRouter>,
+    );
+    expect(screen.getByText('Formulário')).toBeTruthy();
+    expect(container.querySelector('.tv-public')).toBeTruthy();
+    expect(container.querySelector('.tv-sidebar')).toBeNull();
+    expect(screen.queryByRole('search')).toBeNull();
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.queryAllByRole('link')).toHaveLength(0);
+  },
+);

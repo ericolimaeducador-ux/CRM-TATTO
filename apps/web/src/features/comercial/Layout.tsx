@@ -25,6 +25,8 @@ const SECOES: Record<string, string> = {
   duplicatas: 'Duplicatas',
   'meu-qr': 'Meu QR',
 };
+const PUBLICAS = new Set(['p', 'termo', 'inscricao-treinamento', 'atualizar-cadastro']);
+
 export function Layout({ children }: { children: ReactNode }) {
   const local = useLocation();
   const navegar = useNavigate();
@@ -85,12 +87,13 @@ export function Layout({ children }: { children: ReactNode }) {
     'campanhas',
   ].includes(segmento);
   if (segmento === 'entrar') return <main className="tv-login-screen">{children}</main>;
-  if (segmento === 'p' || segmento === 'termo' || segmento === 'inscricao-treinamento')
+  // Páginas abertas por quem está fora da equipe: sem menu, busca ou atalho para o CRM (ADR-035).
+  if (PUBLICAS.has(segmento))
     return (
       <div className="tv-public">
-        <Link to="/" className="tv-brand-link">
+        <span className="tv-brand-link">
           <Logo />
-        </Link>
+        </span>
         <main className="tv-legacy">{children}</main>
       </div>
     );

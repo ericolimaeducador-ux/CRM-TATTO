@@ -28,6 +28,7 @@ _(vazio — F3-02 foi para FEITO com a autorização de 26/09/2026)_
 
 ## EM CURSO
 
+- `[CP-21]` Link de cadastro abre fora do CRM — **@UI-04** + **@SEC-07** + **@QA-09** — aceite: ADR-035; `/atualizar-cadastro` sem menu, busca nem link para o CRM, como `/p`, `/termo` e `/inscricao-treinamento`; logo público sem link — dep: [CP-20] — IMPLEMENTADO 26/11/2026; Layout 5/5, tsc e lint verdes
 - `[CP-20]` Link pessoal completa o cadastro inteiro — **@API-03** + **@UI-04** + **@SEC-07** + **@QA-09** — aceite: ADR-034; link aceita tipo, CNPJ/CPF, razão social, nome fantasia e endereço com CEP; documento inválido não gasta o link, duplicado devolve 409, leitura só com máscara; botão na ficha com cópia e WhatsApp — dep: [CP-19] — IMPLEMENTADO 26/11/2026; API 280/280, web 105/105, lint verde
 - `[CP-19]` Busca acha telefone com ou sem máscara — **@API-03** + **@UI-04** + **@QA-09** — aceite: ADR-033; "11987654321", "(11) 98765-4321", "+55 11…", trecho de 4+ dígitos e número sem o 9 acham o contato pelo e164 ou pelo bruto; mesma regra na busca local — IMPLEMENTADO 26/11/2026; testes de contatos API 26/26, ListaContatos web 14/14, tsc verde
 - `[CP-18]` Campanha mostra quem nunca foi incluído — **@API-03** + **@UI-04** + **@QA-09** — aceite: ADR-032; `naoIncluidos` nos resultados com motivo, telefone mascarado e "cadastrado depois"; contador "Não incluídos" com Incluir/Abrir ficha; incluir aceita quem não estava selecionado — dep: [CP-11] — IMPLEMENTADO 25/11/2026; API 267/267, web 102/102, e2e 16/16, lint verde
